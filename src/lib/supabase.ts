@@ -1,13 +1,17 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
- * Cria o cliente Supabase para uso no browser (client components).
+ * Cliente Supabase para **client components** via `@supabase/ssr` (`createBrowserClient`).
+ * Persiste a sessão em **cookies** (compatível com `middleware.ts` e refresh no edge).
  *
- * Use apenas em código que roda no cliente (ex: 'use client', useEffect, event handlers).
- * As chaves NEXT_PUBLIC_* são públicas por design; o Supabase usa RLS (Row Level Security)
- * e políticas no projeto para proteger os dados. Nunca coloque aqui a service_role key.
+ * Evita múltiplas instâncias no browser (o pacote também deduplica internamente).
+ * Nunca use a `service_role` key no frontend.
  */
-export function createClient() {
+let _client: SupabaseClient | null = null;
+
+export function createClient(): SupabaseClient {
+  if (_client) return _client;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url?.trim() || !key?.trim()) {
@@ -15,5 +19,6 @@ export function createClient() {
       'Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY no .env.local do pds-frontend (veja .env.example).'
     );
   }
-  return createSupabaseClient(url, key);
+  _client = createBrowserClient(url, key) as unknown as SupabaseClient;
+  return _client;
 }

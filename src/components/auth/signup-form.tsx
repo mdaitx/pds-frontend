@@ -3,12 +3,25 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Eye, EyeOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
+import { useAuth } from '@/hooks';
+import { Card, CardContent, CardHeader } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
+/**
+ * Formulário de cadastro — protótipo Figma Make (/cadastro): card, e-mail, senha, confirmar senha, mostrar/ocultar.
+ */
 export function SignupForm() {
   const router = useRouter();
+  const { configError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -29,6 +42,20 @@ export function SignupForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Por favor, insira um e-mail válido.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem.');
+      return;
+    }
+
     setLoading(true);
     try {
       const supabase = createClient();
@@ -55,76 +82,131 @@ export function SignupForm() {
     }
   }
 
-  if (success) {
+  if (configError) {
     return (
-      <div className="mt-6 space-y-4">
-        <div className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-800">
-          Conta criada. Verifique seu e-mail para confirmar (se a confirmação
-          estiver ativada) e depois faça login.
-        </div>
-        <Link
-          href="/login"
-          className="block w-full rounded-lg bg-blue-600 px-4 py-2 text-center font-medium text-white hover:bg-blue-700"
-        >
-          Ir para login
-        </Link>
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+        <p className="font-medium">Configuração necessária</p>
+        <p className="mt-1">{configError}</p>
+        <p className="mt-2">
+          Configure <code className="rounded bg-amber-100 px-1">.env.local</code> e reinicie o servidor.
+        </p>
       </div>
     );
   }
 
+  if (success) {
+    return (
+      <Card className="border-zinc-200 shadow-xl">
+        <CardContent className="pt-6">
+          <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+            Conta criada. Verifique seu e-mail para confirmar (se a confirmação estiver ativada) e depois faça login.
+          </div>
+          <Link
+            href="/login"
+            className="mt-4 block w-full rounded-lg bg-blue-600 px-4 py-2 text-center font-medium text-white hover:bg-blue-700"
+          >
+            Ir para login
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-      {error && (
-        <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
+    <Card className="border-zinc-200 shadow-xl">
+      <CardHeader className="pb-2">
+        <h2 className="text-center text-xl font-semibold text-zinc-800">Criar conta</h2>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="signup-email">E-mail *</Label>
+            <Input
+              id="signup-email"
+              type="email"
+              placeholder="seu@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+              autoComplete="email"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="signup-password">
+              Senha *{' '}
+              <span className="text-[0.8rem] font-normal text-zinc-400">(mínimo 6 caracteres)</span>
+            </Label>
+            <div className="relative">
+              <Input
+                id="signup-password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                autoComplete="new-password"
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                tabIndex={-1}
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="signup-confirm">Confirmar senha *</Label>
+            <div className="relative">
+              <Input
+                id="signup-confirm"
+                type={showConfirm ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={loading}
+                autoComplete="new-password"
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirm((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                tabIndex={-1}
+                aria-label={showConfirm ? 'Ocultar confirmação' : 'Mostrar confirmação'}
+              >
+                {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full bg-blue-600 text-white hover:bg-blue-700"
+            disabled={loading}
+          >
+            {loading ? 'Criando conta...' : 'Cadastrar'}
+          </Button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <p className="text-[0.9rem] text-zinc-500">
+            Já tem conta?{' '}
+            <Link href="/login" className="font-semibold text-blue-600 transition-colors hover:text-blue-700">
+              Entrar
+            </Link>
+          </p>
         </div>
-      )}
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-zinc-700">
-          E-mail
-        </label>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-      </div>
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium text-zinc-700">
-          Senha
-        </label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="new-password"
-          required
-          minLength={6}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-        <p className="mt-1 text-xs text-zinc-500">Mínimo 6 caracteres.</p>
-      </div>
-      <p className="text-xs text-zinc-500">
-        Use um e-mail válido (ex.: nome@gmail.com). E-mails de teste ou inválidos são bloqueados.
-      </p>
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-      >
-        {loading ? 'Cadastrando…' : 'Cadastrar'}
-      </button>
-      <p className="text-center text-sm text-zinc-600">
-        Já tem conta?{' '}
-        <Link href="/login" className="font-medium text-blue-600 hover:text-blue-800">
-          Entrar
-        </Link>
-      </p>
-    </form>
+      </CardContent>
+    </Card>
   );
 }
