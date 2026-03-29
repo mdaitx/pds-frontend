@@ -1,30 +1,33 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+/**
+ * Cadastro de motorista (POST /drivers).
+ */
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
+import { ArrowLeft, Save } from 'lucide-react';
+import { toast } from 'sonner';
 import { useAuth } from '@/hooks';
 import {
   createDriver,
   uploadDriverPhoto,
   getVehicles,
+  getDrivers,
+  getCompanyStaff,
   type CreateDriverPayload,
   type DriverStatus,
   type Vehicle,
+  type CompanyStaffMember,
 } from '@/lib';
-import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { ImageUpload } from '@/components/ui/image-upload';
 
-const inputClass =
-  'mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
-const labelClass = 'block text-sm font-medium text-zinc-700';
-
-const STATUS_OPTIONS: { value: DriverStatus; label: string }[] = [
-  { value: 'ACTIVE', label: 'Ativo' },
-  { value: 'INACTIVE', label: 'Inativo' },
-];
-
-const PAYMENT_METHODS = ['PIX', 'Transferência', 'Dinheiro', 'Outro'];
+const selectClass =
+  'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 function formatCpf(v: string): string {
   const d = v.replace(/\D/g, '').slice(0, 11);
@@ -38,86 +41,136 @@ export default function NovoMotoristaPage() {
   const router = useRouter();
   const { session, appUser, loading: authLoading } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [name, setName] = useState('');
-  const [cpf, setCpf] = useState('');
-  const [rg, setRg] = useState('');
-  const [cnh, setCnh] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [commissionPct, setCommissionPct] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('');
-  const [pixKey, setPixKey] = useState('');
-  const [bankName, setBankName] = useState('');
-  const [bankAgency, setBankAgency] = useState('');
-  const [bankAccount, setBankAccount] = useState('');
-  const [status, setStatus] = useState<DriverStatus>('ACTIVE');
-  const [preferredVehicleId, setPreferredVehicleId] = useState('');
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [existingEmails, setExistingEmails] = useState<string[]>([]);
+  /** Usuários DRIVER da empresa ainda sem ficha de motorista vinculada. */
+  const [linkableStaffDrivers, setLinkableStaffDrivers] = useState<CompanyStaffMember[]>([]);
+  const [linkedUserId, setLinkedUserId] = useState('');
+
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    status: 'ACTIVE' as DriverStatus,
+    phone: '',
+    cpf: '',
+    rg: '',
+    cnh: '',
+    commissionPct: '',
+    preferredVehicleId: '',
+  });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  const setField = (field: string, value: string) => {
+    setForm((f) => ({ ...f, [field]: value }));
+    setErrors((e) => ({ ...e, [field]: '' }));
+  };
 
   useEffect(() => {
     if (!authLoading && !session) router.replace('/login');
   }, [authLoading, session, router]);
 
   useEffect(() => {
-    if (appUser?.role === 'OWNER') {
-      getVehicles().then(setVehicles).catch(() => {});
-    } else {
-      router.replace('/dashboard');
+    if (appUser?.role !== 'OWNER' && appUser?.role !== 'ADMIN') {
+      if (appUser) router.replace('/dashboard');
+      return;
     }
+    getVehicles().then(setVehicles).catch(() => {});
+    Promise.all([getDrivers(), getCompanyStaff()])
+      .then(([drivers, staffRes]) => {
+        const fromDrivers = drivers
+          .map((d) => (d.email ?? '').trim().toLowerCase())
+          .filter(Boolean);
+        const fromStaff = staffRes.staff.map((s) => s.email.trim().toLowerCase());
+        setExistingEmails([...new Set([...fromDrivers, ...fromStaff])]);
+
+        const takenUserIds = new Set(
+          drivers.map((d) => d.userId).filter((id): id is string => !!id)
+        );
+        setLinkableStaffDrivers(
+          staffRes.staff.filter(
+            (s) => s.role === 'DRIVER' && !takenUserIds.has(s.id)
+          )
+        );
+      })
+      .catch(() => {});
   }, [appUser, router]);
 
-  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCpf(formatCpf(e.target.value));
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setError(null);
+  const handlePhotoChange = async (file: File | null, preview: string | null) => {
+    if (!file) {
+      setPhotoPreview(null);
+      return;
+    }
+    setPhotoPreview(preview);
+    setErrors((e) => ({ ...e, photo: '' }));
     try {
       const { url } = await uploadDriverPhoto(file);
-      if (url) setPhotoUrl(url);
+      if (url) {
+        if (preview?.startsWith('blob:')) URL.revokeObjectURL(preview);
+        setPhotoPreview(url);
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha no upload');
+      setPhotoPreview(null);
+      setErrors((e) => ({
+        ...e,
+        photo: err instanceof Error ? err.message : 'Falha no envio da foto',
+      }));
+      toast.error('Não foi possível enviar a foto.');
     }
+  };
+
+  const validate = () => {
+    const errs: Record<string, string> = {};
+    if (!form.name.trim()) errs.name = 'Nome é obrigatório.';
+    if (form.email.trim()) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errs.email = 'E-mail inválido.';
+      else {
+        const emailNorm = form.email.trim().toLowerCase();
+        const linked = linkableStaffDrivers.find((s) => s.id === linkedUserId);
+        const isLinkedUserEmail =
+          linked && linked.email.trim().toLowerCase() === emailNorm;
+        if (existingEmails.includes(emailNorm) && !isLinkedUserEmail) {
+          errs.email = 'Este e-mail já está cadastrado.';
+        }
+      }
+    }
+    const cpfDigits = form.cpf.replace(/\D/g, '');
+    if (cpfDigits.length > 0 && cpfDigits.length !== 11) errs.cpf = 'CPF deve ter 11 dígitos.';
+
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || cpf.replace(/\D/g, '').length !== 11) {
-      setError('Preencha nome e CPF (11 dígitos).');
-      return;
-    }
-    setError(null);
-    setSaving(true);
+    if (!validate()) return;
+    setLoading(true);
     try {
       const payload: CreateDriverPayload = {
-        name: name.trim(),
-        cpf: cpf.replace(/\D/g, ''),
-        status,
+        name: form.name.trim(),
+        ...(form.cpf.replace(/\D/g, '').length === 11 && {
+          cpf: form.cpf.replace(/\D/g, ''),
+        }),
+        status: form.status,
       };
-      if (rg.trim()) payload.rg = rg.trim();
-      if (cnh.trim()) payload.cnh = cnh.trim();
-      if (phone.trim()) payload.phone = phone.trim();
-      if (email.trim()) payload.email = email.trim();
-      const commission = parseFloat(commissionPct);
+      if (form.rg.trim()) payload.rg = form.rg.trim();
+      if (form.cnh.trim()) payload.cnh = form.cnh.trim();
+      if (form.phone.trim()) payload.phone = form.phone.trim();
+      if (form.email.trim()) payload.email = form.email.trim();
+      const commission = parseFloat(form.commissionPct);
       if (!Number.isNaN(commission)) payload.commissionPct = commission;
-      if (paymentMethod.trim()) payload.paymentMethod = paymentMethod.trim();
-      if (pixKey.trim()) payload.pixKey = pixKey.trim();
-      if (bankName.trim()) payload.bankName = bankName.trim();
-      if (bankAgency.trim()) payload.bankAgency = bankAgency.trim();
-      if (bankAccount.trim()) payload.bankAccount = bankAccount.trim();
-      if (preferredVehicleId) payload.preferredVehicleId = preferredVehicleId;
-      if (photoUrl) payload.photoUrl = photoUrl;
+      if (form.preferredVehicleId) payload.preferredVehicleId = form.preferredVehicleId;
+      if (photoPreview?.startsWith('http')) payload.photoUrl = photoPreview;
+      if (linkedUserId) payload.linkedUserId = linkedUserId;
+
       await createDriver(payload);
+      toast.success('Motorista cadastrado.');
       router.push('/dashboard/motoristas');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar');
+      toast.error(err instanceof Error ? err.message : 'Erro ao salvar');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
@@ -130,161 +183,197 @@ export default function NovoMotoristaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-6">
-      <div className="mx-auto max-w-xl">
-        <Link href="/dashboard/motoristas" className="text-sm text-blue-600 hover:underline">
-          ← Voltar à lista de motoristas
+    <div className="mx-auto max-w-2xl space-y-5 bg-zinc-50 p-4 md:p-6">
+      <div>
+        <Link
+          href="/dashboard/motoristas"
+          className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
+          style={{ fontSize: '0.85rem' }}
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Voltar aos motoristas
         </Link>
-        <h1 className="mt-4 mb-6 text-2xl font-semibold text-zinc-900">Novo motorista</h1>
-        <Card className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-                {error}
-              </div>
-            )}
-            <div>
-              <label htmlFor="name" className={labelClass}>Nome *</label>
-              <input id="name" type="text" required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+        <h1 className="text-2xl font-semibold text-zinc-900">Novo Motorista</h1>
+        <p className="mt-1 text-sm text-zinc-500">
+          Cadastre um motorista para vincular às viagens
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Card className="border-zinc-200">
+          <CardHeader className="pb-2">
+            <h3 className="font-medium text-zinc-700">Dados Pessoais</h3>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <ImageUpload
+              label="Foto do motorista"
+              value={photoPreview ?? undefined}
+              onChange={handlePhotoChange}
+              disabled={loading}
+            />
+            {errors.photo && <p className="text-sm text-red-600">{errors.photo}</p>}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="linkedUserId">Vincular a usuário já existente</Label>
+              <select
+                id="linkedUserId"
+                value={linkedUserId}
+                onChange={(e) => {
+                  const id = e.target.value;
+                  setLinkedUserId(id);
+                  const m = linkableStaffDrivers.find((s) => s.id === id);
+                  if (m) {
+                    setForm((f) => ({
+                      ...f,
+                      email: m.email,
+                      phone: m.phone ?? '',
+                    }));
+                  }
+                  setErrors((er) => ({ ...er, email: '' }));
+                }}
+                className={selectClass}
+                style={{ fontSize: '0.9rem' }}
+              >
+                <option value="">Nenhum — apenas cadastro na frota</option>
+                {linkableStaffDrivers.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name ?? s.email} ({s.email})
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-zinc-500">
+                Opcional: associa esta ficha a uma conta de motorista já criada em Usuários (mesma
+                empresa).
+              </p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="cpf" className={labelClass}>CPF *</label>
-                <input
+
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Nome completo *</Label>
+              <Input
+                id="name"
+                placeholder="Nome do motorista"
+                value={form.name}
+                onChange={(e) => setField('name', e.target.value)}
+              />
+              {errors.name && <p className="text-sm text-red-600">{errors.name}</p>}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="userEmail">E-mail</Label>
+              <Input
+                id="userEmail"
+                type="email"
+                placeholder="motorista@email.com"
+                value={form.email}
+                onChange={(e) => setField('email', e.target.value)}
+              />
+              {errors.email && <p className="text-sm text-red-600">{errors.email}</p>}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="phone">Telefone</Label>
+              <Input
+                id="phone"
+                placeholder="(00) 00000-0000"
+                value={form.phone}
+                onChange={(e) => setField('phone', e.target.value)}
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="cpf">CPF</Label>
+                <Input
                   id="cpf"
-                  type="text"
-                  required
                   placeholder="000.000.000-00"
                   maxLength={14}
-                  value={cpf}
-                  onChange={handleCpfChange}
-                  className={inputClass}
+                  value={form.cpf}
+                  onChange={(e) => setField('cpf', formatCpf(e.target.value))}
                 />
+                {errors.cpf && <p className="text-sm text-red-600">{errors.cpf}</p>}
               </div>
-              <div>
-                <label htmlFor="rg" className={labelClass}>RG</label>
-                <input id="rg" type="text" value={rg} onChange={(e) => setRg(e.target.value)} className={inputClass} />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="cnh" className={labelClass}>CNH</label>
-              <input id="cnh" type="text" value={cnh} onChange={(e) => setCnh(e.target.value)} className={inputClass} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="phone" className={labelClass}>Telefone</label>
-                <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
-              </div>
-              <div>
-                <label htmlFor="email" className={labelClass}>E-mail</label>
-                <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+              <div className="space-y-1.5">
+                <Label htmlFor="rg">RG</Label>
+                <Input id="rg" value={form.rg} onChange={(e) => setField('rg', e.target.value)} />
               </div>
             </div>
-            <div>
-              <label htmlFor="commissionPct" className={labelClass}>Comissão (%)</label>
-              <input
+            <div className="space-y-1.5">
+              <Label htmlFor="cnh">CNH</Label>
+              <Input id="cnh" value={form.cnh} onChange={(e) => setField('cnh', e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="userStatus">Status</Label>
+              <select
+                id="userStatus"
+                value={form.status}
+                onChange={(e) => setField('status', e.target.value as DriverStatus)}
+                className={selectClass}
+                style={{ fontSize: '0.9rem' }}
+              >
+                <option value="ACTIVE">Ativo</option>
+                <option value="INACTIVE">Inativo</option>
+              </select>
+              <p className="mt-1 text-xs text-zinc-500">
+                Motoristas inativos não poderão ser vinculados a novas viagens.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-zinc-200">
+          <CardHeader className="pb-2">
+            <h3 className="font-medium text-zinc-700">Dados profissionais</h3>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="commissionPct">Comissão (%)</Label>
+              <Input
                 id="commissionPct"
                 type="number"
                 min={0}
                 max={100}
                 step={0.5}
-                value={commissionPct}
-                onChange={(e) => setCommissionPct(e.target.value)}
-                className={inputClass}
+                value={form.commissionPct}
+                onChange={(e) => setField('commissionPct', e.target.value)}
               />
             </div>
-            <div>
-              <label htmlFor="paymentMethod" className={labelClass}>Forma de pagamento</label>
-              <select
-                id="paymentMethod"
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className={inputClass}
-              >
-                <option value="">—</option>
-                {PAYMENT_METHODS.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="pixKey" className={labelClass}>Chave PIX</label>
-              <input id="pixKey" type="text" value={pixKey} onChange={(e) => setPixKey(e.target.value)} className={inputClass} />
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label htmlFor="bankName" className={labelClass}>Banco</label>
-                <input id="bankName" type="text" value={bankName} onChange={(e) => setBankName(e.target.value)} className={inputClass} />
-              </div>
-              <div>
-                <label htmlFor="bankAgency" className={labelClass}>Agência</label>
-                <input id="bankAgency" type="text" value={bankAgency} onChange={(e) => setBankAgency(e.target.value)} className={inputClass} />
-              </div>
-              <div>
-                <label htmlFor="bankAccount" className={labelClass}>Conta</label>
-                <input id="bankAccount" type="text" value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} className={inputClass} />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="status" className={labelClass}>Status</label>
-              <select
-                id="status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as DriverStatus)}
-                className={inputClass}
-              >
-                {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="preferredVehicleId" className={labelClass}>Veículo preferencial</label>
+            <div className="space-y-1.5">
+              <Label htmlFor="preferredVehicleId">Veículo preferencial</Label>
               <select
                 id="preferredVehicleId"
-                value={preferredVehicleId}
-                onChange={(e) => setPreferredVehicleId(e.target.value)}
-                className={inputClass}
+                value={form.preferredVehicleId}
+                onChange={(e) => setField('preferredVehicleId', e.target.value)}
+                className={selectClass}
+                style={{ fontSize: '0.9rem' }}
               >
                 <option value="">Nenhum</option>
                 {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>{v.plate} · {v.brand} {v.model}</option>
+                  <option key={v.id} value={v.id}>
+                    {v.plate} · {v.brand} {v.model}
+                  </option>
                 ))}
               </select>
             </div>
-            <div>
-              <label className={labelClass}>Foto</label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="mt-1 block w-full text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-blue-700"
-              />
-              {photoUrl && (
-                <p className="mt-2">
-                  <Image src={photoUrl} alt="Preview" width={96} height={96} className="h-24 w-24 rounded-full object-cover" unoptimized />
-                </p>
-              )}
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button
-                type="submit"
-                disabled={saving}
-                className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                {saving ? 'Salvando…' : 'Cadastrar motorista'}
-              </button>
-              <Link
-                href="/dashboard/motoristas"
-                className="rounded-lg border border-zinc-300 px-4 py-2 font-medium text-zinc-700 hover:bg-zinc-50"
-              >
-                Cancelar
-              </Link>
-            </div>
-          </form>
+          </CardContent>
         </Card>
-      </div>
+
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <Button
+            variant="outline"
+            type="button"
+            disabled={loading}
+            onClick={() => router.push('/dashboard/motoristas')}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            disabled={loading}
+            className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
+          >
+            <Save className="h-4 w-4" />
+            {loading ? 'Salvando...' : 'Salvar'}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

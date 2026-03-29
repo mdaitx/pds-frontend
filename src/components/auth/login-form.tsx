@@ -3,27 +3,30 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Eye, EyeOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks';
+import { Card, CardHeader, CardContent } from '@/components/ui';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 /**
  * Formulário de login: e-mail/senha via Supabase Auth.
- *
- * - Se configError (env não configurado), mostra mensagem em vez do form.
- * - Após login bem-sucedido, redireciona para /dashboard com window.location.href
- *   para garantir que a nova sessão esteja disponível ao carregar a página.
+ * Design adaptado do protótipo Figma Make (tema claro).
  */
 export function LoginForm() {
   const router = useRouter();
   const { configError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   if (configError) {
     return (
-      <div className="mt-6 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+      <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
         <p className="font-medium">Configuração necessária</p>
         <p className="mt-1">{configError}</p>
         <p className="mt-2">
@@ -44,7 +47,6 @@ export function LoginForm() {
         password,
       });
       if (err) throw new Error(err.message);
-      // Redireciona só quando há sessão; pequeno delay para o Supabase persistir no storage
       if (data.session) {
         await new Promise((r) => setTimeout(r, 150));
         window.location.href = '/dashboard';
@@ -53,68 +55,96 @@ export function LoginForm() {
       router.push('/dashboard');
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erro ao entrar');
+      const msg = e instanceof Error ? e.message : 'Erro ao entrar';
+      if (msg.toLowerCase().includes('invalid login credentials') || msg.toLowerCase().includes('invalid_credentials')) {
+        setError('E-mail ou senha incorretos. Verifique os dados ou cadastre-se primeiro.');
+      } else if (msg.toLowerCase().includes('email not confirmed')) {
+        setError('Confirme seu e-mail antes de entrar. Verifique a caixa de entrada e spam.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-      {error && (
-        <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
+    <Card className="shadow-xl border-zinc-200">
+      <CardHeader className="pb-2">
+        <h2 className="text-zinc-800 text-center text-xl font-semibold">Entrar na sua conta</h2>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="email">E-mail *</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="seu@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+              autoComplete="email"
+              required
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Senha *</Label>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                autoComplete="current-password"
+                required
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                tabIndex={-1}
+                aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <div className="flex justify-end">
+              <Link
+                href="/forgot-password"
+                className="text-blue-600 hover:text-blue-700 transition-colors text-sm"
+              >
+                Esqueceu a senha?
+              </Link>
+            </div>
+          </div>
+
+          {error && (
+            <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg border border-red-200">{error}</p>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            disabled={loading}
+          >
+            {loading ? 'Entrando...' : 'Entrar'}
+          </Button>
+        </form>
+
+        <div className="mt-6 text-center">
+          <p className="text-zinc-500 text-sm">
+            Não tem conta?{' '}
+            <Link href="/signup" className="text-blue-600 hover:text-blue-700 transition-colors font-semibold">
+              Cadastre-se
+            </Link>
+          </p>
         </div>
-      )}
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-zinc-700">
-          E-mail
-        </label>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-      </div>
-      <div>
-        <label htmlFor="password" className="block text-sm font-medium text-zinc-700">
-          Senha
-        </label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-      </div>
-      <div className="flex items-center justify-between text-sm">
-        <Link
-          href="/forgot-password"
-          className="text-blue-600 hover:text-blue-800"
-        >
-          Esqueci a senha
-        </Link>
-      </div>
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-      >
-        {loading ? 'Entrando…' : 'Entrar'}
-      </button>
-      <p className="text-center text-sm text-zinc-600">
-        Não tem conta?{' '}
-        <Link href="/signup" className="font-medium text-blue-600 hover:text-blue-800">
-          Cadastre-se
-        </Link>
-      </p>
-    </form>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,14 +1,13 @@
 'use client';
 
 /**
- * Página de Configurações (dono): dados da empresa e categorias de despesas.
- *
- * - Apenas OWNER acessa; motoristas são redirecionados para /dashboard.
- * - Carrega empresa (GET /companies/me) e categorias (GET /expense-categories).
- * - Formulários: edição da empresa (PUT /companies/me), CRUD de categorias customizadas.
+ * Página de Configurações (dono): alinhada ao protótipo Figma Make publicado em figma.site.
+ * - Apenas OWNER; empresa + categorias de despesas (API real).
  */
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { toast } from 'sonner';
 import { useAuth } from '@/hooks';
 import {
   getMyCompany,
@@ -21,40 +20,37 @@ import {
   type ExpenseCategoryItem,
   type ExpenseCategoriesResponse,
 } from '@/lib';
-import { Card } from '@/components/ui/card';
-import Link from 'next/link';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ArrowLeft, Plus, Pencil, Trash2, Save } from 'lucide-react';
 
-const inputClass =
-  'mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
+/** Paleta de cores do protótipo (modal Nova / Editar categoria). */
+const CATEGORY_COLOR_PRESETS = [
+  '#f59e0b',
+  '#6366f1',
+  '#10b981',
+  '#3b82f6',
+  '#8b5cf6',
+  '#06b6d4',
+  '#ec4899',
+  '#6b7280',
+  '#dc2626',
+] as const;
+
 const labelClass = 'block text-sm font-medium text-zinc-700';
 
-/** Ícones disponíveis para categorias de despesas (sistema e customizadas). */
-const ICON_OPTIONS = [
-  { value: 'fuel', label: 'Combustível' },
-  { value: 'toll', label: 'Pedágio' },
-  { value: 'utensils', label: 'Alimentação' },
-  { value: 'bed', label: 'Hospedagem' },
-  { value: 'droplet', label: 'Lavagem' },
-  { value: 'file-warning', label: 'Multas' },
-  { value: 'wrench', label: 'Manutenção' },
-  { value: 'receipt', label: 'Recibo/Outros' },
-];
-
-/** Exibe ícone e cor da categoria (emojis por tipo para simplicidade). */
-function IconDisplay({ icon, color }: { icon: string; color: string }) {
-  const style = { color };
-  if (icon === 'fuel')
-    return <span style={style} className="text-lg" title="Combustível">⛽</span>;
-  if (icon === 'toll') return <span style={style} className="text-lg" title="Pedágio">🛣️</span>;
-  if (icon === 'utensils') return <span style={style} className="text-lg" title="Alimentação">🍴</span>;
-  if (icon === 'bed') return <span style={style} className="text-lg" title="Hospedagem">🛏️</span>;
-  if (icon === 'droplet') return <span style={style} className="text-lg" title="Lavagem">💧</span>;
-  if (icon === 'file-warning') return <span style={style} className="text-lg" title="Multas">⚠️</span>;
-  if (icon === 'wrench') return <span style={style} className="text-lg" title="Manutenção">🔧</span>;
-  return <span style={style} className="text-lg" title="Outros">🧾</span>;
+function CategoryColorDot({ color, size = 'sm' }: { color: string; size?: 'sm' | 'md' }) {
+  const cls = size === 'sm' ? 'h-3 w-3' : 'h-4 w-4';
+  return (
+    <div
+      className={`${cls} shrink-0 rounded-full ring-1 ring-black/5`}
+      style={{ backgroundColor: color }}
+      aria-hidden
+    />
+  );
 }
 
-/** Página principal: verifica auth/role, carrega empresa e categorias, renderiza formulários. */
 export default function ConfigPage() {
   const router = useRouter();
   const { session, appUser, loading: authLoading } = useAuth();
@@ -63,8 +59,10 @@ export default function ConfigPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [companySaving, setCompanySaving] = useState(false);
-  const [showNewCategory, setShowNewCategory] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<ExpenseCategoryItem | null>(null);
+  const [categoryForm, setCategoryForm] = useState({ name: '', color: '#3b82f6' });
+  const [categorySaving, setCategorySaving] = useState(false);
 
   useEffect(() => {
     if (!session || !appUser) return;
@@ -87,26 +85,93 @@ export default function ConfigPage() {
     if (!authLoading && !session) router.replace('/login');
   }, [authLoading, session, router]);
 
+  useEffect(() => {
+    if (!categoryDialogOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setCategoryDialogOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [categoryDialogOpen]);
+
   const refetchCategories = () => {
     getExpenseCategories().then(setCategories).catch(() => {});
   };
 
+  const openNewCategory = () => {
+    setEditingCategory(null);
+    setCategoryForm({ name: '', color: '#3b82f6' });
+    setCategoryDialogOpen(true);
+  };
+
+  const openEditCategory = (item: ExpenseCategoryItem) => {
+    setEditingCategory(item);
+    setCategoryForm({ name: item.name, color: item.color });
+    setCategoryDialogOpen(true);
+  };
+
+  const saveCategory = async () => {
+    if (!categoryForm.name.trim()) {
+      toast.error('Nome da categoria é obrigatório.');
+      return;
+    }
+    setCategorySaving(true);
+    try {
+      if (editingCategory) {
+        await updateExpenseCategory(editingCategory.id, {
+          name: categoryForm.name.trim(),
+          color: categoryForm.color,
+          icon: editingCategory.icon,
+        });
+        toast.success('Categoria atualizada!');
+      } else {
+        await createExpenseCategory({
+          name: categoryForm.name.trim(),
+          color: categoryForm.color,
+          icon: 'receipt',
+        });
+        toast.success('Categoria criada!');
+      }
+      setCategoryDialogOpen(false);
+      refetchCategories();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao salvar categoria');
+    } finally {
+      setCategorySaving(false);
+    }
+  };
+
+  const removeCategory = async (item: ExpenseCategoryItem) => {
+    if (!confirm(`Excluir a categoria "${item.name}"?`)) return;
+    try {
+      await deleteExpenseCategory(item.id);
+      toast.success(`Categoria "${item.name}" removida.`);
+      refetchCategories();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao excluir');
+    }
+  };
+
   if (authLoading || loading || appUser?.role !== 'OWNER') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <p className="text-zinc-500">Carregando…</p>
+      <div className="settings-font-inter flex min-h-[50vh] items-center justify-center bg-zinc-50">
+        <p className="text-sm text-zinc-500">Carregando configurações…</p>
       </div>
     );
   }
 
   if (!company) {
     return (
-      <div className="min-h-screen bg-zinc-50 p-6">
-        <div className="mx-auto max-w-2xl">
-          <Link href="/dashboard" className="text-sm text-blue-600 hover:underline">
-            ← Voltar ao dashboard
+      <div className="settings-font-inter min-h-screen bg-zinc-50 p-4 md:p-6 tracking-tight">
+        <div className="mx-auto max-w-3xl">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-1 text-[0.85rem] text-zinc-500 transition-colors hover:text-zinc-700"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Voltar ao dashboard
           </Link>
-          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-800">
+          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             {error || 'Empresa não encontrada. Conclua o onboarding primeiro.'}
           </div>
         </div>
@@ -114,97 +179,242 @@ export default function ConfigPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-zinc-50 p-6">
-      <div className="mx-auto max-w-2xl">
-        <div className="mb-6 flex items-center justify-between">
-          <Link href="/dashboard" className="text-sm text-blue-600 hover:underline">
-            ← Voltar ao dashboard
-          </Link>
-        </div>
-        <h1 className="mb-6 text-2xl font-semibold text-zinc-900">Configurações</h1>
+  const systemList = categories?.system ?? [];
+  const customList = categories?.custom ?? [];
 
-        {/* Dados da empresa */}
-        <Card className="mb-8 p-6">
-          <h2 className="mb-4 text-lg font-semibold text-zinc-900">Dados da empresa</h2>
-          <CompanyForm
-            company={company}
-            onSave={(payload) => {
-              setCompanySaving(true);
-              setError(null);
-              updateMyCompany(payload)
-                .then((updated) => {
-                  setCompany(updated);
-                })
-                .catch((e) => setError(e instanceof Error ? e.message : 'Erro ao salvar'))
-                .finally(() => setCompanySaving(false));
-            }}
-            saving={companySaving}
-            error={error}
-            inputClass={inputClass}
-            labelClass={labelClass}
-          />
+  return (
+    <div className="settings-font-inter min-h-screen bg-zinc-50 p-4 tracking-tight md:p-6">
+      <div className="mx-auto max-w-3xl space-y-6">
+        <div>
+          <Link
+            href="/dashboard"
+            className="mb-1 flex items-center gap-1 text-[0.85rem] text-zinc-500 transition-colors hover:text-zinc-700"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Voltar ao dashboard
+          </Link>
+          <h1 className="antialiased text-zinc-900" style={{ fontSize: '1.35rem', fontWeight: 600 }}>
+            Configurações
+          </h1>
+        </div>
+
+        <Card className="border-zinc-200 shadow-sm">
+          <CardHeader className="pb-2 pt-6">
+            <h3 className="text-zinc-700" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+              Dados da Empresa
+            </h3>
+          </CardHeader>
+          <CardContent>
+            <CompanyForm
+              company={company}
+              onSave={(payload) => {
+                if (!payload.name?.trim()) {
+                  toast.error('Nome fantasia é obrigatório.');
+                  return;
+                }
+                setCompanySaving(true);
+                setError(null);
+                updateMyCompany(payload)
+                  .then((updated) => {
+                    setCompany(updated);
+                    toast.success('Dados da empresa salvos!');
+                  })
+                  .catch((e) => {
+                    const msg = e instanceof Error ? e.message : 'Erro ao salvar';
+                    setError(msg);
+                    toast.error(msg);
+                  })
+                  .finally(() => setCompanySaving(false));
+              }}
+              saving={companySaving}
+              serverError={error}
+            />
+          </CardContent>
         </Card>
 
-        {/* Categorias de despesas */}
-        <Card className="p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-zinc-900">Categorias de despesas</h2>
-            <button
-              type="button"
-              onClick={() => { setShowNewCategory(true); setEditingId(null); }}
-              className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              Nova categoria
-            </button>
-          </div>
-          <p className="mb-4 text-sm text-zinc-500">
-            Categorias pré-definidas (sistema) e suas customizadas. Use-as ao lançar despesas nas viagens.
-          </p>
-          {showNewCategory && (
-            <NewCategoryForm
-              onCreated={() => {
-                setShowNewCategory(false);
-                refetchCategories();
-              }}
-              onCancel={() => setShowNewCategory(false)}
-              inputClass={inputClass}
-              labelClass={labelClass}
-            />
-          )}
-          <div className="space-y-3">
-            {categories?.system.map((cat) => (
-              <CategoryRow key={cat.id} item={cat} isSystem inputClass={inputClass} labelClass={labelClass} />
-            ))}
-            {categories?.custom.map((cat) => (
-              <CategoryRow
-                key={cat.id}
-                item={cat}
-                isSystem={false}
-                isEditing={editingId === cat.id}
-                onEdit={() => setEditingId(cat.id)}
-                onCancelEdit={() => setEditingId(null)}
-                onUpdated={() => { setEditingId(null); refetchCategories(); }}
-                onDeleted={() => refetchCategories()}
-                inputClass={inputClass}
-                labelClass={labelClass}
-              />
-            ))}
-          </div>
+        <Card className="border-zinc-200 shadow-sm">
+          <CardHeader className="pb-2 pt-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h3 className="text-zinc-700" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+                  Categorias de Despesas
+                </h3>
+                <p className="mt-0.5 text-zinc-500" style={{ fontSize: '0.8rem' }}>
+                  Gerencie as categorias para classificar as despesas de viagem.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={openNewCategory}
+                className="flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-blue-700 transition-colors hover:bg-blue-100"
+                style={{ fontSize: '0.83rem' }}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Nova categoria
+              </button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p
+                className="mb-2 text-zinc-500"
+                style={{
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                Categorias padrão (somente leitura)
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {systemList.map((cat) => (
+                  <div
+                    key={cat.id}
+                    className="flex items-center gap-2 rounded-lg border border-zinc-100 bg-zinc-50 p-2.5"
+                  >
+                    <CategoryColorDot color={cat.color} size="sm" />
+                    <span className="text-zinc-700" style={{ fontSize: '0.83rem' }}>
+                      {cat.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {customList.length > 0 && (
+              <div>
+                <p
+                  className="mb-2 text-zinc-500"
+                  style={{
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  Categorias personalizadas
+                </p>
+                <div className="space-y-2">
+                  {customList.map((cat) => (
+                    <div
+                      key={cat.id}
+                      className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white p-3"
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <CategoryColorDot color={cat.color} size="md" />
+                        <span className="truncate text-zinc-800" style={{ fontSize: '0.88rem' }}>
+                          {cat.name}
+                        </span>
+                      </div>
+                      <div className="flex shrink-0 gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openEditCategory(cat)}
+                          className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                          aria-label={`Editar ${cat.name}`}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeCategory(cat)}
+                          className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                          aria-label={`Excluir ${cat.name}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {customList.length === 0 && (
+              <div className="rounded-lg border-2 border-dashed border-zinc-200 py-4 text-center">
+                <p className="text-zinc-400" style={{ fontSize: '0.85rem' }}>
+                  Nenhuma categoria personalizada criada.
+                </p>
+              </div>
+            )}
+          </CardContent>
         </Card>
       </div>
+
+      {categoryDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40"
+            aria-label="Fechar"
+            onClick={() => setCategoryDialogOpen(false)}
+          />
+          <div
+            className="settings-font-inter relative w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-6 shadow-lg tracking-tight"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="category-dialog-title"
+          >
+            <h2 id="category-dialog-title" className="text-lg font-semibold text-zinc-900">
+              {editingCategory ? 'Editar categoria' : 'Nova categoria'}
+            </h2>
+            <div className="space-y-4 py-4">
+              <div className="space-y-1.5">
+                <label htmlFor="cat-name" className={labelClass}>
+                  Nome *
+                </label>
+                <Input
+                  id="cat-name"
+                  placeholder="Nome da categoria"
+                  value={categoryForm.name}
+                  onChange={(e) => setCategoryForm((f) => ({ ...f, name: e.target.value }))}
+                  className="bg-white"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <span className={labelClass}>Cor</span>
+                <div className="flex flex-wrap gap-2">
+                  {CATEGORY_COLOR_PRESETS.map((hex) => (
+                    <button
+                      key={hex}
+                      type="button"
+                      onClick={() => setCategoryForm((f) => ({ ...f, color: hex }))}
+                      className="h-7 w-7 rounded-full border-2 transition-all"
+                      style={{
+                        backgroundColor: hex,
+                        borderColor: categoryForm.color.toLowerCase() === hex.toLowerCase() ? '#1d4ed8' : 'transparent',
+                        transform:
+                          categoryForm.color.toLowerCase() === hex.toLowerCase()
+                            ? 'scale(1.15)'
+                            : 'scale(1)',
+                      }}
+                      aria-label={`Cor ${hex}`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2 border-t border-zinc-100 pt-4">
+              <Button type="button" variant="outline" onClick={() => setCategoryDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" disabled={categorySaving} onClick={saveCategory}>
+                {categorySaving ? 'Salvando...' : 'Salvar'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-/** Formulário de edição dos dados da empresa (nome, documento, endereço, telefone, e-mail, comissão padrão). */
 function CompanyForm({
   company,
   onSave,
   saving,
-  error,
-  inputClass: ic,
-  labelClass: lc,
+  serverError,
 }: {
   company: Company;
   onSave: (p: {
@@ -216,9 +426,7 @@ function CompanyForm({
     defaultCommission?: number;
   }) => void;
   saving: boolean;
-  error: string | null;
-  inputClass: string;
-  labelClass: string;
+  serverError: string | null;
 }) {
   const [name, setName] = useState(company.name);
   const [document, setDocument] = useState(company.document ?? '');
@@ -243,279 +451,102 @@ function CompanyForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-          {error}
-        </div>
+      {serverError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">{serverError}</div>
       )}
-      <div>
-        <label htmlFor="cfg-name" className={lc}>Nome da empresa *</label>
-        <input
-          id="cfg-name"
-          type="text"
-          required
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className={ic}
-        />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <label htmlFor="cfg-name" className={labelClass}>
+            Nome fantasia *
+          </label>
+          <Input
+            id="cfg-name"
+            placeholder="Nome da empresa"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="bg-white"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="cfg-document" className={labelClass}>
+            CNPJ / CPF
+          </label>
+          <Input
+            id="cfg-document"
+            placeholder="00.000.000/0001-00"
+            value={document}
+            onChange={(e) => setDocument(e.target.value)}
+            className="bg-white"
+          />
+        </div>
       </div>
-      <div>
-        <label htmlFor="cfg-document" className={lc}>CPF/CNPJ</label>
-        <input
-          id="cfg-document"
-          type="text"
-          value={document}
-          onChange={(e) => setDocument(e.target.value)}
-          className={ic}
-        />
-      </div>
-      <div>
-        <label htmlFor="cfg-address" className={lc}>Endereço</label>
-        <input
+      <div className="space-y-1.5">
+        <label htmlFor="cfg-address" className={labelClass}>
+          Endereço
+        </label>
+        <Input
           id="cfg-address"
-          type="text"
+          placeholder="Rua, número, bairro, cidade - UF"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          className={ic}
+          className="bg-white"
         />
       </div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="cfg-phone" className={lc}>Telefone</label>
-          <input id="cfg-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={ic} />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <label htmlFor="cfg-phone" className={labelClass}>
+            Telefone
+          </label>
+          <Input
+            id="cfg-phone"
+            type="tel"
+            placeholder="(00) 0000-0000"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className="bg-white"
+          />
         </div>
-        <div>
-          <label htmlFor="cfg-email" className={lc}>E-mail</label>
-          <input id="cfg-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={ic} />
+        <div className="space-y-1.5">
+          <label htmlFor="cfg-email" className={labelClass}>
+            E-mail
+          </label>
+          <Input
+            id="cfg-email"
+            type="email"
+            placeholder="contato@empresa.com.br"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="bg-white"
+          />
         </div>
       </div>
-      <div>
-        <label htmlFor="cfg-commission" className={lc}>Comissão padrão (%)</label>
-        <input
+      <div className="space-y-1.5" style={{ maxWidth: 200 }}>
+        <label htmlFor="cfg-commission" className={labelClass}>
+          Comissão padrão (%)
+        </label>
+        <Input
           id="cfg-commission"
           type="number"
           min={0}
           max={100}
           step={0.5}
+          placeholder="10"
           value={defaultCommission}
           onChange={(e) => setDefaultCommission(e.target.value)}
-          className={ic}
+          className="bg-white"
         />
       </div>
-      <button
-        type="submit"
-        disabled={saving}
-        className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-      >
-        {saving ? 'Salvando…' : 'Salvar empresa'}
-      </button>
-    </form>
-  );
-}
-
-/** Formulário para criar nova categoria customizada (nome, ícone, cor). */
-function NewCategoryForm({
-  onCreated,
-  onCancel,
-  inputClass: ic,
-  labelClass: lc,
-}: {
-  onCreated: () => void;
-  onCancel: () => void;
-  inputClass: string;
-  labelClass: string;
-}) {
-  const [name, setName] = useState('');
-  const [icon, setIcon] = useState('receipt');
-  const [color, setColor] = useState('#6b7280');
-  const [sending, setSending] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setErr(null);
-    setSending(true);
-    try {
-      await createExpenseCategory({ name: name.trim(), icon, color });
-      onCreated();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Erro ao criar');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="mb-4 rounded-lg border border-zinc-200 bg-zinc-50 p-4">
-      {err && <p className="mb-2 text-sm text-red-600">{err}</p>}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div>
-          <label className={lc}>Nome</label>
-          <input
-            type="text"
-            required
-            minLength={2}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={ic}
-            placeholder="Ex: Estacionamento"
-          />
-        </div>
-        <div>
-          <label className={lc}>Ícone</label>
-          <select
-            value={icon}
-            onChange={(e) => setIcon(e.target.value)}
-            className={ic}
-          >
-            {ICON_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={lc}>Cor</label>
-          <div className="flex gap-2">
-            <input
-              type="color"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              className="h-10 w-12 cursor-pointer rounded border border-zinc-300"
-            />
-            <input
-              type="text"
-              value={color}
-              onChange={(e) => setColor(e.target.value)}
-              className={ic}
-              placeholder="#6b7280"
-            />
-          </div>
-        </div>
-      </div>
-      <div className="mt-2 flex gap-2">
-        <button type="submit" disabled={sending} className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50">
-          {sending ? 'Criando…' : 'Criar'}
-        </button>
-        <button type="button" onClick={onCancel} className="rounded border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100">
-          Cancelar
-        </button>
+      <div className="flex justify-end border-t border-zinc-100 pt-4">
+        <Button
+          type="submit"
+          disabled={saving}
+          className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
+        >
+          <Save className="h-4 w-4" />
+          {saving ? 'Salvando...' : 'Salvar empresa'}
+        </Button>
       </div>
     </form>
-  );
-}
-
-/** Uma linha de categoria: só leitura se sistema; editar/excluir se customizada. */
-function CategoryRow({
-  item,
-  isSystem,
-  isEditing,
-  onEdit,
-  onCancelEdit,
-  onUpdated,
-  onDeleted,
-  inputClass: ic,
-  labelClass: lc,
-}: {
-  item: ExpenseCategoryItem;
-  isSystem: boolean;
-  isEditing?: boolean;
-  onEdit?: () => void;
-  onCancelEdit?: () => void;
-  onUpdated?: () => void;
-  onDeleted?: () => void;
-  inputClass: string;
-  labelClass: string;
-}) {
-  const [name, setName] = useState(item.name);
-  const [icon, setIcon] = useState(item.icon);
-  const [color, setColor] = useState(item.color);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-
-  if (isSystem) {
-    return (
-      <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-4 py-2">
-        <div className="flex items-center gap-3">
-          <IconDisplay icon={item.icon} color={item.color} />
-          <span className="font-medium text-zinc-900">{item.name}</span>
-          <span className="text-xs text-zinc-400">Sistema</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (isEditing) {
-    const handleSave = async () => {
-      setSaving(true);
-      try {
-        await updateExpenseCategory(item.id, { name: name.trim(), icon, color });
-        onUpdated?.();
-      } finally {
-        setSaving(false);
-      }
-    };
-    return (
-      <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-4">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div>
-            <label className={lc}>Nome</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} className={ic} />
-          </div>
-          <div>
-            <label className={lc}>Ícone</label>
-            <select value={icon} onChange={(e) => setIcon(e.target.value)} className={ic}>
-              {ICON_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className={lc}>Cor</label>
-            <div className="flex gap-2">
-              <input type="color" value={color} onChange={(e) => setColor(e.target.value)} className="h-10 w-12 cursor-pointer rounded border border-zinc-300" />
-              <input type="text" value={color} onChange={(e) => setColor(e.target.value)} className={ic} />
-            </div>
-          </div>
-        </div>
-        <div className="mt-2 flex gap-2">
-          <button type="button" onClick={handleSave} disabled={saving} className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700 disabled:opacity-50">
-            {saving ? 'Salvando…' : 'Salvar'}
-          </button>
-          <button type="button" onClick={onCancelEdit} className="rounded border border-zinc-300 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-100">
-            Cancelar
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const handleDelete = async () => {
-    if (!confirm(`Excluir a categoria "${item.name}"?`)) return;
-    setDeleting(true);
-    try {
-      await deleteExpenseCategory(item.id);
-      onDeleted?.();
-    } finally {
-      setDeleting(false);
-    }
-  };
-
-  return (
-    <div className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white px-4 py-2">
-      <div className="flex items-center gap-3">
-        <IconDisplay icon={item.icon} color={item.color} />
-        <span className="font-medium text-zinc-900">{item.name}</span>
-        <span className="text-xs text-zinc-400">Customizada</span>
-      </div>
-      <div className="flex gap-2">
-        <button type="button" onClick={onEdit} className="rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-600 hover:bg-zinc-100">
-          Editar
-        </button>
-        <button type="button" onClick={handleDelete} disabled={deleting} className="rounded border border-red-200 px-2 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50">
-          {deleting ? 'Excluindo…' : 'Excluir'}
-        </button>
-      </div>
-    </div>
   );
 }

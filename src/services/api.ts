@@ -1,22 +1,54 @@
 /**
- * Serviços de API - Chamadas ao backend PDS (NestJS).
+ * ServiÃ§os de API - Chamadas ao backend PDS (NestJS).
  */
 
-import { apiFetch, getAccessToken, API_URL } from '@/lib/api-client';
+import {
+  apiFetch,
+  getAccessToken,
+  API_URL,
+  ApiError,
+  rethrowIfDisconnected,
+} from '@/lib/api-client';
 
 export type AuthUser = {
   id: string;
   email: string;
   role: 'OWNER' | 'DRIVER' | 'ADMIN';
   supabaseUserId: string;
+  companyId?: string | null;
 };
 
-/** GET /auth/me - usuário atual (cria perfil no backend no primeiro acesso) */
+/**
+ * GET /auth/me — perfil atual (cria linha em `usuarios` no primeiro acesso).
+ * Deduplica pedidos com o mesmo access_token para evitar vários 401 no DevTools
+ * quando `getSession` e `onAuthStateChange` disparam quase ao mesmo tempo.
+ */
+let fetchMeInflightToken: string | null = null;
+let fetchMeInflight: Promise<AuthUser> | null = null;
+
 export async function fetchMe(token?: string | null): Promise<AuthUser> {
-  return apiFetch<AuthUser>('/auth/me', { method: 'GET', token });
+  const t =
+    token !== undefined && token !== null ? token : await getAccessToken();
+  if (typeof t !== 'string' || t.trim() === '') {
+    throw new ApiError('Token não informado', 401);
+  }
+
+  if (fetchMeInflightToken === t && fetchMeInflight) {
+    return fetchMeInflight;
+  }
+
+  fetchMeInflightToken = t;
+  fetchMeInflight = apiFetch<AuthUser>('/auth/me', { method: 'GET', token: t }).finally(() => {
+    if (fetchMeInflightToken === t) {
+      fetchMeInflightToken = null;
+      fetchMeInflight = null;
+    }
+  });
+
+  return fetchMeInflight;
 }
 
-/** POST /auth/register-profile - define role após primeiro login */
+/** POST /auth/register-profile - define role apÃ³s primeiro login */
 export async function registerProfile(role: AuthUser['role'], token?: string | null): Promise<AuthUser> {
   return apiFetch<AuthUser>('/auth/register-profile', {
     method: 'POST',
@@ -25,7 +57,7 @@ export async function registerProfile(role: AuthUser['role'], token?: string | n
   });
 }
 
-/** POST /auth/recover-password - envia e-mail de recuperação (não precisa de token) */
+/** POST /auth/recover-password - envia e-mail de recuperaÃ§Ã£o (nÃ£o precisa de token) */
 export async function recoverPassword(email: string): Promise<{ message: string }> {
   return apiFetch<{ message: string }>('/auth/recover-password', {
     method: 'POST',
@@ -41,7 +73,7 @@ export type OnboardingStatus = {
   hasCompany: boolean;
   hasVehicle: boolean;
   hasDriver: boolean;
-  /** 1=empresa, 2=veículo, 3=motorista, 4=concluído */
+  /** 1=empresa, 2=veÃ­culo, 3=motorista, 4=concluÃ­do */
   step: number;
 };
 
@@ -77,7 +109,7 @@ export type CreateOnboardingFirstVehiclePayload = {
   nickname?: string;
 };
 
-/** POST /onboarding/first-vehicle - primeiro veículo (passo 2) */
+/** POST /onboarding/first-vehicle - primeiro veÃ­culo (passo 2) */
 export async function createOnboardingFirstVehicle(
   payload: CreateOnboardingFirstVehiclePayload
 ): Promise<{ id: string; plate: string }> {
@@ -204,7 +236,7 @@ export async function deleteExpenseCategory(id: string): Promise<{ success: bool
   return apiFetch(`/expense-categories/${id}`, { method: 'DELETE' });
 }
 
-// --- Veículos ---
+// --- VeÃ­culos ---
 
 export type VehicleStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
 
@@ -268,19 +300,24 @@ export async function deleteVehicle(id: string): Promise<{ success: boolean }> {
   return apiFetch(`/vehicles/${id}`, { method: 'DELETE' });
 }
 
-/** Upload de foto do veículo (multipart/form-data); retorna { url }. */
+/** Upload de foto do veÃ­culo (multipart/form-data); retorna { url }. */
 export async function uploadVehiclePhoto(file: File): Promise<{ url: string | null }> {
   const token = await getAccessToken();
   const form = new FormData();
   form.append('file', file);
   const headers: HeadersInit = {};
   if (token) (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${API_URL}/vehicles/upload`, {
-    method: 'POST',
-    body: form,
-    credentials: 'include',
-    headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/vehicles/upload`, {
+      method: 'POST',
+      body: form,
+      credentials: 'include',
+      headers,
+    });
+  } catch (err) {
+    rethrowIfDisconnected(err);
+  }
   if (!res.ok) {
     const text = await res.text();
     let msg = text;
@@ -306,7 +343,7 @@ export type DriverPreferredVehicle = {
 export type Driver = {
   id: string;
   name: string;
-  cpf: string;
+  cpf: string | null;
   rg: string | null;
   cnh: string | null;
   phone: string | null;
@@ -321,6 +358,8 @@ export type Driver = {
   preferredVehicleId: string | null;
   preferredVehicle?: DriverPreferredVehicle | null;
   photoUrl?: string | null;
+  /** Conta de login vinculada (quando existir). */
+  userId?: string | null;
   companyId: string;
   createdAt: string;
   updatedAt: string;
@@ -328,7 +367,7 @@ export type Driver = {
 
 export type CreateDriverPayload = {
   name: string;
-  cpf: string;
+  cpf?: string;
   rg?: string;
   cnh?: string;
   phone?: string;
@@ -342,6 +381,8 @@ export type CreateDriverPayload = {
   status?: DriverStatus;
   preferredVehicleId?: string;
   photoUrl?: string;
+  /** Vincular a um usuário motorista já existente na empresa (opcional). */
+  linkedUserId?: string;
 };
 
 export type UpdateDriverPayload = {
@@ -360,6 +401,8 @@ export type UpdateDriverPayload = {
   status?: DriverStatus;
   preferredVehicleId?: string | null;
   photoUrl?: string;
+  /** Novo vínculo com usuário motorista; `null` remove o vínculo. */
+  linkedUserId?: string | null;
 };
 
 export async function getDrivers(): Promise<Driver[]> {
@@ -386,6 +429,87 @@ export async function updateDriver(id: string, payload: UpdateDriverPayload): Pr
 
 export async function deleteDriver(id: string): Promise<{ success: boolean }> {
   return apiFetch(`/drivers/${id}`, { method: 'DELETE' });
+}
+
+// --- Usuários da empresa (login: admin / co-proprietário) ---
+
+export type CompanyStaffMember = {
+  id: string;
+  email: string;
+  name: string | null;
+  photoUrl: string | null;
+  phone: string | null;
+  role: 'OWNER' | 'ADMIN' | 'DRIVER';
+  isPrimaryOwner: boolean;
+};
+
+export type CompanyStaffResponse = {
+  companyId: string;
+  staff: CompanyStaffMember[];
+};
+
+export async function getCompanyStaff(): Promise<CompanyStaffResponse> {
+  return apiFetch<CompanyStaffResponse>('/company-users', { method: 'GET' });
+}
+
+export type CreateCompanyStaffPayload = {
+  email: string;
+  /** Se omitido ou vazio, envia convite por e-mail (definição de senha no link). Obrigatório para DRIVER. */
+  password?: string;
+  role: 'ADMIN' | 'OWNER' | 'DRIVER';
+  name?: string;
+  phone?: string;
+  /** Obrigatório para DRIVER quando o motorista ainda não existe na frota. */
+  cpf?: string;
+  status?: 'ACTIVE' | 'INACTIVE';
+  photoUrl?: string;
+  /** Motorista já cadastrado (sem login) a vincular ao novo usuário DRIVER. */
+  driverId?: string;
+};
+
+export type CreateCompanyStaffResponse = {
+  id: string;
+  email: string;
+  displayName: string | null;
+  role: string;
+  companyId: string | null;
+  invitedByEmail?: boolean;
+};
+
+export async function createCompanyStaffUser(
+  payload: CreateCompanyStaffPayload
+): Promise<CreateCompanyStaffResponse> {
+  return apiFetch<CreateCompanyStaffResponse>('/company-users', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export type UpdateCompanyStaffPayload = {
+  name?: string;
+  role?: 'ADMIN' | 'OWNER' | 'DRIVER';
+  /** Nova senha (mínimo 6 caracteres). Enviar apenas quando o usuário quiser alterar. */
+  password?: string;
+};
+
+export async function updateCompanyStaffUser(
+  id: string,
+  payload: UpdateCompanyStaffPayload
+): Promise<{ id: string; email: string; displayName: string | null; role: string; companyId: string | null }> {
+  return apiFetch(`/company-users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteCompanyStaffUser(id: string): Promise<{ success: boolean }> {
+  return apiFetch(`/company-users/${id}`, { method: 'DELETE' });
+}
+
+export async function resendCompanyStaffInvite(
+  id: string
+): Promise<{ success: boolean; message?: string }> {
+  return apiFetch(`/company-users/${id}/resend-invite`, { method: 'POST' });
 }
 
 // --- Viagens ---
@@ -417,6 +541,7 @@ export type Trip = {
   endDate: string | null;
   freightValue: number | null;
   initialKm: number | null;
+  finalKm: number | null;
   loadType: string | null;
   notes: string | null;
   status: TripStatus;
@@ -489,12 +614,17 @@ export async function uploadDriverPhoto(file: File): Promise<{ url: string | nul
   form.append('file', file);
   const headers: HeadersInit = {};
   if (token) (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${API_URL}/drivers/upload`, {
-    method: 'POST',
-    body: form,
-    credentials: 'include',
-    headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/drivers/upload`, {
+      method: 'POST',
+      body: form,
+      credentials: 'include',
+      headers,
+    });
+  } catch (err) {
+    rethrowIfDisconnected(err);
+  }
   if (!res.ok) {
     const text = await res.text();
     let msg = text;
@@ -505,4 +635,247 @@ export async function uploadDriverPhoto(file: File): Promise<{ url: string | nul
     throw new Error(msg || `Erro ${res.status}`);
   }
   return res.json();
+}
+
+// --- Despesas ---
+
+export type ExpenseCategoryRef = {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+};
+
+export type Expense = {
+  id: string;
+  tripId: string;
+  categoryId: string;
+  date: string;
+  amount: number;
+  description: string | null;
+  location: string | null;
+  receiptUrl: string | null;
+  liters: number | null;
+  pricePerLiter: number | null;
+  gasStation: string | null;
+  tollPlaza: string | null;
+  category: ExpenseCategoryRef;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateExpensePayload = {
+  tripId: string;
+  categoryId: string;
+  date: string;
+  amount: number;
+  description?: string;
+  location?: string;
+  receiptUrl?: string;
+  liters?: number;
+  pricePerLiter?: number;
+  gasStation?: string;
+  tollPlaza?: string;
+};
+
+export type UpdateExpensePayload = {
+  categoryId?: string;
+  date?: string;
+  amount?: number;
+  description?: string;
+  location?: string;
+  receiptUrl?: string;
+  liters?: number;
+  pricePerLiter?: number;
+  gasStation?: string;
+  tollPlaza?: string;
+};
+
+export async function getExpensesByTrip(tripId: string): Promise<Expense[]> {
+  return apiFetch<Expense[]>(`/expenses/trip/${tripId}`, { method: 'GET' });
+}
+
+export async function uploadExpenseReceipt(file: File): Promise<{ url: string | null }> {
+  const token = await getAccessToken();
+  const form = new FormData();
+  form.append('file', file);
+  const headers: HeadersInit = {};
+  if (token) (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/expenses/upload`, {
+      method: 'POST',
+      body: form,
+      credentials: 'include',
+      headers,
+    });
+  } catch (err) {
+    rethrowIfDisconnected(err);
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    let msg = text;
+    try {
+      const j = JSON.parse(text);
+      msg = j.message ?? j.error ?? text;
+    } catch {}
+    throw new Error(msg || `Erro ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function createExpense(payload: CreateExpensePayload): Promise<Expense> {
+  return apiFetch<Expense>('/expenses', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateExpense(id: string, payload: UpdateExpensePayload): Promise<Expense> {
+  return apiFetch<Expense>(`/expenses/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteExpense(id: string): Promise<{ success: boolean }> {
+  return apiFetch(`/expenses/${id}`, { method: 'DELETE' });
+}
+
+// --- Adiantamentos (vales) ---
+
+export type AdvanceMethod = 'CASH' | 'PIX' | 'TRANSFER';
+
+export type Advance = {
+  id: string;
+  tripId: string;
+  amount: number;
+  date: string;
+  method: AdvanceMethod;
+  description: string | null;
+  receiptUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateAdvancePayload = {
+  tripId: string;
+  amount: number;
+  date: string;
+  method: AdvanceMethod;
+  description?: string;
+  receiptUrl?: string;
+};
+
+export type UpdateAdvancePayload = {
+  amount?: number;
+  date?: string;
+  method?: AdvanceMethod;
+  description?: string;
+  receiptUrl?: string;
+};
+
+export async function getAdvancesByTrip(tripId: string): Promise<Advance[]> {
+  return apiFetch<Advance[]>(`/advances/trip/${tripId}`, { method: 'GET' });
+}
+
+export async function uploadAdvanceReceipt(file: File): Promise<{ url: string | null }> {
+  const token = await getAccessToken();
+  const form = new FormData();
+  form.append('file', file);
+  const headers: HeadersInit = {};
+  if (token) (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/advances/upload`, {
+      method: 'POST',
+      body: form,
+      credentials: 'include',
+      headers,
+    });
+  } catch (err) {
+    rethrowIfDisconnected(err);
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    let msg = text;
+    try {
+      const j = JSON.parse(text);
+      msg = j.message ?? j.error ?? text;
+    } catch {}
+    throw new Error(msg || `Erro ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function createAdvance(payload: CreateAdvancePayload): Promise<Advance> {
+  return apiFetch<Advance>('/advances', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateAdvance(id: string, payload: UpdateAdvancePayload): Promise<Advance> {
+  return apiFetch<Advance>(`/advances/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteAdvance(id: string): Promise<{ success: boolean }> {
+  return apiFetch(`/advances/${id}`, { method: 'DELETE' });
+}
+
+// --- Acertos (settlement) ---
+
+export type Settlement = {
+  id: string;
+  tripId: string;
+  totalExpenses: number;
+  grossProfit: number;
+  driverCommissionPct: number;
+  driverCommissionAmt: number;
+  totalAdvances: number;
+  amountToPayDriver: number;
+  ownerResult: number;
+  finalKm: number | null;
+  paid: boolean;
+  paidAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SettlementWithTrip = Settlement & {
+  trip: {
+    id: string;
+    code: string;
+    clientName: string | null;
+    origin: string | null;
+    destination: string | null;
+    startDate: string;
+    endDate: string | null;
+    freightValue: number;
+    initialKm: number | null;
+    finalKm: number | null;
+    status: TripStatus;
+    vehicle: { id: string; plate: string; brand: string; model: string } | null;
+    driver: { id: string; name: string; commissionPct: number | null } | null;
+    expenses: Expense[];
+    advances: Advance[];
+  };
+};
+
+export async function finalizeTrip(tripId: string, finalKm?: number): Promise<Settlement> {
+  return apiFetch<Settlement>(`/settlements/finalize/${tripId}`, {
+    method: 'POST',
+    body: JSON.stringify({ finalKm }),
+  });
+}
+
+export async function getSettlement(tripId: string): Promise<SettlementWithTrip | null> {
+  return apiFetch<SettlementWithTrip | null>(`/settlements/trip/${tripId}`, { method: 'GET' });
+}
+
+export async function markSettlementPaid(tripId: string): Promise<Settlement> {
+  return apiFetch<Settlement>(`/settlements/pay/${tripId}`, { method: 'POST' });
 }

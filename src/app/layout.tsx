@@ -1,7 +1,9 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono, Inter } from "next/font/google";
 import { AuthProvider } from "@/contexts/auth-context";
-import "@/styles/globals.css";
+import { AppToaster } from "@/components/app-toaster";
+import { PwaRegister } from "@/components/pwa-register";
+import "./globals.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,9 +15,34 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "PDS - Gestão de Fretes",
-  description: "Gestão financeira e controle de comissões para donos de caminhões",
+  title: "Truck Finanças - Gestão de Fretes",
+  description:
+    "Gestão financeira e controle de comissões para motoristas e donos de frota",
+  applicationName: "Truck Finanças",
+  appleWebApp: {
+    capable: true,
+    title: "Truck Finanças",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
+    { media: "(prefers-color-scheme: dark)", color: "#18181b" },
+  ],
 };
 
 export default function RootLayout({
@@ -26,9 +53,13 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased`}
       >
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          <AppToaster />
+          <PwaRegister />
+        </AuthProvider>
       </body>
     </html>
   );

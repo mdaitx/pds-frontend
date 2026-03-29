@@ -1,33 +1,48 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+/**
+ * Detalhes do motorista — estilo UserDetail do Figma Make (tema claro).
+ */
+import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
-import { useAuth } from '@/hooks';
 import {
-  getDriver,
-  getVehicles,
-  updateDriver,
-  deleteDriver,
-  uploadDriverPhoto,
-  type Driver,
-  type DriverStatus,
-  type UpdateDriverPayload,
-  type Vehicle,
-} from '@/lib';
-import { Card } from '@/components/ui/card';
+  ArrowLeft,
+  Edit,
+  Trash2,
+  UserCircle,
+  Mail,
+  Phone,
+  Shield,
+  CreditCard,
+  FileText,
+  Calendar,
+  DollarSign,
+  Activity,
+} from 'lucide-react';
+import { useAuth } from '@/hooks';
+import { getDriver, getTrips, deleteDriver } from '@/lib';
+import type { Driver, DriverStatus } from '@/lib';
+import { Card, CardContent, CardHeader } from '@/components/ui';
+import { Button } from '@/components/ui/button';
 
-const inputClass =
-  'mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500';
-const labelClass = 'block text-sm font-medium text-zinc-700';
+const statusConfig: Record<DriverStatus, { label: string; className: string }> = {
+  ACTIVE: { label: 'Ativo', className: 'bg-green-100 text-green-800' },
+  INACTIVE: { label: 'Inativo', className: 'bg-zinc-100 text-zinc-600' },
+};
 
-const STATUS_OPTIONS: { value: DriverStatus; label: string }[] = [
-  { value: 'ACTIVE', label: 'Ativo' },
-  { value: 'INACTIVE', label: 'Inativo' },
-];
+const roleConfig = {
+  label: 'Motorista',
+  className: 'bg-green-100 text-green-800',
+  description: 'Acesso limitado às próprias viagens, despesas e acertos.',
+};
 
-const PAYMENT_METHODS = ['PIX', 'Transferência', 'Dinheiro', 'Outro'];
+const PAYMENT_LABELS: Record<string, string> = {
+  PIX: 'PIX',
+  Transferência: 'Transferência',
+  Dinheiro: 'Dinheiro',
+  Outro: 'Outro',
+};
 
 function formatCpf(v: string): string {
   const d = v.replace(/\D/g, '').slice(0, 11);
@@ -37,135 +52,102 @@ function formatCpf(v: string): string {
   return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 }
 
-export default function EditarMotoristaPage() {
+function formatCurrency(v: number) {
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function InfoRow({
+  icon: Icon,
+  iconBg,
+  iconColor,
+  label,
+  value,
+}: {
+  icon: React.ElementType;
+  iconBg: string;
+  iconColor: string;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+        <Icon className={`w-4 h-4 ${iconColor}`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-zinc-500 text-xs">{label}</p>
+        <p className="text-zinc-800 text-sm font-medium truncate">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function PermissionItem({ label, granted }: { label: string; granted: boolean }) {
+  return (
+    <div className="flex items-center gap-2 py-1">
+      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${granted ? 'bg-green-500' : 'bg-zinc-300'}`} />
+      <span className={`text-sm ${granted ? 'text-zinc-700' : 'text-zinc-400'}`}>{label}</span>
+    </div>
+  );
+}
+
+export default function DetalheMotoristaPage() {
   const router = useRouter();
   const params = useParams();
   const id = params?.id as string;
   const { session, appUser, loading: authLoading } = useAuth();
   const [driver, setDriver] = useState<Driver | null>(null);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [name, setName] = useState('');
-  const [cpf, setCpf] = useState('');
-  const [rg, setRg] = useState('');
-  const [cnh, setCnh] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [commissionPct, setCommissionPct] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('');
-  const [pixKey, setPixKey] = useState('');
-  const [bankName, setBankName] = useState('');
-  const [bankAgency, setBankAgency] = useState('');
-  const [bankAccount, setBankAccount] = useState('');
-  const [status, setStatus] = useState<DriverStatus>('ACTIVE');
-  const [preferredVehicleId, setPreferredVehicleId] = useState('');
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [trips, setTrips] = useState<
+    { id: string; origin: string | null; destination: string | null; startDate: string; status: string; freightValue: number | null }[]
+  >([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [pageLoading, setPageLoading] = useState(true);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (!session || !appUser || !id) return;
-    if (appUser.role !== 'OWNER') {
-      router.replace('/dashboard');
-      return;
-    }
-    Promise.all([getDriver(id), getVehicles()])
-      .then(([d, vList]) => {
-        setDriver(d);
-        setVehicles(vList);
-        setName(d.name);
-        setCpf(formatCpf(d.cpf));
-        setRg(d.rg ?? '');
-        setCnh(d.cnh ?? '');
-        setPhone(d.phone ?? '');
-        setEmail(d.email ?? '');
-        setCommissionPct(d.commissionPct != null ? String(d.commissionPct) : '');
-        setPaymentMethod(d.paymentMethod ?? '');
-        setPixKey(d.pixKey ?? '');
-        setBankName(d.bankName ?? '');
-        setBankAgency(d.bankAgency ?? '');
-        setBankAccount(d.bankAccount ?? '');
-        setStatus(d.status);
-        setPreferredVehicleId(d.preferredVehicleId ?? '');
-        setPhotoUrl(d.photoUrl ?? null);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Erro ao carregar'))
-      .finally(() => setLoading(false));
-  }, [session, appUser, id, router]);
 
   useEffect(() => {
     if (!authLoading && !session) router.replace('/login');
   }, [authLoading, session, router]);
 
-  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCpf(formatCpf(e.target.value));
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setError(null);
-    try {
-      const { url } = await uploadDriverPhoto(file);
-      if (url) setPhotoUrl(url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Falha no upload');
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!driver) return;
-    if (!name.trim() || cpf.replace(/\D/g, '').length !== 11) {
-      setError('Preencha nome e CPF (11 dígitos).');
+  useEffect(() => {
+    if (!session || !appUser || !id) return;
+    if (appUser.role !== 'OWNER' && appUser.role !== 'ADMIN') {
+      router.replace('/dashboard');
       return;
     }
-    setError(null);
-    setSaving(true);
-    try {
-      const payload: UpdateDriverPayload = {
-        name: name.trim(),
-        cpf: cpf.replace(/\D/g, ''),
-        rg: rg.trim() || undefined,
-        cnh: cnh.trim() || undefined,
-        phone: phone.trim() || undefined,
-        email: email.trim() || undefined,
-        paymentMethod: paymentMethod.trim() || undefined,
-        pixKey: pixKey.trim() || undefined,
-        bankName: bankName.trim() || undefined,
-        bankAgency: bankAgency.trim() || undefined,
-        bankAccount: bankAccount.trim() || undefined,
-        status,
-        preferredVehicleId: preferredVehicleId || null,
-      };
-      const commission = parseFloat(commissionPct);
-      if (!Number.isNaN(commission)) payload.commissionPct = commission;
-      if (photoUrl !== undefined) payload.photoUrl = photoUrl ?? undefined;
-      const updated = await updateDriver(driver.id, payload);
-      setDriver(updated);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao salvar');
-    } finally {
-      setSaving(false);
-    }
-  };
+    setPageLoading(true);
+    Promise.all([getDriver(id), getTrips()])
+      .then(([d, tList]) => {
+        setDriver(d);
+        const driverTrips = tList.filter((t) => t.driverId === d.id);
+        setTrips(
+          driverTrips.map((t) => ({
+            id: t.id,
+            origin: t.origin,
+            destination: t.destination,
+            startDate: t.startDate,
+            status: t.status,
+            freightValue: t.freightValue,
+          }))
+        );
+        setLoadError(null);
+      })
+      .catch((e) => setLoadError(e instanceof Error ? e.message : 'Erro ao carregar'))
+      .finally(() => setPageLoading(false));
+  }, [session, appUser, id]);
 
   const handleDelete = async () => {
-    if (!driver || !confirm('Excluir este motorista? Esta ação não pode ser desfeita.')) return;
+    if (!driver) return;
     setDeleting(true);
-    setError(null);
     try {
       await deleteDriver(driver.id);
-      router.push('/dashboard/motoristas');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro ao excluir');
+      router.replace('/dashboard/motoristas');
+    } catch {
       setDeleting(false);
     }
   };
 
-  if (authLoading || loading) {
+  if (authLoading || pageLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
         <p className="text-zinc-500">Carregando…</p>
@@ -175,182 +157,314 @@ export default function EditarMotoristaPage() {
 
   if (!driver) {
     return (
-      <div className="min-h-screen bg-zinc-50 p-6">
-        <div className="mx-auto max-w-xl">
-          <Link href="/dashboard/motoristas" className="text-sm text-blue-600 hover:underline">
-            ← Voltar à lista
-          </Link>
-          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
-            {error || 'Motorista não encontrado.'}
-          </div>
-        </div>
+      <div className="p-6 text-center">
+        <p className="text-zinc-500">{loadError || 'Motorista não encontrado.'}</p>
+        <Link href="/dashboard/motoristas">
+          <Button variant="outline" className="mt-4">
+            Voltar aos motoristas
+          </Button>
+        </Link>
       </div>
     );
   }
 
+  const cfg = statusConfig[driver.status];
+  const completedTrips = trips.filter((t) => t.status === 'COMPLETED');
+  const totalRevenue = completedTrips.reduce((sum, t) => sum + (t.freightValue ?? 0), 0);
+
   return (
-    <div className="min-h-screen bg-zinc-50 p-6">
-      <div className="mx-auto max-w-xl">
-        <Link href="/dashboard/motoristas" className="text-sm text-blue-600 hover:underline">
-          ← Voltar à lista de motoristas
-        </Link>
-        <h1 className="mt-4 mb-6 text-2xl font-semibold text-zinc-900">Editar motorista</h1>
-        <Card className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-                {error}
+    <div className="p-4 md:p-6 space-y-5 max-w-3xl mx-auto">
+      {/* Header */}
+      <div>
+          <Link
+            href="/dashboard/motoristas"
+            className="flex items-center gap-1 text-zinc-500 hover:text-zinc-700 transition-colors mb-1 text-sm"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Voltar aos motoristas
+          </Link>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-zinc-900 text-xl font-semibold">{driver.name}</h1>
+            <span className={`px-2.5 py-1 rounded-full text-sm font-semibold ${cfg.className}`}>{cfg.label}</span>
+          </div>
+        </div>
+
+      {/* Profile Card */}
+      <Card className="border-zinc-200">
+        <CardContent className="pt-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+            {driver.photoUrl ? (
+              <div className="w-24 h-24 rounded-full overflow-hidden flex-shrink-0 border-2 border-zinc-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={driver.photoUrl} alt={driver.name} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-zinc-100 flex items-center justify-center flex-shrink-0">
+                <UserCircle className="w-16 h-16 text-zinc-400" />
               </div>
             )}
-            <div>
-              <label htmlFor="name" className={labelClass}>Nome *</label>
-              <input id="name" type="text" required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="cpf" className={labelClass}>CPF *</label>
-                <input
-                  id="cpf"
-                  type="text"
-                  required
-                  maxLength={14}
-                  value={cpf}
-                  onChange={handleCpfChange}
-                  className={inputClass}
-                />
+            <div className="flex-1 text-center sm:text-left">
+              <h2 className="text-zinc-900 text-xl font-bold">{driver.name}</h2>
+              <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
+                <span className={`px-3 py-1 rounded-full text-sm flex items-center gap-1.5 ${roleConfig.className}`}>
+                  <Shield className="w-3.5 h-3.5" />
+                  {roleConfig.label}
+                </span>
               </div>
-              <div>
-                <label htmlFor="rg" className={labelClass}>RG</label>
-                <input id="rg" type="text" value={rg} onChange={(e) => setRg(e.target.value)} className={inputClass} />
-              </div>
+              <p className="text-zinc-500 mt-2 text-sm">{roleConfig.description}</p>
             </div>
-            <div>
-              <label htmlFor="cnh" className={labelClass}>CNH</label>
-              <input id="cnh" type="text" value={cnh} onChange={(e) => setCnh(e.target.value)} className={inputClass} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="phone" className={labelClass}>Telefone</label>
-                <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
-              </div>
-              <div>
-                <label htmlFor="email" className={labelClass}>E-mail</label>
-                <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="commissionPct" className={labelClass}>Comissão (%)</label>
-              <input
-                id="commissionPct"
-                type="number"
-                min={0}
-                max={100}
-                step={0.5}
-                value={commissionPct}
-                onChange={(e) => setCommissionPct(e.target.value)}
-                className={inputClass}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Contact Info */}
+      <Card className="border-zinc-200">
+        <CardHeader className="pb-2">
+          <h3 className="text-zinc-700 font-medium">Informações de Contato</h3>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {driver.email && (
+              <InfoRow
+                icon={Mail}
+                iconBg="bg-blue-50"
+                iconColor="text-blue-600"
+                label="E-mail"
+                value={driver.email}
               />
-            </div>
-            <div>
-              <label htmlFor="paymentMethod" className={labelClass}>Forma de pagamento</label>
-              <select
-                id="paymentMethod"
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-                className={inputClass}
-              >
-                <option value="">—</option>
-                {PAYMENT_METHODS.map((m) => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="pixKey" className={labelClass}>Chave PIX</label>
-              <input id="pixKey" type="text" value={pixKey} onChange={(e) => setPixKey(e.target.value)} className={inputClass} />
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label htmlFor="bankName" className={labelClass}>Banco</label>
-                <input id="bankName" type="text" value={bankName} onChange={(e) => setBankName(e.target.value)} className={inputClass} />
-              </div>
-              <div>
-                <label htmlFor="bankAgency" className={labelClass}>Agência</label>
-                <input id="bankAgency" type="text" value={bankAgency} onChange={(e) => setBankAgency(e.target.value)} className={inputClass} />
-              </div>
-              <div>
-                <label htmlFor="bankAccount" className={labelClass}>Conta</label>
-                <input id="bankAccount" type="text" value={bankAccount} onChange={(e) => setBankAccount(e.target.value)} className={inputClass} />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="status" className={labelClass}>Status</label>
-              <select
-                id="status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value as DriverStatus)}
-                className={inputClass}
-              >
-                {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="preferredVehicleId" className={labelClass}>Veículo preferencial</label>
-              <select
-                id="preferredVehicleId"
-                value={preferredVehicleId}
-                onChange={(e) => setPreferredVehicleId(e.target.value)}
-                className={inputClass}
-              >
-                <option value="">Nenhum</option>
-                {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>{v.plate} · {v.brand} {v.model}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelClass}>Foto</label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="mt-1 block w-full text-sm text-zinc-600 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-3 file:py-2 file:text-blue-700"
+            )}
+            {driver.phone && (
+              <InfoRow
+                icon={Phone}
+                iconBg="bg-green-50"
+                iconColor="text-green-600"
+                label="Telefone"
+                value={driver.phone}
               />
-              {photoUrl && (
-                <p className="mt-2">
-                  <Image src={photoUrl} alt="Preview" width={96} height={96} className="h-24 w-24 rounded-full object-cover" unoptimized />
-                </p>
-              )}
+            )}
+            {driver.cpf && (
+              <InfoRow
+                icon={FileText}
+                iconBg="bg-zinc-50"
+                iconColor="text-zinc-600"
+                label="CPF"
+                value={formatCpf(driver.cpf)}
+              />
+            )}
+            {driver.cnh && (
+              <InfoRow
+                icon={FileText}
+                iconBg="bg-zinc-50"
+                iconColor="text-zinc-600"
+                label="CNH"
+                value={driver.cnh}
+              />
+            )}
+            <InfoRow
+              icon={Calendar}
+              iconBg="bg-purple-50"
+              iconColor="text-purple-600"
+              label="Cadastrado em"
+              value={new Date(driver.createdAt).toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric',
+              })}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Financial Info */}
+      <Card className="border-zinc-200">
+        <CardHeader className="pb-2">
+          <h3 className="text-zinc-700 font-medium">Dados Financeiros</h3>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <InfoRow
+              icon={DollarSign}
+              iconBg="bg-blue-50"
+              iconColor="text-blue-600"
+              label="Comissão"
+              value={`${driver.commissionPct ?? '-'}%`}
+            />
+            <InfoRow
+              icon={CreditCard}
+              iconBg="bg-green-50"
+              iconColor="text-green-600"
+              label="Forma de pagamento"
+              value={driver.paymentMethod ? PAYMENT_LABELS[driver.paymentMethod] ?? driver.paymentMethod : '-'}
+            />
+            {driver.pixKey && (
+              <InfoRow
+                icon={CreditCard}
+                iconBg="bg-zinc-50"
+                iconColor="text-zinc-600"
+                label="Chave PIX"
+                value={driver.pixKey}
+              />
+            )}
+            {driver.preferredVehicle && (
+              <InfoRow
+                icon={Activity}
+                iconBg="bg-purple-50"
+                iconColor="text-purple-600"
+                label="Veículo preferencial"
+                value={`${driver.preferredVehicle.plate} · ${driver.preferredVehicle.model}`}
+              />
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Stats & Permissions */}
+      <div className="grid sm:grid-cols-2 gap-5">
+        <Card className="border-zinc-200">
+          <CardHeader className="pb-2">
+            <h3 className="text-zinc-700 font-medium">Resumo</h3>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <InfoRow
+              icon={Activity}
+              iconBg="bg-blue-50"
+              iconColor="text-blue-600"
+              label="Total de viagens"
+              value={String(trips.length)}
+            />
+            <InfoRow
+              icon={Activity}
+              iconBg="bg-green-50"
+              iconColor="text-green-600"
+              label="Viagens concluídas"
+              value={String(completedTrips.length)}
+            />
+            <InfoRow
+              icon={DollarSign}
+              iconBg="bg-purple-50"
+              iconColor="text-purple-600"
+              label="Faturamento total"
+              value={formatCurrency(totalRevenue)}
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="border-zinc-200">
+          <CardHeader className="pb-2">
+            <h3 className="text-zinc-700 font-medium">Permissões</h3>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <PermissionItem label="Visualizar suas próprias viagens" granted />
+              <PermissionItem label="Registrar despesas nas viagens" granted />
+              <PermissionItem label="Visualizar seus acertos" granted />
+              <PermissionItem label="Gerenciar viagens de outros" granted={false} />
+              <PermissionItem label="Cadastrar veículos e motoristas" granted={false} />
+              <PermissionItem label="Acessar configurações" granted={false} />
             </div>
-            <div className="flex flex-wrap gap-3 pt-2">
-              <button
-                type="submit"
-                disabled={saving}
-                className="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                {saving ? 'Salvando…' : 'Salvar'}
-              </button>
-              <Link
-                href="/dashboard/motoristas"
-                className="rounded-lg border border-zinc-300 px-4 py-2 font-medium text-zinc-700 hover:bg-zinc-50"
-              >
-                Cancelar
-              </Link>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={deleting}
-                className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
-              >
-                {deleting ? 'Excluindo…' : 'Excluir motorista'}
-              </button>
-            </div>
-          </form>
+          </CardContent>
         </Card>
       </div>
+
+      {/* Recent Trips */}
+      <Card className="border-zinc-200">
+        <CardHeader className="pb-2">
+          <h3 className="text-zinc-700 font-medium">Viagens Recentes</h3>
+        </CardHeader>
+        <CardContent>
+          {trips.length === 0 ? (
+            <p className="text-zinc-500 py-8 text-center text-sm">Nenhuma viagem registrada para este motorista.</p>
+          ) : (
+            <div className="space-y-3">
+              {trips.slice(0, 5).map((trip) => (
+                <Link key={trip.id} href={`/dashboard/viagens/${trip.id}`}>
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-zinc-200 hover:border-blue-300 hover:bg-blue-50 transition-all cursor-pointer">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-zinc-900 font-semibold text-sm">
+                        {(trip.origin ?? '').split(',')[0]} → {(trip.destination ?? '').split(',')[0]}
+                      </p>
+                      <p className="text-zinc-500 text-xs">{new Date(trip.startDate).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-zinc-900 font-semibold">
+                        {trip.freightValue != null ? formatCurrency(trip.freightValue) : '-'}
+                      </p>
+                      <p
+                        className={`text-xs ${
+                          trip.status === 'COMPLETED'
+                            ? 'text-green-600'
+                            : trip.status === 'IN_PROGRESS'
+                              ? 'text-blue-600'
+                              : trip.status === 'PENDING'
+                                ? 'text-yellow-600'
+                                : 'text-zinc-500'
+                        }`}
+                      >
+                        {trip.status === 'COMPLETED'
+                          ? 'Concluída'
+                          : trip.status === 'IN_PROGRESS'
+                            ? 'Em andamento'
+                            : trip.status === 'PENDING'
+                              ? 'Aguardando'
+                              : 'Cancelada'}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+              {trips.length > 5 && (
+                <Link href="/dashboard/viagens">
+                  <Button variant="outline" className="w-full">
+                    Ver todas as viagens
+                  </Button>
+                </Link>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Actions */}
+      <div className="flex flex-wrap gap-2 pt-2 justify-end">
+        <Link href={`/dashboard/motoristas/${id}/editar`}>
+          <Button variant="outline" className="flex items-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border-0">
+            <Edit className="w-4 h-4" />
+            Editar
+          </Button>
+        </Link>
+        <Button
+          variant="outline"
+          className="flex items-center gap-2 bg-red-50 text-red-600 hover:bg-red-100 border-0"
+          onClick={() => setDeleteOpen(true)}
+        >
+          <Trash2 className="w-4 h-4" />
+          Excluir
+        </Button>
+      </div>
+
+      {/* Delete Dialog */}
+      {deleteOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6">
+            <h3 className="text-zinc-900 font-semibold mb-2">Confirmar Exclusão</h3>
+            <p className="text-zinc-600 text-sm py-2">
+              Tem certeza que deseja excluir o motorista <strong>{driver.name}</strong>? Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-2 justify-end mt-4">
+              <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>
+                Cancelar
+              </Button>
+              <Button
+                className="bg-red-600 hover:bg-red-700 text-white"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? 'Excluindo...' : 'Excluir'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
