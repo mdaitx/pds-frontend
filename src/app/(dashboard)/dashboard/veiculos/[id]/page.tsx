@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * Edição de veículo — layout e validações alinhados ao VehicleEdit do Figma Make (sem tipo de veículo: não existe na API).
+ * Edição de veículo — layout e validações alinhados ao Figma Make (inclui tipo de veículo).
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -13,10 +13,13 @@ import { useAuth } from '@/hooks';
 import {
   deleteVehicle,
   getVehicle,
+  getVehicles,
   updateVehicle,
   uploadVehiclePhoto,
   type Vehicle,
   type VehicleStatus,
+  type VehicleType,
+  VEHICLE_TYPE_LABELS,
   type UpdateVehiclePayload,
 } from '@/lib';
 import { Card, CardContent, CardHeader } from '@/components/ui';
@@ -45,6 +48,7 @@ type FormState = {
   brand: string;
   year: string;
   nickname: string;
+  vehicleType: VehicleType;
   status: VehicleStatus;
 };
 
@@ -54,6 +58,7 @@ const emptyForm = (): FormState => ({
   brand: '',
   year: '',
   nickname: '',
+  vehicleType: 'CAMINHAO',
   status: 'ACTIVE',
 });
 
@@ -74,10 +79,13 @@ export default function EditarVeiculoPage() {
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [allVehicles, setAllVehicles] = useState<Vehicle[]>([]);
+  const [linkedVehicleId, setLinkedVehicleId] = useState('');
 
   useEffect(() => {
     if (!session || !appUser || !id) return;
-    if (appUser.role !== 'OWNER') {
+    const fleetStaff = appUser.role === 'OWNER' || appUser.role === 'ADMIN';
+    if (!fleetStaff) {
       router.replace('/dashboard');
       return;
     }
@@ -92,9 +100,18 @@ export default function EditarVeiculoPage() {
           brand: v.brand,
           year: String(v.year),
           nickname: v.nickname ?? '',
+          vehicleType: v.vehicleType ?? 'CAMINHAO',
           status: v.status,
         });
         setPhotoUrl(v.photoUrl ?? null);
+        const vt = v.vehicleType ?? 'CAMINHAO';
+        if (vt === 'CAVALO_MECANICO') {
+          setLinkedVehicleId(v.trailerVehicle?.id ?? '');
+        } else if (vt === 'SEMI_REBOQUE') {
+          setLinkedVehicleId(v.tractorVehicle?.id ?? '');
+        } else {
+          setLinkedVehicleId('');
+        }
         setErrors({});
       })
       .catch((e) => setLoadError(e instanceof Error ? e.message : 'Erro ao carregar'))
@@ -105,11 +122,32 @@ export default function EditarVeiculoPage() {
     if (!authLoading && !session) router.replace('/login');
   }, [authLoading, session, router]);
 
+  useEffect(() => {
+    const fleetStaff = appUser?.role === 'OWNER' || appUser?.role === 'ADMIN';
+    if (!session || !appUser || !fleetStaff) return;
+    getVehicles().then(setAllVehicles).catch(() => {});
+  }, [session, appUser]);
+
+  const semiOptions = useMemo(
+    () => allVehicles.filter((v) => v.vehicleType === 'SEMI_REBOQUE' && v.id !== id),
+    [allVehicles, id],
+  );
+  const cavaloOptions = useMemo(
+    () => allVehicles.filter((v) => v.vehicleType === 'CAVALO_MECANICO' && v.id !== id),
+    [allVehicles, id],
+  );
+
   const setField = (field: keyof FormState, value: string) => {
     setForm((f) => ({
       ...f,
-      [field]: field === 'status' ? (value as VehicleStatus) : value,
+      [field]:
+        field === 'status'
+          ? (value as VehicleStatus)
+          : field === 'vehicleType'
+            ? (value as VehicleType)
+            : value,
     }));
+    if (field === 'vehicleType') setLinkedVehicleId('');
     setErrors((e) => ({ ...e, [field]: '' }));
     setGlobalError(null);
   };
@@ -151,12 +189,27 @@ export default function EditarVeiculoPage() {
         brand: form.brand.trim(),
         year: Number(form.year),
         nickname: form.nickname.trim() ? form.nickname.trim() : '',
+        vehicleType: form.vehicleType,
         status: form.status,
         photoUrl: photoUrl ?? '',
       };
+      if (form.vehicleType === 'CAVALO_MECANICO') {
+        payload.trailerVehicleId = linkedVehicleId.trim() ? linkedVehicleId.trim() : null;
+      }
+      if (form.vehicleType === 'SEMI_REBOQUE') {
+        payload.tractorVehicleId = linkedVehicleId.trim() ? linkedVehicleId.trim() : null;
+      }
       const updated = await updateVehicle(vehicle.id, payload);
       setVehicle(updated);
       setPhotoUrl(updated.photoUrl ?? null);
+      const uvt = updated.vehicleType ?? 'CAMINHAO';
+      if (uvt === 'CAVALO_MECANICO') {
+        setLinkedVehicleId(updated.trailerVehicle?.id ?? '');
+      } else if (uvt === 'SEMI_REBOQUE') {
+        setLinkedVehicleId(updated.tractorVehicle?.id ?? '');
+      } else {
+        setLinkedVehicleId('');
+      }
       toast.success('Veículo atualizado com sucesso!');
       router.refresh();
     } catch (err) {
@@ -297,6 +350,60 @@ export default function EditarVeiculoPage() {
                 </select>
               </div>
             </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="vehicle-type">Tipo de veículo *</Label>
+              <select
+                id="vehicle-type"
+                value={form.vehicleType}
+                onChange={(e) => setField('vehicleType', e.target.value)}
+                className="flex h-9 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              >
+                {(Object.keys(VEHICLE_TYPE_LABELS) as VehicleType[]).map((key) => (
+                  <option key={key} value={key}>
+                    {VEHICLE_TYPE_LABELS[key]}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {form.vehicleType === 'CAVALO_MECANICO' && (
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-trailer">Semi-reboque acoplado</Label>
+                <select
+                  id="edit-trailer"
+                  value={linkedVehicleId}
+                  onChange={(e) => setLinkedVehicleId(e.target.value)}
+                  className="flex h-9 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Nenhum</option>
+                  {semiOptions.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.plate} · {v.brand} {v.model}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {form.vehicleType === 'SEMI_REBOQUE' && (
+              <div className="space-y-1.5">
+                <Label htmlFor="edit-tractor">Cavalo mecânico</Label>
+                <select
+                  id="edit-tractor"
+                  value={linkedVehicleId}
+                  onChange={(e) => setLinkedVehicleId(e.target.value)}
+                  className="flex h-9 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Nenhum</option>
+                  {cavaloOptions.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.plate} · {v.brand} {v.model}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">

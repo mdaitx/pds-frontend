@@ -32,6 +32,7 @@ interface NavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
+  /** Só dono (OWNER): ex. configurações da empresa */
   ownerOnly?: boolean;
   /** Destinos relacionados (ex.: cadastro ainda em /motoristas/novo) */
   activePathPrefixes?: string[];
@@ -152,23 +153,26 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
 
   const SidebarContent = ({ collapsed = false }: { collapsed?: boolean }) => (
     <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div
+      {/* Logo — início do dashboard */}
+      <Link
+        href="/dashboard"
+        onClick={() => setSidebarOpen(false)}
         className={cn(
-          'flex items-center gap-3 px-6 py-5 border-b border-zinc-200 transition-all duration-300',
+          'flex items-center gap-3 px-6 py-5 border-b border-zinc-200 transition-all duration-300 outline-none hover:bg-zinc-50/90 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset',
           collapsed && 'px-3 justify-center'
         )}
+        title="Truck Finanças — Início"
       >
         <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-          <TruckIcon className="w-5 h-5 text-white" />
+          <TruckIcon className="w-5 h-5 text-white" aria-hidden />
         </div>
         {!collapsed && (
-          <div className="overflow-hidden">
+          <div className="overflow-hidden text-left">
             <p className="text-blue-600 whitespace-nowrap font-bold text-base leading-tight">Truck Finanças</p>
             <p className="text-zinc-500 whitespace-nowrap text-[0.7rem]">Gestão de frotas</p>
           </div>
         )}
-      </div>
+      </Link>
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-200 [&::-webkit-scrollbar-thumb]:rounded-full">
@@ -285,7 +289,13 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
           <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
           <aside className="absolute left-0 top-0 bottom-0 w-72 bg-white shadow-xl">
             <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200">
-              <span className="text-blue-600 font-bold">Truck Finanças</span>
+              <Link
+                href="/dashboard"
+                onClick={() => setSidebarOpen(false)}
+                className="text-blue-600 font-bold outline-none hover:underline focus-visible:underline"
+              >
+                Truck Finanças
+              </Link>
               <button onClick={() => setSidebarOpen(false)} className="p-1 rounded-lg hover:bg-zinc-100">
                 <X className="w-5 h-5" />
               </button>
@@ -301,12 +311,16 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
           <button onClick={() => setSidebarOpen(true)} className="p-1.5 rounded-lg hover:bg-zinc-100">
             <Menu className="w-5 h-5" />
           </button>
-          <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-2 outline-none rounded-lg hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-500"
+            title="Truck Finanças — Início"
+          >
             <div className="w-7 h-7 bg-blue-600 rounded-md flex items-center justify-center">
-              <TruckIcon className="w-4 h-4 text-white" />
+              <TruckIcon className="w-4 h-4 text-white" aria-hidden />
             </div>
             <span className="text-blue-600 font-bold">Truck Finanças</span>
-          </div>
+          </Link>
         </header>
 
         <main className="flex-1 overflow-y-auto safe-main">{children}</main>

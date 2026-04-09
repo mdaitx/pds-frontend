@@ -30,6 +30,8 @@ import {
 } from '@/lib';
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { DriverTripSummary } from '@/components/viagens/DriverTripSummary';
+import { DriverTripExpenses } from '@/components/viagens/DriverTripExpenses';
+import { TripAdvancesPanel } from '@/components/viagens/TripAdvancesPanel';
 
 /** Figma Make (HE / zV): pills e rótulos. */
 const STATUS_LABEL: Record<TripStatus, string> = {
@@ -100,18 +102,20 @@ export default function ViagemDetalhePage() {
 
   useEffect(() => {
     if (!session || !appUser || !id) return;
-    if (appUser.role !== 'OWNER') {
-      setLoading(false);
-      if (appUser.role !== 'DRIVER') router.replace('/dashboard');
+    const fleetStaff = appUser.role === 'OWNER' || appUser.role === 'ADMIN';
+    if (fleetStaff) {
+      setLoading(true);
+      Promise.all([getTrip(id), getSettlement(id)])
+        .then(([t, s]) => {
+          setTrip(t);
+          setSettlement(s);
+        })
+        .catch((e) => setError(e instanceof Error ? e.message : 'Erro ao carregar'))
+        .finally(() => setLoading(false));
       return;
     }
-    Promise.all([getTrip(id), getSettlement(id)])
-      .then(([t, s]) => {
-        setTrip(t);
-        setSettlement(s);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Erro ao carregar'))
-      .finally(() => setLoading(false));
+    setLoading(false);
+    if (appUser.role !== 'DRIVER') router.replace('/dashboard');
   }, [session, appUser, id, router]);
 
   useEffect(() => {
@@ -310,6 +314,11 @@ export default function ViagemDetalhePage() {
             </div>
           </CardContent>
         </Card>
+
+        <div className="flex flex-col gap-5">
+          <DriverTripExpenses tripId={trip.id} tripStatus={trip.status} embed />
+          <TripAdvancesPanel tripId={trip.id} tripStatus={trip.status} embed />
+        </div>
 
         {trip.status === 'COMPLETED' && settlement && (
           <Card className="border-emerald-200 bg-emerald-50/50 shadow-sm">

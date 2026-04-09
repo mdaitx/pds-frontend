@@ -15,7 +15,7 @@ import {
   type Vehicle,
   type Driver,
 } from '@/lib';
-import { Card, CardContent, CardHeader } from '@/components/ui';
+import { Card, CardContent, CardHeader, LocalizedDateField } from '@/components/ui';
 
 /** Campos como no Figma Make (vE): borda zinc-300, ring azul no foco. */
 const inputClass =
@@ -27,6 +27,12 @@ const STATUS_OPTIONS: { value: TripStatus; label: string }[] = [
   { value: 'IN_PROGRESS', label: 'Em Andamento' },
   { value: 'CANCELLED', label: 'Cancelada' },
 ];
+
+/** Converte yyyy-MM-dd (input date) para ISO no início do dia local. */
+function dateOnlyToIso(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0, 0).toISOString();
+}
 
 export default function NovaViagemPage() {
   const router = useRouter();
@@ -53,7 +59,9 @@ export default function NovaViagemPage() {
   }, [authLoading, session, router]);
 
   useEffect(() => {
-    if (appUser?.role === 'OWNER') {
+    if (!appUser) return;
+    const fleetStaff = appUser.role === 'OWNER' || appUser.role === 'ADMIN';
+    if (fleetStaff) {
       Promise.all([getVehicles(), getDrivers()])
         .then(([v, d]) => {
           setVehicles(v);
@@ -79,13 +87,13 @@ export default function NovaViagemPage() {
       const payload: CreateTripPayload = {
         vehicleId,
         driverId,
-        startDate: new Date(startDate).toISOString(),
+        startDate: dateOnlyToIso(startDate.trim()),
         status,
       };
       if (clientName.trim()) payload.clientName = clientName.trim();
       if (origin.trim()) payload.origin = origin.trim();
       if (destination.trim()) payload.destination = destination.trim();
-      if (endDate.trim()) payload.endDate = new Date(endDate).toISOString();
+      if (endDate.trim()) payload.endDate = dateOnlyToIso(endDate.trim());
       const fv = parseFloat(freightValue.replace(',', '.'));
       if (!Number.isNaN(fv)) payload.freightValue = fv;
       const ik = parseInt(initialKm, 10);
@@ -93,7 +101,7 @@ export default function NovaViagemPage() {
       if (loadType.trim()) payload.loadType = loadType.trim();
       if (notes.trim()) payload.notes = notes.trim();
       await createTrip(payload);
-      toast.success('Viagem criada. O motorista recebe notificação por e-mail (se SMTP estiver configurado).');
+      toast.success('Viagem criada com sucesso.');
       router.push('/dashboard/viagens');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar');
@@ -247,31 +255,22 @@ export default function NovaViagemPage() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label htmlFor="startDate" className={labelClass}>
-                  Data início *
-                </label>
-                <input
-                  id="startDate"
-                  type="datetime-local"
-                  required
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label htmlFor="endDate" className={labelClass}>
-                  Data fim
-                </label>
-                <input
-                  id="endDate"
-                  type="datetime-local"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
+              <LocalizedDateField
+                label="Data início *"
+                value={startDate}
+                onChange={setStartDate}
+                className="w-full min-w-0"
+                labelClassName={labelClass}
+                buttonClassName={`${inputClass} w-full min-w-0 text-left font-normal`}
+              />
+              <LocalizedDateField
+                label="Data fim"
+                value={endDate}
+                onChange={setEndDate}
+                className="w-full min-w-0"
+                labelClassName={labelClass}
+                buttonClassName={`${inputClass} w-full min-w-0 text-left font-normal`}
+              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">

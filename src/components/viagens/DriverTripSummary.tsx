@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks';
 import { getTrip, getSettlement, type Trip, type SettlementWithTrip } from '@/lib';
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { DriverTripExpenses } from '@/components/viagens/DriverTripExpenses';
+import { TripAdvancesPanel } from '@/components/viagens/TripAdvancesPanel';
 
 const STATUS_LABEL: Record<Trip['status'], string> = {
   PENDING: 'Aguardando',
@@ -139,7 +140,10 @@ export function DriverTripSummary({ tripId }: Props) {
           </CardContent>
         </Card>
 
-        <DriverTripExpenses tripId={tripId} tripStatus={trip.status} />
+        <div className="flex flex-col gap-5">
+          <DriverTripExpenses tripId={tripId} tripStatus={trip.status} embed />
+          <TripAdvancesPanel tripId={tripId} tripStatus={trip.status} embed />
+        </div>
 
         {settlement && (
           <Link

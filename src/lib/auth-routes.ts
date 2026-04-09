@@ -16,7 +16,7 @@ const DASHBOARD_RULES: { test: (pathname: string) => boolean; roles: UserRole[] 
   },
   {
     test: (p) => p === '/dashboard/onboarding' || p.startsWith('/dashboard/onboarding/'),
-    roles: ['OWNER', 'ADMIN'],
+    roles: ['OWNER'],
   },
   {
     test: (p) => p === '/dashboard/usuarios' || p.startsWith('/dashboard/usuarios/'),

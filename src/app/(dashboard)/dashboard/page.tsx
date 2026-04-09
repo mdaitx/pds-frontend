@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import {
   Truck,
+  Route,
   Users,
   Settings,
   TrendingUp,
@@ -18,11 +19,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks';
 import {
-  registerProfile,
   getOnboardingStatus,
   getTrips,
   getVehicles,
   getDrivers,
+  getCompanyStaff,
   getExpensesByTrip,
   getSettlement,
   getAdvancesByTrip,
@@ -75,11 +76,12 @@ export default function DashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { session, appUser, loading, error, signOut, refreshAppUser } = useAuth();
-  const [updatingRole, setUpdatingRole] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  /** Contas com login (OWNER/ADMIN/DRIVER) — mesma lista que /dashboard/usuarios */
+  const [staffUsersCount, setStaffUsersCount] = useState(0);
   const [dataLoading, setDataLoading] = useState(true);
   const [ownerExpenses, setOwnerExpenses] = useState<Expense[]>([]);
   const [driverSettlementsByTripId, setDriverSettlementsByTripId] = useState<Record<string, Settlement>>({});
@@ -108,11 +110,17 @@ export default function DashboardPage() {
       setDataLoading(true);
       setDriverSettlementsByTripId({});
       setDriverRecentAdvances([]);
-      Promise.all([getTrips(), getVehicles(), getDrivers()])
-        .then(async ([t, v, d]) => {
+      Promise.all([
+        getTrips(),
+        getVehicles(),
+        getDrivers(),
+        getCompanyStaff().catch(() => ({ companyId: '', staff: [] })),
+      ])
+        .then(async ([t, v, d, staffRes]) => {
           setTrips(t);
           setVehicles(v);
           setDrivers(d);
+          setStaffUsersCount(staffRes.staff.length);
           const lists = await Promise.all(t.map((trip) => getExpensesByTrip(trip.id).catch(() => [] as Expense[])));
           setOwnerExpenses(lists.flat());
         })
@@ -165,17 +173,6 @@ export default function DashboardPage() {
     }
     setDataLoading(false);
   }, [session, appUser]);
-
-  async function handleSetRole(role: AuthUser['role']) {
-    if (!appUser || updatingRole) return;
-    setUpdatingRole(true);
-    try {
-      await registerProfile(role);
-      await refreshAppUser();
-    } finally {
-      setUpdatingRole(false);
-    }
-  }
 
   useEffect(() => {
     if (!loading && !session) router.replace('/login');
@@ -287,38 +284,24 @@ export default function DashboardPage() {
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
         )}
 
-        <Card className="mb-4 border-zinc-200">
-          <h2 className="mb-2 text-sm font-medium text-zinc-700">Seu perfil</h2>
-          <p className="mb-3 text-sm text-zinc-500">
-            Atualmente: <strong>{ROLE_LABEL[appUser.role]}</strong>. Você pode alterar abaixo.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {(['OWNER', 'DRIVER'] as const).map((role) => (
-              <button
-                key={role}
-                type="button"
-                disabled={updatingRole || appUser.role === role}
-                onClick={() => handleSetRole(role)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium ${
-                  appUser.role === role
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 disabled:opacity-50'
-                }`}
-              >
-                {ROLE_LABEL[role]}
-              </button>
-            ))}
-          </div>
-        </Card>
-
         {/* Metrics */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {[
-            { title: 'Viagens no mês', value: monthTrips.length.toString(), icon: <Truck className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
+            {
+              title: 'Viagens no mês',
+              value: monthTrips.length.toString(),
+              icon:
+                appUser.role === 'ADMIN' ? (
+                  <Route className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <Truck className="w-5 h-5 text-blue-600" />
+                ),
+              bg: 'bg-blue-50',
+            },
             { title: 'Faturamento', value: formatCurrency(totalFaturamento), icon: <DollarSign className="w-5 h-5 text-green-600" />, bg: 'bg-green-50' },
             { title: 'Despesas (mês)', value: formatCurrency(totalDespesasMes), icon: <Receipt className="w-5 h-5 text-rose-600" />, bg: 'bg-rose-50' },
             { title: 'Lucro líquido', value: formatCurrency(lucroLiquido), icon: <TrendingUp className="w-5 h-5 text-indigo-600" />, bg: 'bg-indigo-50' },
-            { title: 'Em andamento', value: emAndamento.toString(), icon: <Activity className="w-5 h-5 text-orange-600" />, bg: 'bg-orange-50' },
+            { title: 'Viagens em andamento', value: emAndamento.toString(), icon: <Activity className="w-5 h-5 text-orange-600" />, bg: 'bg-orange-50' },
           ].map((m, i) => (
             <Card key={i} className="border-zinc-200">
               <CardContent className="p-4">
@@ -336,13 +319,40 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Quick Nav */}
+        {/* Quick Nav — Configurações da empresa só para dono (OWNER) */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Viagens', href: '/dashboard/viagens', icon: <Truck className="w-6 h-6 text-blue-600" />, count: trips.length, bg: 'bg-blue-50' },
+            {
+              label: 'Viagens',
+              href: '/dashboard/viagens',
+              icon:
+                appUser.role === 'ADMIN' ? (
+                  <Route className="w-6 h-6 text-blue-600" />
+                ) : (
+                  <Truck className="w-6 h-6 text-blue-600" />
+                ),
+              count: trips.length,
+              bg: 'bg-blue-50',
+            },
             { label: 'Veículos', href: '/dashboard/veiculos', icon: <TruckIcon className="w-6 h-6 text-indigo-600" />, count: vehicles.length, bg: 'bg-indigo-50' },
-            { label: 'Usuários', href: '/dashboard/usuarios', icon: <Users className="w-6 h-6 text-green-600" />, count: drivers.length, bg: 'bg-green-50' },
-            { label: 'Configurações', href: '/dashboard/config', icon: <Settings className="w-6 h-6 text-zinc-600" />, count: null, bg: 'bg-zinc-100' },
+            {
+              label: 'Usuários',
+              href: '/dashboard/usuarios',
+              icon: <Users className="w-6 h-6 text-green-600" />,
+              count: staffUsersCount,
+              bg: 'bg-green-50',
+            },
+            ...(appUser.role === 'OWNER'
+              ? [
+                  {
+                    label: 'Configurações',
+                    href: '/dashboard/config',
+                    icon: <Settings className="w-6 h-6 text-zinc-600" />,
+                    count: null as number | null,
+                    bg: 'bg-zinc-100',
+                  },
+                ]
+              : []),
           ].map((item, i) => (
             <Link key={i} href={item.href}>
               <Card className="border-zinc-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer">
@@ -353,7 +363,9 @@ export default function DashboardPage() {
                   <p className="text-zinc-800 font-semibold">{item.label}</p>
                   {item.count !== null && (
                     <p className="text-zinc-500 text-[0.8rem]">
-                      {item.count} cadastrado{item.count !== 1 ? 's' : ''}
+                      {item.label === 'Usuários'
+                        ? `${item.count} ${item.count === 1 ? 'usuário com login' : 'usuários com login'}`
+                        : `${item.count} cadastrado${item.count !== 1 ? 's' : ''}`}
                     </p>
                   )}
                 </CardContent>

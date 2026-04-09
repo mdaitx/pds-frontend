@@ -17,7 +17,7 @@ import {
   type Vehicle,
   type Driver,
 } from '@/lib';
-import { Card, CardContent, CardHeader } from '@/components/ui';
+import { Card, CardContent, CardHeader, LocalizedDateField } from '@/components/ui';
 
 const inputClass =
   'mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
@@ -29,10 +29,18 @@ const STATUS_OPTIONS_EDIT: { value: TripStatus; label: string }[] = [
   { value: 'CANCELLED', label: 'Cancelada' },
 ];
 
-function formatDateTime(s: string | null): string {
-  if (!s) return '';
-  const d = new Date(s);
-  return d.toISOString().slice(0, 16);
+function formatDateForInput(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function dateOnlyToIso(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0, 0).toISOString();
 }
 
 export default function EditarViagemPage() {
@@ -62,7 +70,8 @@ export default function EditarViagemPage() {
 
   useEffect(() => {
     if (!session || !appUser || !id) return;
-    if (appUser.role !== 'OWNER') {
+    const fleetStaff = appUser.role === 'OWNER' || appUser.role === 'ADMIN';
+    if (!fleetStaff) {
       router.replace('/dashboard');
       return;
     }
@@ -76,8 +85,8 @@ export default function EditarViagemPage() {
         setClientName(t.clientName ?? '');
         setOrigin(t.origin ?? '');
         setDestination(t.destination ?? '');
-        setStartDate(formatDateTime(t.startDate));
-        setEndDate(formatDateTime(t.endDate));
+        setStartDate(formatDateForInput(t.startDate));
+        setEndDate(formatDateForInput(t.endDate));
         setFreightValue(t.freightValue != null ? String(t.freightValue) : '');
         setInitialKm(t.initialKm != null ? String(t.initialKm) : '');
         setLoadType(t.loadType ?? '');
@@ -101,13 +110,13 @@ export default function EditarViagemPage() {
       const payload: UpdateTripPayload = {
         vehicleId,
         driverId,
-        startDate: new Date(startDate).toISOString(),
+        startDate: dateOnlyToIso(startDate),
         status,
       };
       payload.clientName = clientName.trim() || undefined;
       payload.origin = origin.trim() || undefined;
       payload.destination = destination.trim() || undefined;
-      payload.endDate = endDate ? new Date(endDate).toISOString() : undefined;
+      payload.endDate = endDate ? dateOnlyToIso(endDate) : undefined;
       const fv = parseFloat(freightValue.replace(',', '.'));
       payload.freightValue = !Number.isNaN(fv) ? fv : undefined;
       const ik = parseInt(initialKm, 10);
@@ -319,31 +328,22 @@ export default function EditarViagemPage() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label htmlFor="startDate" className={labelClass}>
-                  Data início *
-                </label>
-                <input
-                  id="startDate"
-                  type="datetime-local"
-                  required
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label htmlFor="endDate" className={labelClass}>
-                  Data fim
-                </label>
-                <input
-                  id="endDate"
-                  type="datetime-local"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
+              <LocalizedDateField
+                label="Data início *"
+                value={startDate}
+                onChange={setStartDate}
+                className="w-full min-w-0"
+                labelClassName={labelClass}
+                buttonClassName={`${inputClass} w-full min-w-0 text-left font-normal`}
+              />
+              <LocalizedDateField
+                label="Data fim"
+                value={endDate}
+                onChange={setEndDate}
+                className="w-full min-w-0"
+                labelClassName={labelClass}
+                buttonClassName={`${inputClass} w-full min-w-0 text-left font-normal`}
+              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">

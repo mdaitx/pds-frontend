@@ -101,12 +101,22 @@ export async function createOnboardingCompany(
   });
 }
 
+/** Tipo de veículo (Prisma / API). */
+export type VehicleType = 'CAMINHAO' | 'CAVALO_MECANICO' | 'SEMI_REBOQUE';
+
+export const VEHICLE_TYPE_LABELS: Record<VehicleType, string> = {
+  CAMINHAO: 'Caminhão',
+  CAVALO_MECANICO: 'Cavalo mecânico',
+  SEMI_REBOQUE: 'Semi-reboque',
+};
+
 export type CreateOnboardingFirstVehiclePayload = {
   plate: string;
   model: string;
   brand: string;
   year: number;
   nickname?: string;
+  vehicleType?: VehicleType;
 };
 
 /** POST /onboarding/first-vehicle - primeiro veÃ­culo (passo 2) */
@@ -139,6 +149,9 @@ export async function createOnboardingFirstDriver(
 
 // --- Empresa (CRUD para dono) ---
 
+/** Alinhado ao enum Prisma `CommissionCalculationMethod` */
+export type CommissionCalculationMethod = 'GROSS_PROFIT' | 'FREIGHT_VALUE';
+
 export type Company = {
   id: string;
   name: string;
@@ -147,6 +160,8 @@ export type Company = {
   phone: string | null;
   email: string | null;
   defaultCommission: number | null;
+  timezone: string | null;
+  commissionMethod: CommissionCalculationMethod;
   ownerId: string;
   createdAt: string;
   updatedAt: string;
@@ -164,6 +179,8 @@ export type UpdateCompanyPayload = {
   phone?: string;
   email?: string;
   defaultCommission?: number;
+  timezone?: string;
+  commissionMethod?: CommissionCalculationMethod;
 };
 
 /** PUT /companies/me - atualiza empresa do dono */
@@ -240,6 +257,14 @@ export async function deleteExpenseCategory(id: string): Promise<{ success: bool
 
 export type VehicleStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
 
+export type VehiclePairRef = {
+  id: string;
+  plate: string;
+  brand: string;
+  model: string;
+  vehicleType: VehicleType;
+};
+
 export type Vehicle = {
   id: string;
   plate: string;
@@ -247,8 +272,13 @@ export type Vehicle = {
   brand: string;
   year: number;
   nickname: string | null;
+  /** Presente após migração `vehicle_type`; fallback UI: CAMINHAO. */
+  vehicleType?: VehicleType;
   status: VehicleStatus;
   photoUrl?: string | null;
+  trailerVehicleId?: string | null;
+  trailerVehicle?: VehiclePairRef | null;
+  tractorVehicle?: VehiclePairRef | null;
   companyId: string;
   createdAt: string;
   updatedAt: string;
@@ -260,8 +290,13 @@ export type CreateVehiclePayload = {
   brand: string;
   year: number;
   nickname?: string;
+  vehicleType?: VehicleType;
   status?: VehicleStatus;
   photoUrl?: string;
+  /** Cavalo → semi-reboque acoplado. */
+  trailerVehicleId?: string | null;
+  /** Semi-reboque → cavalo que o puxa. */
+  tractorVehicleId?: string | null;
 };
 
 export type UpdateVehiclePayload = {
@@ -270,8 +305,11 @@ export type UpdateVehiclePayload = {
   brand?: string;
   year?: number;
   nickname?: string;
+  vehicleType?: VehicleType;
   status?: VehicleStatus;
   photoUrl?: string;
+  trailerVehicleId?: string | null;
+  tractorVehicleId?: string | null;
 };
 
 export async function getVehicles(): Promise<Vehicle[]> {

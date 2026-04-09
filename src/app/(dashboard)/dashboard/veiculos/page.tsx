@@ -9,7 +9,13 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks';
-import { deleteVehicle, getVehicles, type Vehicle } from '@/lib';
+import {
+  deleteVehicle,
+  getVehicles,
+  type Vehicle,
+  type VehicleType,
+  VEHICLE_TYPE_LABELS,
+} from '@/lib';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,10 +40,25 @@ const statusConfig: Record<
   MAINTENANCE: { label: 'Manutenção', className: 'bg-yellow-100 text-yellow-800' },
 };
 
+const singleVehicleTypeSealClass: Record<VehicleType, string> = {
+  CAMINHAO: 'bg-sky-100 text-sky-900',
+  CAVALO_MECANICO: 'bg-amber-100 text-amber-900',
+  SEMI_REBOQUE: 'bg-violet-100 text-violet-900',
+};
+
 function VehicleCardInner({ vehicle }: { vehicle: Vehicle }) {
   const cfg = statusConfig[vehicle.status];
+  const vt = (vehicle.vehicleType ?? 'CAMINHAO') as VehicleType;
+  const sealClass = singleVehicleTypeSealClass[vt];
   return (
     <div>
+      <div className="mb-2">
+        <span
+          className={`inline-block rounded-md px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide ${sealClass}`}
+        >
+          {VEHICLE_TYPE_LABELS[vt]}
+        </span>
+      </div>
       <div className="mb-3 flex h-28 w-full items-center justify-center rounded-lg bg-zinc-100">
         {vehicle.photoUrl ? (
           <Image
@@ -71,6 +92,102 @@ function VehicleCardInner({ vehicle }: { vehicle: Vehicle }) {
   );
 }
 
+function PairedVehicleCardInner({ tractor, trailer }: { tractor: Vehicle; trailer: Vehicle }) {
+  const cfg = statusConfig[tractor.status];
+  return (
+    <div>
+      <div className="mb-2">
+        <span className="inline-block rounded-md bg-indigo-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-indigo-800">
+          Cavalo + semi-reboque
+        </span>
+      </div>
+      <div className="mb-3 grid grid-cols-2 gap-2">
+        <div className="flex h-24 items-center justify-center overflow-hidden rounded-lg bg-zinc-100">
+          {tractor.photoUrl ? (
+            <Image
+              src={tractor.photoUrl}
+              alt={`Cavalo ${tractor.plate}`}
+              width={160}
+              height={96}
+              className="h-full w-full object-cover"
+              unoptimized
+            />
+          ) : (
+            <Truck className="h-9 w-9 text-zinc-400" aria-hidden />
+          )}
+        </div>
+        <div className="flex h-24 items-center justify-center overflow-hidden rounded-lg bg-zinc-100">
+          {trailer.photoUrl ? (
+            <Image
+              src={trailer.photoUrl}
+              alt={`Semi-reboque ${trailer.plate}`}
+              width={160}
+              height={96}
+              className="h-full w-full object-cover"
+              unoptimized
+            />
+          ) : (
+            <Truck className="h-9 w-9 text-zinc-300" aria-hidden />
+          )}
+        </div>
+      </div>
+      <p className="mb-0.5 text-[0.7rem] font-medium uppercase tracking-wide text-zinc-500">Placas</p>
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="font-mono text-zinc-900" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
+          {tractor.plate}
+        </span>
+        <span className="text-zinc-400" aria-hidden>
+          +
+        </span>
+        <span className="font-mono text-zinc-900" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
+          {trailer.plate}
+        </span>
+        <span className={`rounded-full px-2 py-0.5 text-xs ${cfg.className}`}>{cfg.label}</span>
+      </div>
+      <div className="mt-3 space-y-1 border-t border-zinc-100 pt-2" style={{ fontSize: '0.82rem' }}>
+        <p className="text-zinc-700">
+          <span className="text-zinc-500">Cavalo:</span> {tractor.brand} {tractor.model} · {tractor.year}
+          {tractor.nickname ? ` · "${tractor.nickname}"` : ''}
+        </p>
+        <p className="text-zinc-700">
+          <span className="text-zinc-500">Semi:</span> {trailer.brand} {trailer.model} · {trailer.year}
+          {trailer.nickname ? ` · "${trailer.nickname}"` : ''}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+type DisplayUnit =
+  | { kind: 'paired'; tractor: Vehicle; trailer: Vehicle }
+  | { kind: 'single'; vehicle: Vehicle };
+
+function buildDisplayUnits(list: Vehicle[]): DisplayUnit[] {
+  const inPair = new Set<string>();
+  const units: DisplayUnit[] = [];
+
+  for (const v of list) {
+    if (v.vehicleType !== 'CAVALO_MECANICO' || !v.trailerVehicle?.id) continue;
+    const trailer = list.find((t) => t.id === v.trailerVehicle!.id);
+    if (!trailer || inPair.has(v.id)) continue;
+    units.push({ kind: 'paired', tractor: v, trailer });
+    inPair.add(v.id);
+    inPair.add(trailer.id);
+  }
+
+  for (const v of list) {
+    if (!inPair.has(v.id)) units.push({ kind: 'single', vehicle: v });
+  }
+
+  units.sort((a, b) => {
+    const pa = a.kind === 'paired' ? a.tractor.plate : a.vehicle.plate;
+    const pb = b.kind === 'paired' ? b.tractor.plate : b.vehicle.plate;
+    return pa.localeCompare(pb, 'pt-BR');
+  });
+
+  return units;
+}
+
 function StatCard(props: { label: string; value: number; icon: ReactNode; iconWrapClass: string }) {
   const { label, value, icon, iconWrapClass } = props;
   return (
@@ -102,12 +219,16 @@ export default function VeiculosPage() {
   const [filterActive, setFilterActive] = useState(false);
   const [filterMaintenance, setFilterMaintenance] = useState(false);
   const [filterInactive, setFilterInactive] = useState(false);
+  const [filterCaminhao, setFilterCaminhao] = useState(false);
+  const [filterCavaloMecanico, setFilterCavaloMecanico] = useState(false);
+  const [filterSemiReboque, setFilterSemiReboque] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Vehicle | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (!session || !appUser) return;
-    if (appUser.role !== 'OWNER') {
+    const fleetStaff = appUser.role === 'OWNER' || appUser.role === 'ADMIN';
+    if (!fleetStaff) {
       router.replace('/dashboard');
       return;
     }
@@ -124,25 +245,68 @@ export default function VeiculosPage() {
   }, [authLoading, session, router]);
 
   const q = search.trim().toLowerCase();
-  const filteredVehicles = useMemo(() => {
-    return list.filter((vehicle) => {
-      if (filterActive && vehicle.status !== 'ACTIVE') return false;
-      if (filterMaintenance && vehicle.status !== 'MAINTENANCE') return false;
-      if (filterInactive && vehicle.status !== 'INACTIVE') return false;
-      if (q) {
-        const hay = `${vehicle.plate} ${vehicle.brand} ${vehicle.model} ${vehicle.nickname ?? ''}`.toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
-  }, [list, filterActive, filterMaintenance, filterInactive, q]);
 
-  const hasFilters = filterActive || filterMaintenance || filterInactive || search.trim().length > 0;
+  const vehicleMatches = (vehicle: Vehicle) => {
+    if (filterActive && vehicle.status !== 'ACTIVE') return false;
+    if (filterMaintenance && vehicle.status !== 'MAINTENANCE') return false;
+    if (filterInactive && vehicle.status !== 'INACTIVE') return false;
+    if (q) {
+      const pairHay =
+        vehicle.trailerVehicle?.plate ??
+        vehicle.tractorVehicle?.plate ??
+        '';
+      const hay = `${vehicle.plate} ${vehicle.brand} ${vehicle.model} ${vehicle.nickname ?? ''} ${VEHICLE_TYPE_LABELS[(vehicle.vehicleType ?? 'CAMINHAO') as VehicleType]} ${pairHay}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  };
+
+  const typeFiltersActive = filterCaminhao || filterCavaloMecanico || filterSemiReboque;
+  const matchesTypeFilter = (v: Vehicle) =>
+    (filterCaminhao && v.vehicleType === 'CAMINHAO') ||
+    (filterCavaloMecanico && v.vehicleType === 'CAVALO_MECANICO') ||
+    (filterSemiReboque && v.vehicleType === 'SEMI_REBOQUE');
+
+  const displayUnits = useMemo(() => {
+    const units = buildDisplayUnits(list);
+    return units.filter((u) => {
+      if (typeFiltersActive) {
+        if (u.kind === 'paired') {
+          if (!matchesTypeFilter(u.tractor) && !matchesTypeFilter(u.trailer)) return false;
+        } else if (!matchesTypeFilter(u.vehicle)) {
+          return false;
+        }
+      }
+      if (u.kind === 'paired') {
+        return vehicleMatches(u.tractor) || vehicleMatches(u.trailer);
+      }
+      return vehicleMatches(u.vehicle);
+    });
+  }, [
+    list,
+    filterActive,
+    filterMaintenance,
+    filterInactive,
+    filterCaminhao,
+    filterCavaloMecanico,
+    filterSemiReboque,
+    q,
+  ]);
+
+  const hasFilters =
+    filterActive ||
+    filterMaintenance ||
+    filterInactive ||
+    typeFiltersActive ||
+    search.trim().length > 0;
 
   const clearFilters = () => {
     setFilterActive(false);
     setFilterMaintenance(false);
     setFilterInactive(false);
+    setFilterCaminhao(false);
+    setFilterCavaloMecanico(false);
+    setFilterSemiReboque(false);
     setSearch('');
   };
 
@@ -250,6 +414,44 @@ export default function VeiculosPage() {
           >
             {filterInactive ? '✓ ' : ''}Inativo
           </button>
+          <span className="mx-1 hidden h-4 w-px bg-zinc-200 sm:inline" aria-hidden />
+          <span className="w-full text-xs font-medium text-zinc-500 sm:w-auto">Tipo:</span>
+          <button
+            type="button"
+            onClick={() => setFilterCaminhao(!filterCaminhao)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              filterCaminhao
+                ? 'border border-sky-300 bg-sky-100 text-sky-900'
+                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+            }`}
+          >
+            {filterCaminhao ? '✓ ' : ''}
+            {VEHICLE_TYPE_LABELS.CAMINHAO}
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterCavaloMecanico(!filterCavaloMecanico)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              filterCavaloMecanico
+                ? 'border border-amber-300 bg-amber-100 text-amber-900'
+                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+            }`}
+          >
+            {filterCavaloMecanico ? '✓ ' : ''}
+            {VEHICLE_TYPE_LABELS.CAVALO_MECANICO}
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilterSemiReboque(!filterSemiReboque)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              filterSemiReboque
+                ? 'border border-violet-300 bg-violet-100 text-violet-900'
+                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+            }`}
+          >
+            {filterSemiReboque ? '✓ ' : ''}
+            {VEHICLE_TYPE_LABELS.SEMI_REBOQUE}
+          </button>
           {hasFilters && (
             <button
               type="button"
@@ -301,7 +503,7 @@ export default function VeiculosPage() {
                 Adicionar veículo
               </Link>
             </div>
-          ) : filteredVehicles.length === 0 ? (
+          ) : displayUnits.length === 0 ? (
             <div className="col-span-full py-12 text-center">
               <Truck className="mx-auto mb-3 h-12 w-12 text-zinc-300" />
               <p className="text-zinc-500">Nenhum veículo corresponde à busca ou aos filtros.</p>
@@ -310,51 +512,97 @@ export default function VeiculosPage() {
               </Button>
             </div>
           ) : (
-            filteredVehicles.map((vehicle) => (
-              <div key={vehicle.id} className="h-full">
-                <div
-                  className="h-full cursor-pointer"
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Abrir detalhes do veículo ${vehicle.plate}`}
-                  onClick={() => router.push(`/dashboard/veiculos/${vehicle.id}`)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      router.push(`/dashboard/veiculos/${vehicle.id}`);
-                    }
-                  }}
-                >
-                  <Card className="h-full border-zinc-200 p-4 transition-all hover:border-blue-300 hover:shadow-md">
-                    <VehicleCardInner vehicle={vehicle} />
-                    <div
-                      className="mt-3 flex flex-wrap gap-2"
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                    >
-                      <Link href={`/dashboard/veiculos/${vehicle.id}`} className="min-w-0 flex-1">
+            displayUnits.map((unit) =>
+              unit.kind === 'paired' ? (
+                <div key={`pair-${unit.tractor.id}`} className="h-full">
+                  <div
+                    className="h-full cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Conjunto ${unit.tractor.plate} e ${unit.trailer.plate}`}
+                    onClick={() => router.push(`/dashboard/veiculos/${unit.tractor.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        router.push(`/dashboard/veiculos/${unit.tractor.id}`);
+                      }
+                    }}
+                  >
+                    <Card className="h-full border-indigo-200/80 bg-gradient-to-b from-white to-indigo-50/40 p-4 transition-all hover:border-indigo-300 hover:shadow-md">
+                      <PairedVehicleCardInner tractor={unit.tractor} trailer={unit.trailer} />
+                      <div
+                        className="mt-3 flex flex-wrap gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <Link href={`/dashboard/veiculos/${unit.tractor.id}`} className="min-w-0 flex-1">
+                          <Button
+                            variant="outline"
+                            className="w-full justify-center gap-1.5 border-0 bg-blue-50 px-3 py-1.5 text-xs text-blue-700 hover:bg-blue-100"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                            Editar
+                          </Button>
+                        </Link>
                         <Button
                           variant="outline"
-                          className="w-full justify-center gap-1.5 border-0 bg-blue-50 px-3 py-1.5 text-xs text-blue-700 hover:bg-blue-100"
+                          onClick={() => setDeleteTarget(unit.tractor)}
+                          className="justify-center gap-1.5 border-0 bg-red-50 px-3 py-1.5 text-xs text-red-600 hover:bg-red-100"
+                          aria-label={`Excluir conjunto (cavalo ${unit.tractor.plate})`}
                         >
-                          <Edit className="h-3.5 w-3.5" />
-                          Editar
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Excluir
                         </Button>
-                      </Link>
-                      <Button
-                        variant="outline"
-                        onClick={() => setDeleteTarget(vehicle)}
-                        className="justify-center gap-1.5 border-0 bg-red-50 px-3 py-1.5 text-xs text-red-600 hover:bg-red-100"
-                        aria-label={`Excluir veículo ${vehicle.plate}`}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Excluir
-                      </Button>
-                    </div>
-                  </Card>
+                      </div>
+                    </Card>
+                  </div>
                 </div>
-              </div>
-            ))
+              ) : (
+                <div key={unit.vehicle.id} className="h-full">
+                  <div
+                    className="h-full cursor-pointer"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Abrir detalhes do veículo ${unit.vehicle.plate}`}
+                    onClick={() => router.push(`/dashboard/veiculos/${unit.vehicle.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        router.push(`/dashboard/veiculos/${unit.vehicle.id}`);
+                      }
+                    }}
+                  >
+                    <Card className="h-full border-zinc-200 p-4 transition-all hover:border-blue-300 hover:shadow-md">
+                      <VehicleCardInner vehicle={unit.vehicle} />
+                      <div
+                        className="mt-3 flex flex-wrap gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
+                        <Link href={`/dashboard/veiculos/${unit.vehicle.id}`} className="min-w-0 flex-1">
+                          <Button
+                            variant="outline"
+                            className="w-full justify-center gap-1.5 border-0 bg-blue-50 px-3 py-1.5 text-xs text-blue-700 hover:bg-blue-100"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                            Editar
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="outline"
+                          onClick={() => setDeleteTarget(unit.vehicle)}
+                          className="justify-center gap-1.5 border-0 bg-red-50 px-3 py-1.5 text-xs text-red-600 hover:bg-red-100"
+                          aria-label={`Excluir veículo ${unit.vehicle.plate}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Excluir
+                        </Button>
+                      </div>
+                    </Card>
+                  </div>
+                </div>
+              ),
+            )
           )}
         </div>
 

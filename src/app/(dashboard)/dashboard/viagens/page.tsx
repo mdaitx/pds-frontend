@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Truck, Eye, FileText, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Truck, FileText, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth, useActivityHint } from '@/hooks';
 import { getTrips, type Trip, type TripStatus } from '@/lib';
 import { Card, CardContent, Input } from '@/components/ui';
@@ -68,7 +68,8 @@ export default function ViagensPage() {
 
   useEffect(() => {
     if (!session || !appUser) return;
-    if (appUser.role !== 'OWNER' && appUser.role !== 'DRIVER') {
+    const fleetStaff = appUser.role === 'OWNER' || appUser.role === 'ADMIN';
+    if (!fleetStaff && appUser.role !== 'DRIVER') {
       router.replace('/dashboard');
       return;
     }
@@ -83,8 +84,8 @@ export default function ViagensPage() {
     if (!authLoading && !session) router.replace('/login');
   }, [authLoading, session, router]);
 
-  const isOwner = appUser?.role === 'OWNER';
-  const title = isOwner ? 'Viagens' : 'Minhas viagens';
+  const isFleetStaff = appUser?.role === 'OWNER' || appUser?.role === 'ADMIN';
+  const title = isFleetStaff ? 'Viagens' : 'Minhas viagens';
 
   const sorted = useMemo(() => {
     const byStatus = statusFilter === '' ? list : list.filter((t) => t.status === statusFilter);
@@ -138,7 +139,7 @@ export default function ViagensPage() {
               {title}
             </h1>
           </div>
-          {isOwner && (
+          {isFleetStaff && (
             <Link href="/dashboard/viagens/novo">
               <button
                 type="button"
@@ -205,7 +206,7 @@ export default function ViagensPage() {
             <CardContent className="py-16 text-center">
               <Truck className="mx-auto mb-4 h-12 w-12 text-zinc-300" />
               <p className="text-zinc-500">Nenhuma viagem encontrada.</p>
-              {isOwner && (
+              {isFleetStaff && (
                 <Link href="/dashboard/viagens/novo">
                   <button
                     type="button"
@@ -228,8 +229,21 @@ export default function ViagensPage() {
                   key={t.id}
                   className="border-zinc-200 transition-all hover:border-blue-200 hover:shadow-sm"
                 >
-                  <CardContent className="p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <CardContent className="p-0">
+                    <div
+                      role="link"
+                      tabIndex={0}
+                      className="cursor-pointer p-4 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                      aria-label={`Abrir viagem ${t.code}`}
+                      onClick={() => router.push(`/dashboard/viagens/${t.id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          router.push(`/dashboard/viagens/${t.id}`);
+                        }
+                      }}
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-3">
                           <span className="text-zinc-900" style={{ fontWeight: 700, fontSize: '0.95rem' }}>
@@ -269,17 +283,11 @@ export default function ViagensPage() {
                           </span>
                         </div>
                       </div>
-                      <div className="flex flex-shrink-0 items-center gap-2">
-                        <Link href={`/dashboard/viagens/${t.id}`}>
-                          <button
-                            type="button"
-                            className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-blue-700 transition-colors hover:bg-blue-100"
-                            style={{ fontSize: '0.82rem' }}
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            Ver
-                          </button>
-                        </Link>
+                      <div
+                        className="flex flex-shrink-0 items-center gap-2"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
                         {t.status === 'COMPLETED' && (
                           <Link href={`/dashboard/viagens/${t.id}/acerto`}>
                             <button
@@ -292,7 +300,7 @@ export default function ViagensPage() {
                             </button>
                           </Link>
                         )}
-                        {isOwner && (
+                        {isFleetStaff && (
                           <Link href={`/dashboard/viagens/${t.id}/editar`}>
                             <button
                               type="button"
@@ -304,6 +312,7 @@ export default function ViagensPage() {
                           </Link>
                         )}
                       </div>
+                    </div>
                     </div>
                   </CardContent>
                 </Card>

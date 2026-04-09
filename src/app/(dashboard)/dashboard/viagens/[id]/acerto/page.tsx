@@ -20,7 +20,8 @@ export default function AcertoViagemPage() {
 
   useEffect(() => {
     if (!session || !appUser || !tripId) return;
-    if (appUser.role !== 'OWNER' && appUser.role !== 'DRIVER') {
+    const fleetStaff = appUser.role === 'OWNER' || appUser.role === 'ADMIN';
+    if (!fleetStaff && appUser.role !== 'DRIVER') {
       router.replace('/dashboard');
       return;
     }
@@ -106,7 +107,7 @@ export default function AcertoViagemPage() {
     );
   }
 
-  const isOwner = appUser?.role === 'OWNER';
+  const isFleetStaff = appUser?.role === 'OWNER' || appUser?.role === 'ADMIN';
 
   return (
     <>
@@ -115,11 +116,11 @@ export default function AcertoViagemPage() {
       )}
       <SettlementAcertoView
         settlement={settlement}
-        isOwner={isOwner}
+        isOwner={isFleetStaff}
         markingPaid={markingPaid}
         onMarkPaid={handleMarkPaid}
-        backHref={isOwner ? `/dashboard/viagens/${tripId}` : `/dashboard/viagens/${tripId}`}
-        backLabel={isOwner ? 'Voltar à edição da viagem' : 'Voltar ao resumo da viagem'}
+        backHref={`/dashboard/viagens/${tripId}`}
+        backLabel={isFleetStaff ? 'Voltar à edição da viagem' : 'Voltar ao resumo da viagem'}
       />
     </>
   );

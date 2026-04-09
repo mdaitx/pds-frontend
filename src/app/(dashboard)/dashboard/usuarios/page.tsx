@@ -169,6 +169,7 @@ export default function UsuariosPage() {
   const driverUserCount = users.filter((u) => u.role === 'DRIVER').length;
 
   const appIsPrimaryOwner = !!staff.find((s) => s.id === appUser?.id)?.isPrimaryOwner;
+  const canInviteNewUsers = appUser?.role === 'OWNER' && appIsPrimaryOwner;
 
   const canDelete = (user: ListUser) =>
     appUser?.role === 'OWNER' &&
@@ -255,13 +256,15 @@ export default function UsuariosPage() {
               Contas com login (acesso ao sistema). Motoristas da frota sem acesso ficam em Motoristas.
             </p>
           </div>
-          <Link
-            href="/dashboard/usuarios/novo"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            <Plus className="h-4 w-4" />
-            Novo usuário
-          </Link>
+          {canInviteNewUsers ? (
+            <Link
+              href="/dashboard/usuarios/novo"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              <Plus className="h-4 w-4" />
+              Novo usuário
+            </Link>
+          ) : null}
         </div>
 
         {error && (

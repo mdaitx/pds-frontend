@@ -26,7 +26,7 @@ import {
   type ReportAggregate,
 } from '@/lib/reports';
 import { downloadTripsReportPdf, downloadSummaryReportPdf } from '@/lib/reports-pdf';
-import { Card, CardHeader, CardContent } from '@/components/ui';
+import { Card, CardHeader, CardContent, LocalizedDateField } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { FileDown, Loader2 } from 'lucide-react';
 
@@ -283,10 +283,7 @@ export default function RelatoriosPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-zinc-900 text-xl font-semibold">Relatórios</h1>
-          <p className="text-zinc-500 text-sm">
-            Métricas alinhadas ao acerto no banco (despesas, margem, comissão, resultado do proprietário). Viagens
-            canceladas não entram nos totais dos cartões “Por veículo” e “Por motorista”.
-          </p>
+          <p className="text-zinc-500 text-sm">Visão financeira.</p>
         </div>
       </div>
 
@@ -299,24 +296,8 @@ export default function RelatoriosPage() {
           <h2 className="text-zinc-800 text-sm font-medium">Período e filtros</h2>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-4 items-end">
-          <label className="flex flex-col gap-1 text-xs text-zinc-600">
-            De
-            <input
-              type="date"
-              value={fromYmd}
-              onChange={(e) => setFromYmd(e.target.value)}
-              className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 bg-white"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs text-zinc-600">
-            Até
-            <input
-              type="date"
-              value={toYmd}
-              onChange={(e) => setToYmd(e.target.value)}
-              className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 bg-white"
-            />
-          </label>
+          <LocalizedDateField label="De" value={fromYmd} onChange={setFromYmd} />
+          <LocalizedDateField label="Até" value={toYmd} onChange={setToYmd} />
           {(tab === 'viagens' || tab === 'custokm') && (
             <>
               <label className="flex flex-col gap-1 text-xs text-zinc-600">

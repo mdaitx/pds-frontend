@@ -90,7 +90,12 @@ export default function NovoUsuarioPage() {
         setDrivers(d);
         setStaffEmails(new Set(staffRes.staff.map((s) => s.email.trim().toLowerCase())));
         const me = staffRes.staff.find((s) => s.id === appUser?.id);
-        setCanInviteStaff(!!me?.isPrimaryOwner);
+        const primary = !!me?.isPrimaryOwner;
+        setCanInviteStaff(primary);
+        if (appUser?.role === 'OWNER' && !primary) {
+          router.replace('/dashboard/usuarios');
+          return;
+        }
         if (driverIdFromUrl) {
           const driver = d.find((x) => x.id === driverIdFromUrl);
           const emailNorm = (driver?.email ?? '').trim().toLowerCase();
