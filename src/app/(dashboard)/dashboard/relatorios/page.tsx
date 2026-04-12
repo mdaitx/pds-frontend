@@ -29,6 +29,9 @@ import { downloadTripsReportPdf, downloadSummaryReportPdf } from '@/lib/reports-
 import { Card, CardHeader, CardContent, LocalizedDateField } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { FileDown, Loader2 } from 'lucide-react';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
+import { cn } from '@/lib/cn';
+import { mobileTableScrollClass } from '@/lib/dashboard-mobile';
 
 type TabId = 'viagens' | 'veiculo' | 'motorista' | 'custokm';
 type SortCol =
@@ -279,12 +282,10 @@ export default function RelatoriosPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6 max-w-[1400px] mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-zinc-900 text-xl font-semibold">Relatórios</h1>
-          <p className="text-zinc-500 text-sm">Visão financeira.</p>
-        </div>
+    <DashboardPageShell maxWidth="1400">
+      <div className="min-w-0">
+        <h1 className="text-xl font-semibold text-zinc-900">Relatórios</h1>
+        <p className="text-sm text-zinc-500">Visão financeira.</p>
       </div>
 
       {loadError && (
@@ -295,17 +296,29 @@ export default function RelatoriosPage() {
         <CardHeader className="pb-2">
           <h2 className="text-zinc-800 text-sm font-medium">Período e filtros</h2>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-4 items-end">
-          <LocalizedDateField label="De" value={fromYmd} onChange={setFromYmd} />
-          <LocalizedDateField label="Até" value={toYmd} onChange={setToYmd} />
+        <CardContent className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
+          <LocalizedDateField
+            label="De"
+            value={fromYmd}
+            onChange={setFromYmd}
+            className="w-full min-w-0 sm:w-auto sm:min-w-[200px]"
+            buttonClassName="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-left text-sm text-zinc-900 hover:bg-zinc-50 sm:min-w-[200px]"
+          />
+          <LocalizedDateField
+            label="Até"
+            value={toYmd}
+            onChange={setToYmd}
+            className="w-full min-w-0 sm:w-auto sm:min-w-[200px]"
+            buttonClassName="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-left text-sm text-zinc-900 hover:bg-zinc-50 sm:min-w-[200px]"
+          />
           {(tab === 'viagens' || tab === 'custokm') && (
             <>
-              <label className="flex flex-col gap-1 text-xs text-zinc-600">
+              <label className="flex w-full min-w-0 flex-col gap-1 text-xs text-zinc-600 sm:w-auto sm:min-w-[160px]">
                 Veículo
                 <select
                   value={filterVehicle}
                   onChange={(e) => setFilterVehicle(e.target.value as typeof filterVehicle)}
-                  className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 bg-white min-w-[160px]"
+                  className="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
                 >
                   <option value="all">Todos</option>
                   {vehicles.map((v) => (
@@ -315,12 +328,12 @@ export default function RelatoriosPage() {
                   ))}
                 </select>
               </label>
-              <label className="flex flex-col gap-1 text-xs text-zinc-600">
+              <label className="flex w-full min-w-0 flex-col gap-1 text-xs text-zinc-600 sm:w-auto sm:min-w-[160px]">
                 Motorista
                 <select
                   value={filterDriver}
                   onChange={(e) => setFilterDriver(e.target.value as typeof filterDriver)}
-                  className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 bg-white min-w-[160px]"
+                  className="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
                 >
                   <option value="all">Todos</option>
                   {drivers.map((d) => (
@@ -330,12 +343,12 @@ export default function RelatoriosPage() {
                   ))}
                 </select>
               </label>
-              <label className="flex flex-col gap-1 text-xs text-zinc-600">
+              <label className="flex w-full min-w-0 flex-col gap-1 text-xs text-zinc-600 sm:w-auto sm:min-w-[160px]">
                 Status
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
-                  className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 bg-white min-w-[160px]"
+                  className="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
                 >
                   <option value="all">Todos</option>
                   {(Object.keys(TRIP_STATUS_LABEL) as TripStatus[]).map((s) => (
@@ -348,12 +361,12 @@ export default function RelatoriosPage() {
             </>
           )}
           {tab === 'veiculo' && (
-            <label className="flex flex-col gap-1 text-xs text-zinc-600">
+            <label className="flex w-full min-w-0 flex-col gap-1 text-xs text-zinc-600 sm:w-auto sm:min-w-[220px]">
               Veículo do relatório
               <select
                 value={reportVehicleId}
                 onChange={(e) => setReportVehicleId(e.target.value)}
-                className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 bg-white min-w-[200px]"
+                className="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
               >
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>
@@ -364,12 +377,12 @@ export default function RelatoriosPage() {
             </label>
           )}
           {tab === 'motorista' && (
-            <label className="flex flex-col gap-1 text-xs text-zinc-600">
+            <label className="flex w-full min-w-0 flex-col gap-1 text-xs text-zinc-600 sm:w-auto sm:min-w-[220px]">
               Motorista do relatório
               <select
                 value={reportDriverId}
                 onChange={(e) => setReportDriverId(e.target.value)}
-                className="rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 bg-white min-w-[200px]"
+                className="w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
               >
                 {drivers.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -382,7 +395,7 @@ export default function RelatoriosPage() {
         </CardContent>
       </Card>
 
-      <div className="flex flex-wrap gap-2 border-b border-zinc-200 pb-2">
+      <div className="grid grid-cols-2 gap-2 border-b border-zinc-200 pb-2 sm:flex sm:flex-wrap sm:gap-2">
         {(
           [
             ['viagens', 'Por viagem'],
@@ -395,9 +408,10 @@ export default function RelatoriosPage() {
             key={id}
             type="button"
             onClick={() => setTab(id)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+            className={cn(
+              'rounded-lg px-3 py-2.5 text-center text-sm font-medium transition-colors sm:px-4',
               tab === id ? 'bg-blue-600 text-white' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
-            }`}
+            )}
           >
             {label}
           </button>
@@ -457,7 +471,7 @@ export default function RelatoriosPage() {
           }
         />
       )}
-    </div>
+    </DashboardPageShell>
   );
 }
 
@@ -472,15 +486,21 @@ function ViagensTab(props: {
   const mark = (c: SortCol) => (sortCol === c ? (sortDir === 'asc' ? ' ↑' : ' ↓') : '');
   return (
     <>
-      <div className="flex justify-end">
-        <Button type="button" variant="outline" className="gap-2" onClick={onPdf} disabled={rows.length === 0}>
+      <div className="flex w-full justify-stretch sm:justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full gap-2 sm:w-auto"
+          onClick={onPdf}
+          disabled={rows.length === 0}
+        >
           <FileDown className="w-4 h-4" />
           Baixar PDF
         </Button>
       </div>
       <Card className="border-zinc-200 overflow-hidden">
-        <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full text-sm min-w-[1100px]">
+        <CardContent className={cn('p-0', mobileTableScrollClass)}>
+          <table className="w-full min-w-[1100px] text-sm">
             <thead>
               <tr className="border-b border-zinc-100 bg-zinc-50">
                 <th className="text-left px-3 py-3 font-semibold text-zinc-600 text-xs">
@@ -584,11 +604,11 @@ function AggregateTab(props: {
   );
   return (
     <>
-      <div className="flex justify-end">
+      <div className="flex w-full justify-stretch sm:justify-end">
         <Button
           type="button"
           variant="outline"
-          className="gap-2"
+          className="w-full gap-2 sm:w-auto"
           disabled={detailRows.length === 0}
           onClick={() =>
             downloadSummaryReportPdf({
@@ -603,9 +623,9 @@ function AggregateTab(props: {
           Baixar PDF
         </Button>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <Card className="border-zinc-200">
-          <CardContent className="p-4">
+      <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 items-stretch">
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
             <p className="text-zinc-500 text-xs">Viagens no recorte</p>
             <p className="text-xl font-bold text-zinc-900">{agg.trips}</p>
             {agg.tripsCancelled > 0 ? (
@@ -613,55 +633,55 @@ function AggregateTab(props: {
             ) : null}
           </CardContent>
         </Card>
-        <Card className="border-zinc-200">
-          <CardContent className="p-4">
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
             <p className="text-zinc-500 text-xs">Faturamento (frete)</p>
             <p className="text-xl font-bold text-zinc-900">{formatBrl(agg.freight)}</p>
           </CardContent>
         </Card>
-        <Card className="border-zinc-200">
-          <CardContent className="p-4">
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
             <p className="text-zinc-500 text-xs">Despesas</p>
             <p className="text-xl font-bold text-zinc-900">{formatBrl(agg.expenses)}</p>
           </CardContent>
         </Card>
-        <Card className="border-zinc-200">
-          <CardContent className="p-4">
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
             <p className="text-zinc-500 text-xs">Adiantamentos</p>
             <p className="text-xl font-bold text-zinc-900">{formatBrl(agg.advances)}</p>
           </CardContent>
         </Card>
-        <Card className="border-zinc-200">
-          <CardContent className="p-4">
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
             <p className="text-zinc-500 text-xs">Margem bruta</p>
             <p className="text-xl font-bold text-zinc-900">{formatBrl(agg.grossProfit)}</p>
           </CardContent>
         </Card>
-        <Card className="border-zinc-200">
-          <CardContent className="p-4">
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
             <p className="text-zinc-500 text-xs">Comissão (acerto)</p>
             <p className="text-xl font-bold text-zinc-900">
               {agg.driverCommission != null ? formatBrl(agg.driverCommission) : '—'}
             </p>
           </CardContent>
         </Card>
-        <Card className="border-zinc-200">
-          <CardContent className="p-4">
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
             <p className="text-zinc-500 text-xs">Resultado proprietário</p>
             <p className="text-xl font-bold text-zinc-900">
               {agg.ownerResult != null ? formatBrl(agg.ownerResult) : '—'}
             </p>
-            <p className="text-zinc-500 text-xs mt-1">Soma das viagens com acerto</p>
+            <p className="mt-1 text-xs text-zinc-500">Soma das viagens com acerto</p>
           </CardContent>
         </Card>
-        <Card className="border-zinc-200">
-          <CardContent className="p-4">
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
             <p className="text-zinc-500 text-xs">Km rodados</p>
             <p className="text-xl font-bold text-zinc-900">{agg.km.toLocaleString('pt-BR')}</p>
           </CardContent>
         </Card>
-        <Card className="border-zinc-200">
-          <CardContent className="p-4">
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
             <p className="text-zinc-500 text-xs">Custo / km</p>
             <p className="text-xl font-bold text-zinc-900">
               {agg.costPerKm != null ? formatBrl(agg.costPerKm) : '—'}
@@ -671,10 +691,10 @@ function AggregateTab(props: {
       </div>
       <Card className="border-zinc-200 overflow-hidden">
         <CardHeader className="pb-2">
-          <h3 className="text-zinc-800 text-sm">Viagens no período ({entityLabel})</h3>
+          <h3 className="break-words text-sm text-zinc-800">Viagens no período ({entityLabel})</h3>
         </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full text-sm min-w-[900px]">
+        <CardContent className={cn('p-0', mobileTableScrollClass)}>
+          <table className="w-full min-w-[900px] text-sm">
             <thead>
               <tr className="border-b border-zinc-100 bg-zinc-50">
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Código</th>
@@ -731,25 +751,31 @@ function CostKmTab(props: {
   const { rows, periodLabel, notes, onPdf } = props;
   return (
     <>
-      <p className="text-sm text-zinc-600">
+      <p className="text-sm leading-relaxed text-zinc-600">
         Somente viagens com quilometragem calculada (km inicial e final). Use os filtros de veículo, motorista e status
         acima.
       </p>
-      <div className="flex justify-end">
-        <Button type="button" variant="outline" className="gap-2" onClick={onPdf} disabled={rows.length === 0}>
+      <div className="flex w-full justify-stretch sm:justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full gap-2 sm:w-auto"
+          onClick={onPdf}
+          disabled={rows.length === 0}
+        >
           <FileDown className="w-4 h-4" />
           Baixar PDF
         </Button>
       </div>
       <Card className="border-zinc-200 overflow-hidden">
         <CardHeader className="pb-2">
-          <h3 className="text-zinc-800 text-sm">
+          <h3 className="break-words text-sm text-zinc-800">
             Custo por km — {periodLabel}
-            {notes ? <span className="block text-xs font-normal text-zinc-500 mt-1">{notes}</span> : null}
+            {notes ? <span className="mt-1 block text-xs font-normal text-zinc-500">{notes}</span> : null}
           </h3>
         </CardHeader>
-        <CardContent className="p-0 overflow-x-auto">
-          <table className="w-full text-sm min-w-[800px]">
+        <CardContent className={cn('p-0', mobileTableScrollClass)}>
+          <table className="w-full min-w-[800px] text-sm">
             <thead>
               <tr className="border-b border-zinc-100 bg-zinc-50">
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Código</th>

@@ -18,6 +18,9 @@ import {
   type Driver,
 } from '@/lib';
 import { Card, CardContent, CardHeader, LocalizedDateField } from '@/components/ui';
+import { DashboardPageShell, DASHBOARD_FORM_PADDING } from '@/components/dashboard/DashboardPageShell';
+import { cn } from '@/lib/cn';
+import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
 
 const inputClass =
   'mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
@@ -164,74 +167,44 @@ export default function EditarViagemPage() {
 
   if (!trip) {
     return (
-      <div className="settings-font-inter min-h-screen bg-zinc-50 p-4 tracking-tight md:p-6">
-        <div className="mx-auto max-w-3xl">
-          <Link
-            href="/dashboard/viagens"
-            className="flex items-center gap-1 text-[0.85rem] text-zinc-500 hover:text-zinc-700"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Viagens
-          </Link>
-          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-            {error || 'Viagem não encontrada.'}
-          </div>
+      <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="3xl">
+        <Link
+          href="/dashboard/viagens"
+          className="flex items-center gap-1 text-[0.85rem] text-zinc-500 hover:text-zinc-700"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Viagens
+        </Link>
+        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {error || 'Viagem não encontrada.'}
         </div>
-      </div>
+      </DashboardPageShell>
     );
   }
 
   return (
-    <div className="settings-font-inter min-h-screen bg-zinc-50">
+    <div className="settings-font-inter flex min-h-screen flex-col bg-zinc-50">
       <form
         onSubmit={handleSubmit}
-        className="mx-auto max-w-3xl space-y-5 p-4 md:p-6"
+        className={cn(DASHBOARD_FORM_PADDING, 'max-w-3xl settings-font-inter')}
         style={{ fontSize: '0.9rem' }}
       >
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
         )}
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <Link
-              href="/dashboard/viagens"
-              className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
-              style={{ fontSize: '0.85rem' }}
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Voltar à lista
-            </Link>
-            <h1 className="text-zinc-900" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
-              Editar {trip.code}
-            </h1>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={deleting}
-              className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
-            >
-              {deleting ? 'Excluindo…' : 'Excluir'}
-            </button>
-            <Link
-              href={`/dashboard/viagens/${trip.id}`}
-              className="inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-700 hover:bg-zinc-50"
-              style={{ fontSize: '0.875rem' }}
-            >
-              Cancelar
-            </Link>
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-              style={{ fontSize: '0.875rem' }}
-            >
-              <Save className="h-4 w-4" />
-              {saving ? 'Salvando…' : 'Salvar'}
-            </button>
-          </div>
+        <div>
+          <Link
+            href="/dashboard/viagens"
+            className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
+            style={{ fontSize: '0.85rem' }}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Voltar à lista
+          </Link>
+          <h1 className="text-zinc-900" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
+            Editar {trip.code}
+          </h1>
         </div>
 
         <Card className="border-zinc-200 shadow-sm">
@@ -432,6 +405,33 @@ export default function EditarViagemPage() {
             </div>
           </CardContent>
         </Card>
+
+        <div className={`${mobileFormActionsRowClass} mt-auto border-t border-zinc-200 pt-6 pb-2`}>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 sm:w-auto"
+          >
+            {deleting ? 'Excluindo…' : 'Excluir'}
+          </button>
+          <Link
+            href={`/dashboard/viagens/${trip.id}`}
+            className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-700 hover:bg-zinc-50 sm:w-auto"
+            style={{ fontSize: '0.875rem' }}
+          >
+            Cancelar
+          </Link>
+          <button
+            type="submit"
+            disabled={saving}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
+            style={{ fontSize: '0.875rem' }}
+          >
+            <Save className="h-4 w-4" />
+            {saving ? 'Salvando…' : 'Salvar'}
+          </button>
+        </div>
       </form>
     </div>
   );

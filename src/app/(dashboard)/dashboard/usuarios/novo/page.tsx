@@ -20,6 +20,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ImageUpload } from '@/components/ui/image-upload';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
+import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
 
 const selectClass =
   'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
@@ -188,7 +190,7 @@ export default function NovoUsuarioPage() {
   if (isAdminUser) return null;
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-2xl mx-auto">
+    <DashboardPageShell maxWidth="2xl">
       <div>
         <Link
           href="/dashboard/usuarios"
@@ -401,17 +403,18 @@ export default function NovoUsuarioPage() {
           </CardContent>
         </Card>
 
-        <div className="flex items-center justify-end gap-3 mt-6">
+        <div className={`${mobileFormActionsRowClass} mt-6`}>
           <Button
             variant="outline"
             onClick={() => router.push('/dashboard/usuarios')}
             disabled={loading}
             type="button"
+            className="w-full sm:w-auto"
           >
             Cancelar
           </Button>
           <Button
-            className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2"
+            className="flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
             disabled={loading}
             type="submit"
           >
@@ -420,6 +423,6 @@ export default function NovoUsuarioPage() {
           </Button>
         </div>
       </form>
-    </div>
+    </DashboardPageShell>
   );
 }

@@ -16,6 +16,9 @@ import {
   type Driver,
 } from '@/lib';
 import { Card, CardContent, CardHeader, LocalizedDateField } from '@/components/ui';
+import { DASHBOARD_FORM_PADDING } from '@/components/dashboard/DashboardPageShell';
+import { cn } from '@/lib/cn';
+import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
 
 /** Campos como no Figma Make (vE): borda zinc-300, ring azul no foco. */
 const inputClass =
@@ -119,48 +122,28 @@ export default function NovaViagemPage() {
   }
 
   return (
-    <div className="settings-font-inter min-h-screen bg-zinc-50">
+    <div className="settings-font-inter flex min-h-screen flex-col bg-zinc-50">
       <form
         onSubmit={handleSubmit}
-        className="mx-auto max-w-3xl space-y-5 p-4 md:p-6"
+        className={cn(DASHBOARD_FORM_PADDING, 'max-w-3xl settings-font-inter')}
         style={{ fontSize: '0.9rem' }}
       >
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
         )}
 
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <Link
-              href="/dashboard/viagens"
-              className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
-              style={{ fontSize: '0.85rem' }}
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Voltar à lista
-            </Link>
-            <h1 className="text-zinc-900" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
-              Nova Viagem
-            </h1>
-          </div>
-          <div className="flex gap-2">
-            <Link
-              href="/dashboard/viagens"
-              className="inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-700 transition-colors hover:bg-zinc-50"
-              style={{ fontSize: '0.875rem' }}
-            >
-              Cancelar
-            </Link>
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-              style={{ fontSize: '0.875rem' }}
-            >
-              <Save className="h-4 w-4" />
-              {saving ? 'Salvando…' : 'Salvar'}
-            </button>
-          </div>
+        <div>
+          <Link
+            href="/dashboard/viagens"
+            className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
+            style={{ fontSize: '0.85rem' }}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Voltar à lista
+          </Link>
+          <h1 className="text-zinc-900" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
+            Nova Viagem
+          </h1>
         </div>
 
         <Card className="border-zinc-200 shadow-sm">
@@ -351,6 +334,25 @@ export default function NovaViagemPage() {
             </div>
           </CardContent>
         </Card>
+
+        <div className={`${mobileFormActionsRowClass} mt-auto border-t border-zinc-200 pt-6 pb-2`}>
+          <Link
+            href="/dashboard/viagens"
+            className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-700 transition-colors hover:bg-zinc-50 sm:w-auto"
+            style={{ fontSize: '0.875rem' }}
+          >
+            Cancelar
+          </Link>
+          <button
+            type="submit"
+            disabled={saving}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
+            style={{ fontSize: '0.875rem' }}
+          >
+            <Save className="h-4 w-4" />
+            {saving ? 'Salvando…' : 'Salvar'}
+          </button>
+        </div>
       </form>
     </div>
   );

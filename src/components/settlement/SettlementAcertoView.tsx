@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { FileDown } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { downloadSettlementPdf } from '@/lib/settlement-pdf';
+import { mobileTableScrollClass } from '@/lib/dashboard-mobile';
+import { cn } from '@/lib/cn';
 import type { SettlementWithTrip } from '@/lib';
 
 const ADVANCE_METHOD_LABEL: Record<string, string> = {
@@ -36,15 +38,15 @@ export function SettlementAcertoView({
   const trip = s.trip;
 
   return (
-    <div className="min-h-screen bg-zinc-50 px-4 py-6 sm:p-6">
-      <div className="mx-auto max-w-3xl">
+    <div className="min-h-screen bg-zinc-50 px-3 py-4 sm:p-4 md:p-6">
+      <div className="mx-auto min-w-0 max-w-3xl">
         <Link href={backHref} className="text-sm text-blue-600 hover:underline">
           ← {backLabel}
         </Link>
 
         <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-zinc-900">Acerto · {trip.code}</h1>
+          <div className="min-w-0">
+            <h1 className="break-words text-2xl font-semibold text-zinc-900">Acerto · {trip.code}</h1>
             <p className="mt-1 text-sm text-zinc-600">
               {trip.origin || '—'} → {trip.destination || '—'}
             </p>
@@ -141,7 +143,7 @@ export function SettlementAcertoView({
                 type="button"
                 onClick={onMarkPaid}
                 disabled={markingPaid}
-                className="mt-3 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50"
+                className="mt-3 w-full rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50 sm:w-auto"
               >
                 {markingPaid ? 'Salvando…' : 'Marcar pagamento ao motorista como efetuado'}
               </button>
@@ -151,8 +153,8 @@ export function SettlementAcertoView({
 
         <Card className="mt-4 p-6">
           <h2 className="text-lg font-semibold text-zinc-900">Despesas</h2>
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-sm">
+          <div className={cn('mt-3', mobileTableScrollClass)}>
+            <table className="w-full min-w-[520px] text-left text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 text-zinc-500">
                   <th className="pb-2 pr-3 font-medium">Data</th>
@@ -187,8 +189,8 @@ export function SettlementAcertoView({
 
         <Card className="mt-4 p-6">
           <h2 className="text-lg font-semibold text-zinc-900">Adiantamentos</h2>
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full text-left text-sm">
+          <div className={cn('mt-3', mobileTableScrollClass)}>
+            <table className="w-full min-w-[520px] text-left text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 text-zinc-500">
                   <th className="pb-2 pr-3 font-medium">Data</th>

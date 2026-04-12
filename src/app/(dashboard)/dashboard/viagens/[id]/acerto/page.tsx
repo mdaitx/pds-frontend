@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/hooks';
 import { getTrip, getSettlement, markSettlementPaid, type SettlementWithTrip, type Trip } from '@/lib';
 import { SettlementAcertoView } from '@/components/settlement/SettlementAcertoView';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 
 export default function AcertoViagemPage() {
   const params = useParams();
@@ -64,46 +65,42 @@ export default function AcertoViagemPage() {
 
   if (error && !trip) {
     return (
-      <div className="min-h-screen bg-zinc-50 px-4 py-6 sm:p-6">
-        <div className="mx-auto max-w-lg">
-          <Link href="/dashboard/viagens" className="text-sm text-blue-600 hover:underline">
-            ← Viagens
-          </Link>
-          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</div>
-        </div>
-      </div>
+      <DashboardPageShell maxWidth="lg">
+        <Link href="/dashboard/viagens" className="text-sm text-blue-600 hover:underline">
+          ← Viagens
+        </Link>
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</div>
+      </DashboardPageShell>
     );
   }
 
   if (!settlement) {
     return (
-      <div className="min-h-screen bg-zinc-50 px-4 py-6 sm:p-6">
-        <div className="mx-auto max-w-lg">
-          <Link href="/dashboard/viagens" className="text-sm text-blue-600 hover:underline">
-            ← Viagens
-          </Link>
-          <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-            <h1 className="text-xl font-semibold text-zinc-900">Acerto não disponível</h1>
-            <p className="mt-2 text-sm text-zinc-600">
-              {trip?.status === 'COMPLETED'
-                ? 'Esta viagem está concluída, mas não há acerto registrado (dado legado).'
-                : 'O acerto só é gerado quando o dono finaliza a viagem.'}
+      <DashboardPageShell maxWidth="lg">
+        <Link href="/dashboard/viagens" className="text-sm text-blue-600 hover:underline">
+          ← Viagens
+        </Link>
+        <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+          <h1 className="text-xl font-semibold text-zinc-900">Acerto não disponível</h1>
+          <p className="mt-2 text-sm text-zinc-600">
+            {trip?.status === 'COMPLETED'
+              ? 'Esta viagem está concluída, mas não há acerto registrado (dado legado).'
+              : 'O acerto só é gerado quando o dono finaliza a viagem.'}
+          </p>
+          {trip && (
+            <p className="mt-2 text-sm text-zinc-500">
+              Viagem <strong>{trip.code}</strong> · {trip.status}
             </p>
-            {trip && (
-              <p className="mt-2 text-sm text-zinc-500">
-                Viagem <strong>{trip.code}</strong> · {trip.status}
-              </p>
-            )}
-            {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-            <Link
-              href={`/dashboard/viagens/${tripId}`}
-              className="mt-6 inline-block text-sm font-medium text-blue-600 hover:underline"
-            >
-              Voltar à viagem
-            </Link>
-          </div>
+          )}
+          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+          <Link
+            href={`/dashboard/viagens/${tripId}`}
+            className="mt-6 inline-block text-sm font-medium text-blue-600 hover:underline"
+          >
+            Voltar à viagem
+          </Link>
         </div>
-      </div>
+      </DashboardPageShell>
     );
   }
 

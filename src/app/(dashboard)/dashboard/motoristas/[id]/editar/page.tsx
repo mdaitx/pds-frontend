@@ -25,6 +25,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { ImageUpload } from '@/components/ui/image-upload';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
+import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
 
 const selectClass =
   'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
@@ -207,21 +209,19 @@ export default function EditarMotoristaPage() {
 
   if (!driver) {
     return (
-      <div className="bg-zinc-50 p-6">
-        <div className="mx-auto max-w-2xl">
-          <Link href="/dashboard/motoristas" className="text-sm text-blue-600 hover:underline">
-            ← Voltar aos motoristas
-          </Link>
-          <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
-            {loadError || 'Motorista não encontrado.'}
-          </div>
+      <DashboardPageShell maxWidth="2xl">
+        <Link href="/dashboard/motoristas" className="text-sm text-blue-600 hover:underline">
+          ← Voltar aos motoristas
+        </Link>
+        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+          {loadError || 'Motorista não encontrado.'}
         </div>
-      </div>
+      </DashboardPageShell>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5 p-4 md:p-6">
+    <DashboardPageShell maxWidth="2xl">
       <div>
         <Link
           href={`/dashboard/motoristas/${id}`}
@@ -381,19 +381,35 @@ export default function EditarMotoristaPage() {
           </CardContent>
         </Card>
 
-        <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
-          <Button type="button" variant="outline" className="border-red-200 text-red-700 hover:bg-red-50" disabled={loading || deleting} onClick={handleDelete}>
+        <div className={`${mobileFormActionsRowClass} mt-6`}>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full border-red-200 text-red-700 hover:bg-red-50 sm:w-auto"
+            disabled={loading || deleting}
+            onClick={handleDelete}
+          >
             {deleting ? 'Excluindo...' : 'Excluir motorista'}
           </Button>
-          <Button type="button" variant="outline" disabled={loading} onClick={() => router.push(`/dashboard/motoristas/${id}`)}>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full sm:w-auto"
+            disabled={loading}
+            onClick={() => router.push(`/dashboard/motoristas/${id}`)}
+          >
             Cancelar
           </Button>
-          <Button type="submit" disabled={loading} className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700">
+          <Button
+            type="submit"
+            disabled={loading}
+            className="flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
+          >
             <Save className="h-4 w-4" />
             {loading ? 'Salvando...' : 'Salvar'}
           </Button>
         </div>
       </form>
-    </div>
+    </DashboardPageShell>
   );
 }

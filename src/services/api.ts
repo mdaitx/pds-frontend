@@ -559,6 +559,7 @@ export type TripVehicle = {
   plate: string;
   brand: string;
   model: string;
+  vehicleType?: VehicleType;
 };
 
 export type TripDriver = {
@@ -896,7 +897,7 @@ export type SettlementWithTrip = Settlement & {
     initialKm: number | null;
     finalKm: number | null;
     status: TripStatus;
-    vehicle: { id: string; plate: string; brand: string; model: string } | null;
+    vehicle: { id: string; plate: string; brand: string; model: string; vehicleType?: VehicleType } | null;
     driver: { id: string; name: string; commissionPct: number | null } | null;
     expenses: Expense[];
     advances: Advance[];

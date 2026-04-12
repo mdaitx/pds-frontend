@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Search, UserCircle, Shield, Truck as TruckIcon, ArrowLeft, Trash2 } from 'lucide-react';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 
 type UserRole = 'OWNER' | 'ADMIN' | 'DRIVER';
 
@@ -240,10 +241,9 @@ export default function UsuariosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-4 md:p-6">
-      <div className="mx-auto max-w-6xl space-y-5">
+    <DashboardPageShell maxWidth="6xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="min-w-0">
             <Link
               href="/dashboard"
               className="flex items-center gap-1 text-zinc-500 hover:text-zinc-700 transition-colors mb-1 text-sm"
@@ -251,7 +251,7 @@ export default function UsuariosPage() {
               <ArrowLeft className="w-3.5 h-3.5" />
               Voltar ao dashboard
             </Link>
-            <h1 className="text-xl font-semibold text-zinc-900 md:text-2xl">Usuários</h1>
+            <h1 className="break-words text-xl font-semibold text-zinc-900 md:text-2xl">Usuários</h1>
             <p className="mt-0.5 text-zinc-500" style={{ fontSize: '0.85rem' }}>
               Contas com login (acesso ao sistema). Motoristas da frota sem acesso ficam em Motoristas.
             </p>
@@ -259,7 +259,7 @@ export default function UsuariosPage() {
           {canInviteNewUsers ? (
             <Link
               href="/dashboard/usuarios/novo"
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
             >
               <Plus className="h-4 w-4" />
               Novo usuário
@@ -273,7 +273,7 @@ export default function UsuariosPage() {
           </div>
         )}
 
-        <div className="relative max-w-sm">
+        <div className="relative w-full min-w-0 max-w-full sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
           <Input
             placeholder="Buscar por nome ou e-mail..."
@@ -283,7 +283,7 @@ export default function UsuariosPage() {
           />
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-3 gap-3 items-stretch">
           <Card className="border-zinc-200 p-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
@@ -314,7 +314,7 @@ export default function UsuariosPage() {
               </div>
             </div>
           </Card>
-          <Card className="border-zinc-200 p-4">
+          <Card className="border-zinc-200 p-4 min-[420px]:col-span-2 sm:col-span-1">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
                 <TruckIcon className="h-5 w-5 text-green-600" />
@@ -349,16 +349,17 @@ export default function UsuariosPage() {
               <p className="mb-4 text-sm text-zinc-600">
                 Tem certeza que deseja excluir <strong>{deleteTarget.name}</strong>?
               </p>
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => setDeleteTarget(null)}
                   disabled={deleting}
                 >
                   Cancelar
                 </Button>
                 <Button
-                  className="bg-red-600 text-white hover:bg-red-700"
+                  className="w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto"
                   onClick={handleDelete}
                   disabled={deleting}
                 >
@@ -368,7 +369,6 @@ export default function UsuariosPage() {
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </DashboardPageShell>
   );
 }

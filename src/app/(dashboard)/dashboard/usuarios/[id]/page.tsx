@@ -32,6 +32,7 @@ import {
 } from '@/lib';
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { Button } from '@/components/ui/button';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 
 const roleConfig: Record<string, { label: string; className: string; description: string }> = {
   OWNER: {
@@ -220,7 +221,7 @@ export default function DetalheUsuarioPage() {
   const isDriverUser = member.role === 'DRIVER';
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-3xl mx-auto">
+    <DashboardPageShell maxWidth="3xl">
       {/* Header */}
       <div>
         <Link
@@ -516,6 +517,6 @@ export default function DetalheUsuarioPage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardPageShell>
   );
 }

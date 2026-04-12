@@ -23,6 +23,8 @@ import {
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
+import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
 
 const PLATE_REGEX = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$|^[A-Z]{3}[0-9]{4}$/;
 const CURRENT_YEAR = new Date().getFullYear();
@@ -217,7 +219,7 @@ export default function NovoVeiculoPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5 p-4 md:p-6">
+    <DashboardPageShell maxWidth="2xl">
       <form onSubmit={handleSubmit}>
         <div>
           <Link
@@ -430,25 +432,25 @@ export default function NovoVeiculoPage() {
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+            <div className={`${mobileFormActionsRowClass} pt-2`}>
+              <Link
+                href="/dashboard/veiculos"
+                className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-300 px-4 py-2 font-medium text-zinc-700 hover:bg-zinc-50 sm:w-auto"
+              >
+                Cancelar
+              </Link>
               <button
                 type="submit"
                 disabled={saving || uploading}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
               >
                 <Save className="h-4 w-4 shrink-0" aria-hidden />
                 {saving ? 'Salvando…' : 'Cadastrar veículo'}
               </button>
-              <Link
-                href="/dashboard/veiculos"
-                className="inline-flex rounded-lg border border-zinc-300 px-4 py-2 font-medium text-zinc-700 hover:bg-zinc-50"
-              >
-                Cancelar
-              </Link>
             </div>
           </CardContent>
         </Card>
       </form>
-    </div>
+    </DashboardPageShell>
   );
 }

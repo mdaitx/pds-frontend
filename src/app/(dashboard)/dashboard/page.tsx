@@ -29,18 +29,20 @@ import {
   getAdvancesByTrip,
 } from '@/lib';
 import type { AuthUser, Trip, Vehicle, Driver, Expense, Advance, Settlement } from '@/lib';
+import { cn } from '@/lib/cn';
+import { mobileTableScrollClass } from '@/lib/dashboard-mobile';
 import { Card, CardHeader, CardContent } from '@/components/ui';
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
   Legend,
-  PieChart,
-  Pie,
   Cell,
 } from 'recharts';
 
@@ -72,6 +74,135 @@ function expenseInCalendarMonth(e: Expense, month: number, year: number): boolea
   return d.getMonth() === month && d.getFullYear() === year;
 }
 
+type ChartPeriod = '1m' | '6m' | '1y';
+
+const CHART_PERIOD_OPTIONS: { id: ChartPeriod; label: string }[] = [
+  { id: '1m', label: 'Mês' },
+  { id: '6m', label: '6 meses' },
+  { id: '1y', label: '1 ano' },
+];
+
+function startOfDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function endOfDay(d: Date): Date {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+}
+
+function expenseDateInRange(e: Expense, start: Date, end: Date): boolean {
+  const d = new Date(e.date);
+  return d >= start && d <= end;
+}
+
+function tripStartDateInRange(t: Trip, start: Date, end: Date): boolean {
+  const d = new Date(t.startDate);
+  return d >= start && d <= end;
+}
+
+/** Semanas dentro do mês civil (rótulos 1ª sem., …) para o período "Mês". */
+function calendarMonthWeekBuckets(year: number, month: number): { start: Date; end: Date; label: string }[] {
+  const first = startOfDay(new Date(year, month, 1));
+  const last = endOfDay(new Date(year, month + 1, 0));
+  const buckets: { start: Date; end: Date; label: string }[] = [];
+  let cur = new Date(first);
+  let w = 1;
+  while (cur <= last) {
+    const segStart = startOfDay(new Date(cur));
+    const endPlus6 = new Date(segStart);
+    endPlus6.setDate(endPlus6.getDate() + 6);
+    let segEnd = endOfDay(endPlus6);
+    if (segEnd > last) segEnd = last;
+    buckets.push({ start: segStart, end: segEnd, label: `${w}ª sem.` });
+    cur.setDate(cur.getDate() + 7);
+    w++;
+  }
+  return buckets;
+}
+
+type LineChartPoint = { mes: string; faturamento: number; despesas: number };
+
+function buildFaturamentoDespesasLineData(period: ChartPeriod, trips: Trip[], expenses: Expense[]): LineChartPoint[] {
+  const now = new Date();
+  const cy = now.getFullYear();
+  const cm = now.getMonth();
+
+  if (period === '1m') {
+    return calendarMonthWeekBuckets(cy, cm).map((b) => {
+      const faturamento = trips
+        .filter((t) => t.status === 'COMPLETED' && tripStartDateInRange(t, b.start, b.end))
+        .reduce((s, t) => s + (t.freightValue ?? 0), 0);
+      const despesas = expenses.filter((e) => expenseDateInRange(e, b.start, b.end)).reduce((s, e) => s + e.amount, 0);
+      return { mes: b.label, faturamento, despesas };
+    });
+  }
+
+  const monthCount = period === '6m' ? 6 : 12;
+  return Array.from({ length: monthCount }, (_, i) => {
+    const d = new Date(cy, cm - (monthCount - 1 - i), 1);
+    const m = d.getMonth();
+    const y = d.getFullYear();
+    const monthStart = startOfDay(new Date(y, m, 1));
+    const monthEnd = endOfDay(new Date(y, m + 1, 0));
+    const faturamento = trips
+      .filter((t) => t.status === 'COMPLETED' && tripStartDateInRange(t, monthStart, monthEnd))
+      .reduce((s, t) => s + (t.freightValue ?? 0), 0);
+    const despesas = expenses.filter((e) => expenseDateInRange(e, monthStart, monthEnd)).reduce((s, e) => s + e.amount, 0);
+    return {
+      mes: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+      faturamento,
+      despesas,
+    };
+  });
+}
+
+function buildCategoryTotalsForPeriod(
+  period: ChartPeriod,
+  expenses: Expense[],
+  refMonth: number,
+  refYear: number
+): Map<string, { name: string; value: number; color: string }> {
+  const now = new Date();
+  let rangeStart: Date;
+  const rangeEnd: Date = endOfDay(now);
+
+  if (period === '1m') {
+    rangeStart = startOfDay(new Date(refYear, refMonth, 1));
+    const endM = endOfDay(new Date(refYear, refMonth + 1, 0));
+    const map = new Map<string, { name: string; value: number; color: string }>();
+    for (const e of expenses) {
+      if (!expenseDateInRange(e, rangeStart, endM)) continue;
+      const name = e.category.name;
+      const color = e.category.color || '#94a3b8';
+      const prev = map.get(name) ?? { name, value: 0, color };
+      prev.value += e.amount;
+      map.set(name, prev);
+    }
+    return map;
+  }
+
+  if (period === '6m') {
+    rangeStart = startOfDay(new Date(now.getFullYear(), now.getMonth() - 5, 1));
+  } else {
+    rangeStart = startOfDay(new Date(now.getFullYear(), now.getMonth() - 11, 1));
+  }
+
+  const map = new Map<string, { name: string; value: number; color: string }>();
+  for (const e of expenses) {
+    if (!expenseDateInRange(e, rangeStart, rangeEnd)) continue;
+    const name = e.category.name;
+    const color = e.category.color || '#94a3b8';
+    const prev = map.get(name) ?? { name, value: 0, color };
+    prev.value += e.amount;
+    map.set(name, prev);
+  }
+  return map;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -86,6 +217,7 @@ export default function DashboardPage() {
   const [ownerExpenses, setOwnerExpenses] = useState<Expense[]>([]);
   const [driverSettlementsByTripId, setDriverSettlementsByTripId] = useState<Record<string, Settlement>>({});
   const [driverRecentAdvances, setDriverRecentAdvances] = useState<(Advance & { tripCode: string })[]>([]);
+  const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('6m');
 
   useEffect(() => {
     if (loading || !appUser || pathname !== '/dashboard') return;
@@ -233,40 +365,21 @@ export default function DashboardPage() {
       (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
     ).slice(0, 10);
 
-    const chartData = Array.from({ length: 6 }, (_, i) => {
-      const d = new Date();
-      d.setMonth(d.getMonth() - (5 - i));
-      const m = d.getMonth();
-      const y = d.getFullYear();
-      const monthTripsData = trips.filter((t) => {
-        const dt = new Date(t.startDate);
-        return dt.getMonth() === m && dt.getFullYear() === y && t.status === 'COMPLETED';
-      });
-      const fat = monthTripsData.reduce((s, t) => s + (t.freightValue ?? 0), 0);
-      const despesasMes = ownerExpenses
-        .filter((e) => expenseInCalendarMonth(e, m, y))
-        .reduce((s, e) => s + e.amount, 0);
-      return {
-        mes: d.toLocaleDateString('pt-BR', { month: 'short' }),
-        faturamento: fat,
-        despesas: despesasMes,
-      };
-    });
-
-    const categoryTotals = new Map<string, { name: string; value: number; color: string }>();
-    for (const e of ownerExpenses.filter((x) => expenseInCalendarMonth(x, currentMonth, currentYear))) {
-      const name = e.category.name;
-      const color = e.category.color || '#94a3b8';
-      const prev = categoryTotals.get(name) ?? { name, value: 0, color };
-      prev.value += e.amount;
-      categoryTotals.set(name, prev);
-    }
+    const chartData = buildFaturamentoDespesasLineData(chartPeriod, trips, ownerExpenses);
+    const categoryTotals = buildCategoryTotalsForPeriod(chartPeriod, ownerExpenses, currentMonth, currentYear);
     const pieData = Array.from(categoryTotals.values()).filter((x) => x.value > 0);
+    /** Mesmo modelo do Figma Make (OwnerDashboard): barras por categoria, topo arredondado. */
+    const barDataDespesasCategoria = pieData.map((entry, i) => ({
+      id: `${entry.name}-${i}`,
+      categoria: entry.name,
+      valor: entry.value,
+      color: entry.color,
+    }));
 
     return (
-      <div className="p-4 md:p-6 space-y-6">
+      <div className="mx-auto min-w-0 max-w-[1400px] space-y-6 px-3 py-4 sm:p-4 md:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div>
+          <div className="min-w-0">
             <h1 className="text-zinc-900 text-xl font-semibold">Dashboard</h1>
             <p className="text-zinc-500 text-sm">Olá, {appUser.email} · {ROLE_LABEL[appUser.role]}</p>
           </div>
@@ -284,18 +397,13 @@ export default function DashboardPage() {
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
         )}
 
-        {/* Metrics */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {/* Metrics — mobile: 1 coluna (mesmo tamanho); sm: 2 cols; 5º card largura total até lg */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 items-stretch">
           {[
             {
               title: 'Viagens no mês',
               value: monthTrips.length.toString(),
-              icon:
-                appUser.role === 'ADMIN' ? (
-                  <Route className="w-5 h-5 text-blue-600" />
-                ) : (
-                  <Truck className="w-5 h-5 text-blue-600" />
-                ),
+              icon: <Route className="w-5 h-5 text-blue-600" />,
               bg: 'bg-blue-50',
             },
             { title: 'Faturamento', value: formatCurrency(totalFaturamento), icon: <DollarSign className="w-5 h-5 text-green-600" />, bg: 'bg-green-50' },
@@ -303,14 +411,20 @@ export default function DashboardPage() {
             { title: 'Lucro líquido', value: formatCurrency(lucroLiquido), icon: <TrendingUp className="w-5 h-5 text-indigo-600" />, bg: 'bg-indigo-50' },
             { title: 'Viagens em andamento', value: emAndamento.toString(), icon: <Activity className="w-5 h-5 text-orange-600" />, bg: 'bg-orange-50' },
           ].map((m, i) => (
-            <Card key={i} className="border-zinc-200">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-zinc-500 truncate text-[0.78rem]">{m.title}</p>
-                    <p className="text-zinc-900 mt-1 truncate text-[1.1rem] font-bold">{m.value}</p>
+            <Card
+              key={i}
+              className={cn(
+                'flex min-h-[104px] flex-col border-zinc-200 shadow-sm',
+                i === 4 && 'sm:col-span-2 lg:col-span-1'
+              )}
+            >
+              <CardContent className="flex flex-1 flex-col justify-center p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[0.78rem] text-zinc-500">{m.title}</p>
+                    <p className="mt-1 truncate text-[1.1rem] font-bold text-zinc-900">{m.value}</p>
                   </div>
-                  <div className={`w-9 h-9 ${m.bg} rounded-lg flex items-center justify-center flex-shrink-0 ml-2`}>
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${m.bg}`}>
                     {m.icon}
                   </div>
                 </div>
@@ -320,17 +434,12 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Nav — Configurações da empresa só para dono (OWNER) */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-stretch">
           {[
             {
               label: 'Viagens',
               href: '/dashboard/viagens',
-              icon:
-                appUser.role === 'ADMIN' ? (
-                  <Route className="w-6 h-6 text-blue-600" />
-                ) : (
-                  <Truck className="w-6 h-6 text-blue-600" />
-                ),
+              icon: <Route className="w-6 h-6 text-blue-600" />,
               count: trips.length,
               bg: 'bg-blue-50',
             },
@@ -354,19 +463,28 @@ export default function DashboardPage() {
                 ]
               : []),
           ].map((item, i) => (
-            <Link key={i} href={item.href}>
-              <Card className="border-zinc-200 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer">
-                <CardContent className="p-4">
-                  <div className={`w-10 h-10 ${item.bg} rounded-lg flex items-center justify-center mb-3`}>
+            <Link
+              key={i}
+              href={item.href}
+              className={cn(
+                'block min-h-0',
+                appUser.role === 'ADMIN' && i === 2 && 'sm:col-span-2 lg:col-span-1'
+              )}
+            >
+              <Card className="flex h-full min-h-[152px] cursor-pointer flex-col border-zinc-200 transition-all hover:border-blue-300 hover:shadow-md">
+                <CardContent className="flex flex-1 flex-col p-4">
+                  <div className={`mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${item.bg}`}>
                     {item.icon}
                   </div>
-                  <p className="text-zinc-800 font-semibold">{item.label}</p>
-                  {item.count !== null && (
-                    <p className="text-zinc-500 text-[0.8rem]">
+                  <p className="font-semibold text-zinc-800">{item.label}</p>
+                  {item.count !== null ? (
+                    <p className="mt-1 flex-1 text-[0.8rem] leading-snug text-zinc-500">
                       {item.label === 'Usuários'
                         ? `${item.count} ${item.count === 1 ? 'usuário com login' : 'usuários com login'}`
                         : `${item.count} cadastrado${item.count !== 1 ? 's' : ''}`}
                     </p>
+                  ) : (
+                    <p className="mt-1 flex-1 text-[0.8rem] text-zinc-500">Empresa e preferências</p>
                   )}
                 </CardContent>
               </Card>
@@ -375,24 +493,70 @@ export default function DashboardPage() {
         </div>
 
         {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-zinc-600">Período dos gráficos</p>
+            <div
+              className="inline-flex rounded-lg border border-zinc-200 bg-zinc-50 p-0.5"
+              role="group"
+              aria-label="Período dos gráficos"
+            >
+              {CHART_PERIOD_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setChartPeriod(opt.id)}
+                  className={cn(
+                    'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
+                    chartPeriod === opt.id
+                      ? 'bg-white text-zinc-900 shadow-sm'
+                      : 'text-zinc-600 hover:text-zinc-900'
+                  )}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="border-zinc-200">
             <CardHeader className="pb-2">
-              <h3 className="text-zinc-800">Faturamento e despesas (6 meses)</h3>
+              <h3 className="text-zinc-800">Faturamento vs Despesas</h3>
               <p className="text-zinc-500 text-xs font-normal mt-1">
-                Faturamento por mês da viagem concluída; despesas pela data do lançamento.
+                {chartPeriod === '1m' && 'Mês atual (semanas no gráfico de linhas)'}
+                {chartPeriod === '6m' && 'Últimos 6 meses'}
+                {chartPeriod === '1y' && 'Últimos 12 meses'}
               </p>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <ResponsiveContainer width="100%" height={chartPeriod === '1y' ? 248 : 220}>
+                <LineChart
+                  data={chartData}
+                  margin={{
+                    top: 5,
+                    right: 12,
+                    left: 4,
+                    bottom: chartPeriod === '1y' ? 28 : 5,
+                  }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                  <XAxis
+                    dataKey="mes"
+                    tick={{ fontSize: chartPeriod === '1y' ? 10 : 12 }}
+                    angle={chartPeriod === '1y' ? -22 : 0}
+                    textAnchor={chartPeriod === '1y' ? 'end' : 'middle'}
+                    height={chartPeriod === '1y' ? 48 : 24}
+                  />
+                  <YAxis
+                    width={108}
+                    tick={{ fontSize: 11 }}
+                    tickFormatter={(v) => formatCurrency(Number(v))}
+                  />
                   <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
                   <Legend />
                   <Line type="monotone" dataKey="faturamento" name="Faturamento" stroke="#2563eb" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="despesas" name="Despesas" stroke="#e11d48" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="despesas" name="Despesas" stroke="#ef4444" strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -400,36 +564,38 @@ export default function DashboardPage() {
 
           <Card className="border-zinc-200">
             <CardHeader className="pb-2">
-              <h3 className="text-zinc-800">Despesas por categoria (mês atual)</h3>
+              <h3 className="text-zinc-800">Despesas por Categoria</h3>
+              <p className="text-zinc-500 text-xs font-normal mt-1">
+                {chartPeriod === '1m' && 'Total no mês atual'}
+                {chartPeriod === '6m' && 'Total nos últimos 6 meses'}
+                {chartPeriod === '1y' && 'Total nos últimos 12 meses'}
+              </p>
             </CardHeader>
             <CardContent>
-              {pieData.length === 0 ? (
-                <p className="text-zinc-500 text-sm py-12 text-center">Nenhuma despesa neste mês.</p>
+              {barDataDespesasCategoria.length === 0 ? (
+                <p className="text-zinc-500 text-sm py-12 text-center">Nenhuma despesa no período selecionado.</p>
               ) : (
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={88}
-                      label={({ name, percent }) =>
-                        `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`
-                      }
-                    >
-                      {pieData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={barDataDespesasCategoria} margin={{ top: 5, right: 12, left: 4, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="categoria" tick={{ fontSize: 12 }} />
+                    <YAxis
+                      width={108}
+                      tick={{ fontSize: 11 }}
+                      tickFormatter={(v) => formatCurrency(Number(v))}
+                    />
                     <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
-                    <Legend />
-                  </PieChart>
+                    <Bar dataKey="valor" name="Valor" radius={[8, 8, 0, 0]}>
+                      {barDataDespesasCategoria.map((row) => (
+                        <Cell key={row.id} fill={row.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
                 </ResponsiveContainer>
               )}
             </CardContent>
           </Card>
+          </div>
         </div>
 
         {/* Recent Trips */}
@@ -443,8 +609,8 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className={cn(mobileTableScrollClass)}>
+              <table className="w-full min-w-[520px] text-sm">
                 <thead>
                   <tr className="border-b border-zinc-100 bg-zinc-50">
                     <th className="text-left px-4 py-3 text-zinc-500 font-semibold text-[0.78rem]">CÓDIGO</th>
@@ -524,9 +690,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <div>
-        <h1 className="text-zinc-900 text-xl font-semibold">Painel Motorista</h1>
+    <div className="mx-auto min-w-0 max-w-[1400px] space-y-6 px-3 py-4 sm:p-4 md:p-6">
+      <div className="min-w-0">
+        <h1 className="break-words text-xl font-semibold text-zinc-900">Painel Motorista</h1>
         <p className="text-zinc-500 text-sm">
           {appUser.email} · {ROLE_LABEL[appUser.role]}
         </p>
@@ -535,7 +701,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-stretch">
         {[
           { title: 'Viagens ativas', value: activeTrips.length.toString(), icon: <Truck className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
           {
@@ -557,14 +723,14 @@ export default function DashboardPage() {
             bg: 'bg-orange-50',
           },
         ].map((m, i) => (
-          <Card key={i} className="border-zinc-200">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-zinc-500 truncate text-[0.78rem]">{m.title}</p>
-                  <p className="text-zinc-900 mt-1 truncate text-[1.05rem] font-bold">{m.value}</p>
+          <Card key={i} className="flex min-h-[104px] flex-col border-zinc-200 shadow-sm">
+            <CardContent className="flex flex-1 flex-col justify-center p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[0.78rem] text-zinc-500">{m.title}</p>
+                  <p className="mt-1 truncate text-[1.05rem] font-bold text-zinc-900">{m.value}</p>
                 </div>
-                <div className={`w-9 h-9 ${m.bg} rounded-lg flex items-center justify-center flex-shrink-0 ml-2`}>
+                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${m.bg}`}>
                   {m.icon}
                 </div>
               </div>
@@ -574,10 +740,13 @@ export default function DashboardPage() {
       </div>
 
       <Card className="border-zinc-200">
-        <CardHeader className="pb-2 flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col gap-2 pb-2 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-zinc-800">Minhas Viagens Ativas</h3>
-          <Link href="/dashboard/viagens">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-[0.8rem]">
+          <Link href="/dashboard/viagens" className="w-full sm:w-auto">
+            <button
+              type="button"
+              className="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-[0.8rem] text-blue-600 transition-colors hover:bg-blue-50 sm:w-auto"
+            >
               Ver todas
             </button>
           </Link>
@@ -591,23 +760,26 @@ export default function DashboardPage() {
               return (
                 <div
                   key={trip.id}
-                  className="flex items-start justify-between p-3 bg-zinc-50 rounded-lg border border-zinc-100"
+                  className="flex flex-col gap-3 rounded-lg border border-zinc-100 bg-zinc-50 p-3 sm:flex-row sm:items-start sm:justify-between"
                 >
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-zinc-800 font-semibold text-sm">{trip.code}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${cfg.className}`}>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-zinc-800">{trip.code}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${cfg.className}`}>
                         {cfg.label}
                       </span>
                     </div>
-                    <p className="text-zinc-600 mt-0.5 text-[0.83rem]">
+                    <p className="mt-0.5 text-[0.83rem] text-zinc-600">
                       {(trip.origin ?? '').split(',')[0]} → {(trip.destination ?? '').split(',')[0]}
                     </p>
-                    <p className="text-zinc-500 text-[0.78rem]">{new Date(trip.startDate).toLocaleDateString('pt-BR')}</p>
+                    <p className="text-[0.78rem] text-zinc-500">{new Date(trip.startDate).toLocaleDateString('pt-BR')}</p>
                   </div>
-                  <div className="flex gap-2 flex-shrink-0 ml-3">
-                    <Link href={`/dashboard/viagens/${trip.id}`}>
-                      <button className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-[0.8rem]">
+                  <div className="flex w-full shrink-0 sm:w-auto sm:ml-3">
+                    <Link href={`/dashboard/viagens/${trip.id}`} className="w-full sm:w-auto">
+                      <button
+                        type="button"
+                        className="flex w-full items-center justify-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-[0.8rem] text-blue-700 transition-colors hover:bg-blue-100 sm:w-auto"
+                      >
                         Ver
                       </button>
                     </Link>

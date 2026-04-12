@@ -30,6 +30,10 @@ import {
   Wrench,
   Ban,
 } from 'lucide-react';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
+import { VehicleTruckOrTrailerIcon } from '@/components/vehicles/VehicleTruckOrTrailerIcon';
+import { cn } from '@/lib/cn';
+import { mobileFilterPillRowClass } from '@/lib/dashboard-mobile';
 
 const statusConfig: Record<
   Vehicle['status'],
@@ -70,7 +74,7 @@ function VehicleCardInner({ vehicle }: { vehicle: Vehicle }) {
             unoptimized
           />
         ) : (
-          <Truck className="h-12 w-12 text-zinc-400" />
+          <VehicleTruckOrTrailerIcon vehicleType={vt} className="h-12 w-12 text-zinc-400" />
         )}
       </div>
       <div className="min-w-0">
@@ -127,7 +131,11 @@ function PairedVehicleCardInner({ tractor, trailer }: { tractor: Vehicle; traile
               unoptimized
             />
           ) : (
-            <Truck className="h-9 w-9 text-zinc-300" aria-hidden />
+            <VehicleTruckOrTrailerIcon
+              vehicleType={trailer.vehicleType ?? 'SEMI_REBOQUE'}
+              className="h-9 w-9 text-zinc-300"
+              aria-hidden
+            />
           )}
         </div>
       </div>
@@ -339,10 +347,9 @@ export default function VeiculosPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50 p-4 md:p-6">
-      <div className="mx-auto max-w-6xl space-y-5">
+    <DashboardPageShell maxWidth="6xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="min-w-0">
             <Link
               href="/dashboard"
               className="mb-1 flex items-center gap-1 text-sm text-zinc-500 transition-colors hover:text-zinc-700"
@@ -350,14 +357,14 @@ export default function VeiculosPage() {
               <ArrowLeft className="h-3.5 w-3.5" />
               Voltar ao dashboard
             </Link>
-            <h1 className="text-xl font-semibold text-zinc-900 md:text-2xl">Veículos</h1>
+            <h1 className="break-words text-xl font-semibold text-zinc-900 md:text-2xl">Veículos</h1>
             <p className="mt-0.5 text-zinc-500" style={{ fontSize: '0.85rem' }}>
               Frota cadastrada (placa, documentação e status). Use a busca e os filtros para refinar a lista.
             </p>
           </div>
           <Link
             href="/dashboard/veiculos/novo"
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
           >
             <Plus className="h-4 w-4" />
             Novo veículo
@@ -368,7 +375,7 @@ export default function VeiculosPage() {
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
         )}
 
-        <div className="relative max-w-sm">
+        <div className="relative w-full min-w-0 max-w-full sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
           <Input
             placeholder="Buscar por placa, marca ou modelo..."
@@ -379,8 +386,9 @@ export default function VeiculosPage() {
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-zinc-500">Situação:</span>
+        <div className={cn(mobileFilterPillRowClass)}>
+          <div className="flex w-max min-w-full flex-wrap items-center gap-2 sm:w-auto sm:min-w-0">
+          <span className="shrink-0 text-xs font-medium text-zinc-500">Situação:</span>
           <button
             type="button"
             onClick={() => setFilterActive(!filterActive)}
@@ -461,9 +469,10 @@ export default function VeiculosPage() {
               Limpar filtros
             </button>
           )}
+          </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-3 items-stretch">
           <StatCard
             label="Total de veículos"
             value={totalCount}
@@ -614,18 +623,26 @@ export default function VeiculosPage() {
                 Tem certeza que deseja excluir o veículo <strong>{deleteTarget.plate}</strong>? Esta ação não pode
                 ser desfeita.
               </p>
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => setDeleteTarget(null)}
+                  disabled={deleting}
+                >
                   Cancelar
                 </Button>
-                <Button className="bg-red-600 text-white hover:bg-red-700" onClick={handleDelete} disabled={deleting}>
+                <Button
+                  className="w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                >
                   {deleting ? 'Excluindo...' : 'Excluir'}
                 </Button>
               </div>
             </div>
           </div>
         )}
-      </div>
-    </div>
+    </DashboardPageShell>
   );
 }

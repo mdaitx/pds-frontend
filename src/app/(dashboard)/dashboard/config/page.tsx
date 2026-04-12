@@ -25,6 +25,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Plus, Pencil, Trash2, Save } from 'lucide-react';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
+import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
 
 /** Paleta de cores do protótipo (modal Nova / Editar categoria). */
 const CATEGORY_COLOR_PRESETS = [
@@ -217,20 +219,18 @@ export default function ConfigPage() {
 
   if (!company) {
     return (
-      <div className="settings-font-inter min-h-screen bg-zinc-50 p-4 md:p-6 tracking-tight">
-        <div className="mx-auto max-w-3xl">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-1 text-[0.85rem] text-zinc-500 transition-colors hover:text-zinc-700"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Voltar ao dashboard
-          </Link>
-          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            {error || 'Empresa não encontrada. Conclua o onboarding primeiro.'}
-          </div>
+      <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="3xl">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-1 text-[0.85rem] text-zinc-500 transition-colors hover:text-zinc-700"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Voltar ao dashboard
+        </Link>
+        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {error || 'Empresa não encontrada. Conclua o onboarding primeiro.'}
         </div>
-      </div>
+      </DashboardPageShell>
     );
   }
 
@@ -238,8 +238,7 @@ export default function ConfigPage() {
   const customList = categories?.custom ?? [];
 
   return (
-    <div className="settings-font-inter min-h-screen bg-zinc-50 p-4 tracking-tight md:p-6">
-      <div className="mx-auto max-w-3xl space-y-6">
+    <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="3xl">
         <div>
           <Link
             href="/dashboard"
@@ -335,7 +334,7 @@ export default function ConfigPage() {
               <button
                 type="button"
                 onClick={openNewCategory}
-                className="flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-blue-700 transition-colors hover:bg-blue-100"
+                className="flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-blue-700 transition-colors hover:bg-blue-100 sm:w-auto"
                 style={{ fontSize: '0.83rem' }}
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -429,7 +428,6 @@ export default function ConfigPage() {
             )}
           </CardContent>
         </Card>
-      </div>
 
       {categoryDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -484,18 +482,28 @@ export default function ConfigPage() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-wrap justify-end gap-2 border-t border-zinc-100 pt-4">
-              <Button type="button" variant="outline" onClick={() => setCategoryDialogOpen(false)}>
+            <div className={`${mobileFormActionsRowClass} border-t border-zinc-100 pt-4`}>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => setCategoryDialogOpen(false)}
+              >
                 Cancelar
               </Button>
-              <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" disabled={categorySaving} onClick={saveCategory}>
+              <Button
+                type="button"
+                className="w-full bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
+                disabled={categorySaving}
+                onClick={saveCategory}
+              >
                 {categorySaving ? 'Salvando...' : 'Salvar'}
               </Button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </DashboardPageShell>
   );
 }
 
@@ -613,11 +621,11 @@ function CompanyForm({
           />
         </div>
       </div>
-      <div className="flex justify-end border-t border-zinc-100 pt-4">
+      <div className={`${mobileFormActionsRowClass} border-t border-zinc-100 pt-4`}>
         <Button
           type="submit"
           disabled={saving}
-          className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
+          className="flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
         >
           <Save className="h-4 w-4" />
           {saving ? 'Salvando...' : 'Salvar dados da empresa'}
@@ -678,7 +686,7 @@ function CalculationPreferencesForm({
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">{serverError}</div>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5 sm:col-span-1" style={{ maxWidth: 220 }}>
+        <div className="w-full space-y-1.5 sm:col-span-1 sm:max-w-[220px]">
           <label htmlFor="cfg-commission" className={labelClass}>
             Comissão padrão (%)
           </label>
@@ -741,11 +749,11 @@ function CalculationPreferencesForm({
           Define o contexto regional da empresa; útil para relatórios e consistência de datas.
         </p>
       </div>
-      <div className="flex justify-end border-t border-zinc-100 pt-4">
+      <div className={`${mobileFormActionsRowClass} border-t border-zinc-100 pt-4`}>
         <Button
           type="submit"
           disabled={saving}
-          className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
+          className="flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
         >
           <Save className="h-4 w-4" />
           {saving ? 'Salvando...' : 'Salvar preferências'}

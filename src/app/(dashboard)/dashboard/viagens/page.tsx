@@ -7,6 +7,10 @@ import { ArrowLeft, Plus, Truck, FileText, Search, ChevronLeft, ChevronRight } f
 import { useAuth, useActivityHint } from '@/hooks';
 import { getTrips, type Trip, type TripStatus } from '@/lib';
 import { Card, CardContent, Input } from '@/components/ui';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
+import { VehicleTruckOrTrailerIcon } from '@/components/vehicles/VehicleTruckOrTrailerIcon';
+import { cn } from '@/lib/cn';
+import { mobileFilterPillRowClass } from '@/lib/dashboard-mobile';
 
 const PAGE_SIZE = 6;
 
@@ -123,10 +127,9 @@ export default function ViagensPage() {
   }
 
   return (
-    <div className="settings-font-inter min-h-screen bg-zinc-50 p-4 tracking-tight md:p-6">
-      <div className="mx-auto max-w-4xl space-y-5">
+    <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="4xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="min-w-0">
             <Link
               href="/dashboard"
               className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
@@ -135,15 +138,15 @@ export default function ViagensPage() {
               <ArrowLeft className="h-3.5 w-3.5" />
               Voltar ao dashboard
             </Link>
-            <h1 className="text-zinc-900" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
+            <h1 className="break-words text-zinc-900" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
               {title}
             </h1>
           </div>
           {isFleetStaff && (
-            <Link href="/dashboard/viagens/novo">
+            <Link href="/dashboard/viagens/novo" className="w-full sm:w-auto">
               <button
                 type="button"
-                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 sm:w-auto"
                 style={{ fontSize: '0.875rem' }}
               >
                 <Plus className="h-4 w-4" />
@@ -170,7 +173,8 @@ export default function ViagensPage() {
           />
         </div>
 
-        <div className="flex gap-1 overflow-x-auto pb-1">
+        <div className={cn(mobileFilterPillRowClass)}>
+          <div className="flex w-max min-w-full flex-nowrap gap-1 sm:w-auto sm:flex-wrap">
           {FILTER_TABS.map((tab) => {
             const active = statusFilter === tab.value;
             const count = countFor(tab.value);
@@ -199,6 +203,7 @@ export default function ViagensPage() {
               </button>
             );
           })}
+          </div>
         </div>
 
         {sorted.length === 0 ? (
@@ -257,7 +262,10 @@ export default function ViagensPage() {
                           className="mt-1 flex items-center gap-2 text-zinc-600"
                           style={{ fontSize: '0.85rem' }}
                         >
-                          <Truck className="h-3.5 w-3.5 flex-shrink-0 text-zinc-400" />
+                          <VehicleTruckOrTrailerIcon
+                            vehicleType={t.vehicle?.vehicleType}
+                            className="h-3.5 w-3.5 flex-shrink-0 text-zinc-400"
+                          />
                           <span className="truncate">
                             {t.vehicle
                               ? `${t.vehicle.plate} · ${t.vehicle.brand} ${t.vehicle.model}`
@@ -284,15 +292,15 @@ export default function ViagensPage() {
                         </div>
                       </div>
                       <div
-                        className="flex flex-shrink-0 items-center gap-2"
+                        className="flex w-full flex-shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center"
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
                       >
                         {t.status === 'COMPLETED' && (
-                          <Link href={`/dashboard/viagens/${t.id}/acerto`}>
+                          <Link href={`/dashboard/viagens/${t.id}/acerto`} className="w-full sm:w-auto">
                             <button
                               type="button"
-                              className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-white transition-colors hover:bg-blue-700"
+                              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-white transition-colors hover:bg-blue-700 sm:w-auto"
                               style={{ fontSize: '0.82rem' }}
                             >
                               <FileText className="h-3.5 w-3.5" />
@@ -301,10 +309,10 @@ export default function ViagensPage() {
                           </Link>
                         )}
                         {isFleetStaff && (
-                          <Link href={`/dashboard/viagens/${t.id}/editar`}>
+                          <Link href={`/dashboard/viagens/${t.id}/editar`} className="w-full sm:w-auto">
                             <button
                               type="button"
-                              className="flex items-center gap-1.5 rounded-lg bg-zinc-100 px-3 py-1.5 text-zinc-700 transition-colors hover:bg-zinc-200"
+                              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-zinc-100 px-3 py-1.5 text-zinc-700 transition-colors hover:bg-zinc-200 sm:w-auto"
                               style={{ fontSize: '0.82rem' }}
                             >
                               Editar
@@ -319,7 +327,7 @@ export default function ViagensPage() {
               );
             })}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between gap-3 border-t border-zinc-200 pt-4">
+              <div className="flex flex-col gap-3 border-t border-zinc-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <button
                   type="button"
                   disabled={safePage <= 1}
@@ -352,7 +360,6 @@ export default function ViagensPage() {
             )}
           </div>
         )}
-      </div>
-    </div>
+    </DashboardPageShell>
   );
 }

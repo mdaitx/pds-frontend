@@ -9,6 +9,7 @@ import { getTrip, getSettlement, type Trip, type SettlementWithTrip } from '@/li
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { DriverTripExpenses } from '@/components/viagens/DriverTripExpenses';
 import { TripAdvancesPanel } from '@/components/viagens/TripAdvancesPanel';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 
 const STATUS_LABEL: Record<Trip['status'], string> = {
   PENDING: 'Aguardando',
@@ -74,26 +75,23 @@ export function DriverTripSummary({ tripId }: Props) {
 
   if (error || !trip) {
     return (
-      <div className="settings-font-inter min-h-screen bg-zinc-50 p-4 tracking-tight md:p-6">
-        <div className="mx-auto max-w-3xl">
-          <Link
-            href="/dashboard/viagens"
-            className="flex items-center gap-1 text-[0.85rem] text-zinc-500 transition-colors hover:text-zinc-700"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Minhas viagens
-          </Link>
-          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-            {error || 'Viagem não encontrada.'}
-          </div>
+      <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="3xl">
+        <Link
+          href="/dashboard/viagens"
+          className="flex items-center gap-1 text-[0.85rem] text-zinc-500 transition-colors hover:text-zinc-700"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Minhas viagens
+        </Link>
+        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {error || 'Viagem não encontrada.'}
         </div>
-      </div>
+      </DashboardPageShell>
     );
   }
 
   return (
-    <div className="settings-font-inter min-h-screen bg-zinc-50 p-4 tracking-tight md:p-6">
-      <div className="mx-auto max-w-3xl space-y-6">
+    <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="3xl">
         <div>
           <Link
             href="/dashboard/viagens"
@@ -103,7 +101,7 @@ export function DriverTripSummary({ tripId }: Props) {
             Minhas viagens
           </Link>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-zinc-900 antialiased" style={{ fontSize: '1.35rem', fontWeight: 600 }}>
+            <h1 className="break-words text-zinc-900 antialiased" style={{ fontSize: '1.35rem', fontWeight: 600 }}>
               Viagem {trip.code}
             </h1>
             <span className={`rounded-full px-2.5 py-0.5 text-[0.72rem] font-semibold ${STATUS_PILL[trip.status]}`}>
@@ -169,7 +167,6 @@ export function DriverTripSummary({ tripId }: Props) {
             O acerto detalhado fica disponível após a viagem ser finalizada pelo dono.
           </p>
         )}
-      </div>
-    </div>
+    </DashboardPageShell>
   );
 }
