@@ -2,7 +2,7 @@
 
 /**
  * Página de Configurações (dono): alinhada ao protótipo Figma Make publicado em figma.site.
- * - Apenas OWNER; empresa + categorias de despesas (API real).
+ * - Apenas dono (OWNER): empresa + categorias de despesas (API real). ADMIN não acessa.
  */
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -17,6 +17,7 @@ import {
   updateExpenseCategory,
   deleteExpenseCategory,
   type Company,
+  type CommissionCalculationMethod,
   type ExpenseCategoryItem,
   type ExpenseCategoriesResponse,
 } from '@/lib';
@@ -24,6 +25,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Plus, Pencil, Trash2, Save } from 'lucide-react';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
+import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
 
 /** Paleta de cores do protótipo (modal Nova / Editar categoria). */
 const CATEGORY_COLOR_PRESETS = [
@@ -39,6 +42,58 @@ const CATEGORY_COLOR_PRESETS = [
 ] as const;
 
 const labelClass = 'block text-sm font-medium text-zinc-700';
+
+const selectClass =
+  'block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
+
+/** Fusos comuns + lista completa do runtime quando `Intl.supportedValuesOf` existir. */
+function listTimezoneOptions(existing: string | null | undefined): string[] {
+  let zones: string[] = [];
+  try {
+    const fn = (Intl as unknown as { supportedValuesOf?: (key: string) => string[] }).supportedValuesOf;
+    if (typeof fn === 'function') zones = [...fn.call(Intl, 'timeZone')];
+  } catch {
+    /* ignore */
+  }
+  if (zones.length === 0) {
+    zones = [
+      'America/Sao_Paulo',
+      'America/Manaus',
+      'America/Belem',
+      'America/Fortaleza',
+      'America/Recife',
+      'America/Bahia',
+      'America/Campo_Grande',
+      'America/Cuiaba',
+      'America/Noronha',
+      'America/Rio_Branco',
+      'UTC',
+      'America/New_York',
+      'America/Los_Angeles',
+      'Europe/Lisbon',
+      'Europe/London',
+    ];
+  }
+  if (existing && !zones.includes(existing)) zones = [existing, ...zones];
+  return [...new Set(zones)].sort((a, b) => a.localeCompare(b));
+}
+
+const COMMISSION_METHOD_OPTIONS: {
+  value: CommissionCalculationMethod;
+  label: string;
+  hint: string;
+}[] = [
+  {
+    value: 'GROSS_PROFIT',
+    label: 'Lucro bruto (frete − despesas)',
+    hint: 'Comissão incide sobre o que sobra após abater as despesas da viagem.',
+  },
+  {
+    value: 'FREIGHT_VALUE',
+    label: 'Valor do frete',
+    hint: 'Comissão calculada sobre o valor total do frete, antes das despesas.',
+  },
+];
 
 function CategoryColorDot({ color, size = 'sm' }: { color: string; size?: 'sm' | 'md' }) {
   const cls = size === 'sm' ? 'h-3 w-3' : 'h-4 w-4';
@@ -58,7 +113,9 @@ export default function ConfigPage() {
   const [categories, setCategories] = useState<ExpenseCategoriesResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [prefsError, setPrefsError] = useState<string | null>(null);
   const [companySaving, setCompanySaving] = useState(false);
+  const [prefsSaving, setPrefsSaving] = useState(false);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<ExpenseCategoryItem | null>(null);
   const [categoryForm, setCategoryForm] = useState({ name: '', color: '#3b82f6' });
@@ -162,20 +219,18 @@ export default function ConfigPage() {
 
   if (!company) {
     return (
-      <div className="settings-font-inter min-h-screen bg-zinc-50 p-4 md:p-6 tracking-tight">
-        <div className="mx-auto max-w-3xl">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-1 text-[0.85rem] text-zinc-500 transition-colors hover:text-zinc-700"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Voltar ao dashboard
-          </Link>
-          <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            {error || 'Empresa não encontrada. Conclua o onboarding primeiro.'}
-          </div>
+      <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="3xl">
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-1 text-[0.85rem] text-zinc-500 transition-colors hover:text-zinc-700"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Voltar ao dashboard
+        </Link>
+        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {error || 'Empresa não encontrada. Conclua o onboarding primeiro.'}
         </div>
-      </div>
+      </DashboardPageShell>
     );
   }
 
@@ -183,8 +238,7 @@ export default function ConfigPage() {
   const customList = categories?.custom ?? [];
 
   return (
-    <div className="settings-font-inter min-h-screen bg-zinc-50 p-4 tracking-tight md:p-6">
-      <div className="mx-auto max-w-3xl space-y-6">
+    <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="3xl">
         <div>
           <Link
             href="/dashboard"
@@ -234,6 +288,40 @@ export default function ConfigPage() {
 
         <Card className="border-zinc-200 shadow-sm">
           <CardHeader className="pb-2 pt-6">
+            <h3 className="text-zinc-700" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+              Preferências de cálculo e fuso horário
+            </h3>
+            <p className="mt-1 text-zinc-500" style={{ fontSize: '0.8rem' }}>
+              Comissão padrão para motoristas sem percentual próprio; método aplicado ao finalizar viagens; fuso para datas e
+              exibição.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <CalculationPreferencesForm
+              company={company}
+              saving={prefsSaving}
+              serverError={prefsError}
+              onSave={(payload) => {
+                setPrefsSaving(true);
+                setPrefsError(null);
+                updateMyCompany(payload)
+                  .then((updated) => {
+                    setCompany(updated);
+                    toast.success('Preferências salvas!');
+                  })
+                  .catch((e) => {
+                    const msg = e instanceof Error ? e.message : 'Erro ao salvar';
+                    setPrefsError(msg);
+                    toast.error(msg);
+                  })
+                  .finally(() => setPrefsSaving(false));
+              }}
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="border-zinc-200 shadow-sm">
+          <CardHeader className="pb-2 pt-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <h3 className="text-zinc-700" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
@@ -246,7 +334,7 @@ export default function ConfigPage() {
               <button
                 type="button"
                 onClick={openNewCategory}
-                className="flex shrink-0 items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-blue-700 transition-colors hover:bg-blue-100"
+                className="flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-blue-700 transition-colors hover:bg-blue-100 sm:w-auto"
                 style={{ fontSize: '0.83rem' }}
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -340,7 +428,6 @@ export default function ConfigPage() {
             )}
           </CardContent>
         </Card>
-      </div>
 
       {categoryDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -395,18 +482,28 @@ export default function ConfigPage() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-wrap justify-end gap-2 border-t border-zinc-100 pt-4">
-              <Button type="button" variant="outline" onClick={() => setCategoryDialogOpen(false)}>
+            <div className={`${mobileFormActionsRowClass} border-t border-zinc-100 pt-4`}>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => setCategoryDialogOpen(false)}
+              >
                 Cancelar
               </Button>
-              <Button type="button" className="bg-blue-600 text-white hover:bg-blue-700" disabled={categorySaving} onClick={saveCategory}>
+              <Button
+                type="button"
+                className="w-full bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
+                disabled={categorySaving}
+                onClick={saveCategory}
+              >
                 {categorySaving ? 'Salvando...' : 'Salvar'}
               </Button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </DashboardPageShell>
   );
 }
 
@@ -423,7 +520,6 @@ function CompanyForm({
     address?: string;
     phone?: string;
     email?: string;
-    defaultCommission?: number;
   }) => void;
   saving: boolean;
   serverError: string | null;
@@ -433,9 +529,14 @@ function CompanyForm({
   const [address, setAddress] = useState(company.address ?? '');
   const [phone, setPhone] = useState(company.phone ?? '');
   const [email, setEmail] = useState(company.email ?? '');
-  const [defaultCommission, setDefaultCommission] = useState(
-    company.defaultCommission != null ? String(company.defaultCommission) : ''
-  );
+
+  useEffect(() => {
+    setName(company.name);
+    setDocument(company.document ?? '');
+    setAddress(company.address ?? '');
+    setPhone(company.phone ?? '');
+    setEmail(company.email ?? '');
+  }, [company.id, company.updatedAt]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -445,7 +546,6 @@ function CompanyForm({
       address: address.trim() || undefined,
       phone: phone.trim() || undefined,
       email: email.trim() || undefined,
-      defaultCommission: defaultCommission ? Number(defaultCommission) : undefined,
     });
   };
 
@@ -521,30 +621,142 @@ function CompanyForm({
           />
         </div>
       </div>
-      <div className="space-y-1.5" style={{ maxWidth: 200 }}>
-        <label htmlFor="cfg-commission" className={labelClass}>
-          Comissão padrão (%)
-        </label>
-        <Input
-          id="cfg-commission"
-          type="number"
-          min={0}
-          max={100}
-          step={0.5}
-          placeholder="10"
-          value={defaultCommission}
-          onChange={(e) => setDefaultCommission(e.target.value)}
-          className="bg-white"
-        />
-      </div>
-      <div className="flex justify-end border-t border-zinc-100 pt-4">
+      <div className={`${mobileFormActionsRowClass} border-t border-zinc-100 pt-4`}>
         <Button
           type="submit"
           disabled={saving}
-          className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
+          className="flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
         >
           <Save className="h-4 w-4" />
-          {saving ? 'Salvando...' : 'Salvar empresa'}
+          {saving ? 'Salvando...' : 'Salvar dados da empresa'}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function CalculationPreferencesForm({
+  company,
+  onSave,
+  saving,
+  serverError,
+}: {
+  company: Company;
+  onSave: (p: {
+    defaultCommission?: number;
+    commissionMethod?: CommissionCalculationMethod;
+    timezone?: string;
+  }) => void;
+  saving: boolean;
+  serverError: string | null;
+}) {
+  const [defaultCommission, setDefaultCommission] = useState(
+    company.defaultCommission != null ? String(company.defaultCommission) : ''
+  );
+  const [commissionMethod, setCommissionMethod] = useState<CommissionCalculationMethod>(
+    company.commissionMethod ?? 'GROSS_PROFIT'
+  );
+  const [timezone, setTimezone] = useState(company.timezone ?? '');
+
+  useEffect(() => {
+    setDefaultCommission(company.defaultCommission != null ? String(company.defaultCommission) : '');
+    setCommissionMethod(company.commissionMethod ?? 'GROSS_PROFIT');
+    setTimezone(company.timezone ?? '');
+  }, [company.id, company.updatedAt, company.commissionMethod, company.timezone, company.defaultCommission]);
+
+  const tzOptions = listTimezoneOptions(company.timezone ?? undefined);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const pct = defaultCommission.trim() === '' ? undefined : Number(defaultCommission);
+    if (pct !== undefined && (Number.isNaN(pct) || pct < 0 || pct > 100)) {
+      toast.error('Comissão padrão deve ser um número entre 0 e 100.');
+      return;
+    }
+    onSave({
+      defaultCommission: pct,
+      commissionMethod,
+      timezone: timezone.trim() === '' ? '' : timezone.trim(),
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {serverError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">{serverError}</div>
+      )}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="w-full space-y-1.5 sm:col-span-1 sm:max-w-[220px]">
+          <label htmlFor="cfg-commission" className={labelClass}>
+            Comissão padrão (%)
+          </label>
+          <Input
+            id="cfg-commission"
+            type="number"
+            min={0}
+            max={100}
+            step={0.5}
+            placeholder="ex.: 10"
+            value={defaultCommission}
+            onChange={(e) => setDefaultCommission(e.target.value)}
+            className="bg-white"
+          />
+          <p className="text-xs text-zinc-500">Usada quando o motorista não tem % definido no cadastro.</p>
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <span className={labelClass}>Método da comissão ao finalizar viagem</span>
+          <div className="space-y-2">
+            {COMMISSION_METHOD_OPTIONS.map((opt) => (
+              <label
+                key={opt.value}
+                className="flex cursor-pointer gap-3 rounded-lg border border-zinc-200 bg-white p-3 has-[:checked]:border-blue-400 has-[:checked]:ring-1 has-[:checked]:ring-blue-400"
+              >
+                <input
+                  type="radio"
+                  name="commissionMethod"
+                  value={opt.value}
+                  checked={commissionMethod === opt.value}
+                  onChange={() => setCommissionMethod(opt.value)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-zinc-800">{opt.label}</span>
+                  <span className="block text-xs text-zinc-500">{opt.hint}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor="cfg-timezone" className={labelClass}>
+          Fuso horário (IANA)
+        </label>
+        <select
+          id="cfg-timezone"
+          className={selectClass}
+          value={timezone}
+          onChange={(e) => setTimezone(e.target.value)}
+        >
+          <option value="">Padrão do sistema / não definido</option>
+          {tzOptions.map((z) => (
+            <option key={z} value={z}>
+              {z}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-zinc-500">
+          Define o contexto regional da empresa; útil para relatórios e consistência de datas.
+        </p>
+      </div>
+      <div className={`${mobileFormActionsRowClass} border-t border-zinc-100 pt-4`}>
+        <Button
+          type="submit"
+          disabled={saving}
+          className="flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
+        >
+          <Save className="h-4 w-4" />
+          {saving ? 'Salvando...' : 'Salvar preferências'}
         </Button>
       </div>
     </form>

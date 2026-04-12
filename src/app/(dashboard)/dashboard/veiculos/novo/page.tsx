@@ -3,7 +3,7 @@
 /**
  * Novo veículo — mesmo layout da página de edição (Card, grids, validações, foto, ações à direita).
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -12,13 +12,19 @@ import { ArrowLeft, Save } from 'lucide-react';
 import { useAuth } from '@/hooks';
 import {
   createVehicle,
+  getVehicles,
   uploadVehiclePhoto,
   type CreateVehiclePayload,
+  type Vehicle,
   type VehicleStatus,
+  type VehicleType,
+  VEHICLE_TYPE_LABELS,
 } from '@/lib';
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
+import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
 
 const PLATE_REGEX = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$|^[A-Z]{3}[0-9]{4}$/;
 const CURRENT_YEAR = new Date().getFullYear();
@@ -41,6 +47,7 @@ type FormState = {
   brand: string;
   year: string;
   nickname: string;
+  vehicleType: VehicleType;
   status: VehicleStatus;
 };
 
@@ -50,6 +57,7 @@ const emptyForm = (): FormState => ({
   brand: '',
   year: '',
   nickname: '',
+  vehicleType: 'CAMINHAO',
   status: 'ACTIVE',
 });
 
@@ -64,22 +72,46 @@ export default function NovoVeiculoPage() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [allVehicles, setAllVehicles] = useState<Vehicle[]>([]);
+  const [linkedVehicleId, setLinkedVehicleId] = useState('');
 
   useEffect(() => {
     if (!authLoading && !session) router.replace('/login');
   }, [authLoading, session, router]);
 
   useEffect(() => {
-    if (!authLoading && appUser && appUser.role !== 'OWNER') {
-      router.replace('/dashboard');
+    if (!authLoading && appUser) {
+      const fleetStaff = appUser.role === 'OWNER' || appUser.role === 'ADMIN';
+      if (!fleetStaff) router.replace('/dashboard');
     }
   }, [authLoading, appUser, router]);
+
+  useEffect(() => {
+    const fleetStaff = appUser?.role === 'OWNER' || appUser?.role === 'ADMIN';
+    if (!session || !appUser || !fleetStaff) return;
+    getVehicles().then(setAllVehicles).catch(() => {});
+  }, [session, appUser]);
+
+  const semiOptions = useMemo(
+    () => allVehicles.filter((v) => v.vehicleType === 'SEMI_REBOQUE'),
+    [allVehicles],
+  );
+  const cavaloOptions = useMemo(
+    () => allVehicles.filter((v) => v.vehicleType === 'CAVALO_MECANICO'),
+    [allVehicles],
+  );
 
   const setField = (field: keyof FormState, value: string) => {
     setForm((f) => ({
       ...f,
-      [field]: field === 'status' ? (value as VehicleStatus) : value,
+      [field]:
+        field === 'status'
+          ? (value as VehicleStatus)
+          : field === 'vehicleType'
+            ? (value as VehicleType)
+            : value,
     }));
+    if (field === 'vehicleType') setLinkedVehicleId('');
     setErrors((e) => ({ ...e, [field]: '' }));
     setGlobalError(null);
   };
@@ -146,10 +178,17 @@ export default function NovoVeiculoPage() {
         model: form.model.trim(),
         brand: form.brand.trim(),
         year: Number(form.year),
+        vehicleType: form.vehicleType,
         status: form.status,
       };
       if (form.nickname.trim()) payload.nickname = form.nickname.trim();
       if (photoUrl) payload.photoUrl = photoUrl;
+      if (form.vehicleType === 'CAVALO_MECANICO' && linkedVehicleId.trim()) {
+        payload.trailerVehicleId = linkedVehicleId.trim();
+      }
+      if (form.vehicleType === 'SEMI_REBOQUE' && linkedVehicleId.trim()) {
+        payload.tractorVehicleId = linkedVehicleId.trim();
+      }
       await createVehicle(payload);
       toast.success('Veículo cadastrado com sucesso!');
       router.push('/dashboard/veiculos');
@@ -170,7 +209,8 @@ export default function NovoVeiculoPage() {
     );
   }
 
-  if (!appUser || appUser.role !== 'OWNER') {
+  const fleetStaff = appUser?.role === 'OWNER' || appUser?.role === 'ADMIN';
+  if (!appUser || !fleetStaff) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <p className="text-zinc-500">Carregando…</p>
@@ -179,7 +219,7 @@ export default function NovoVeiculoPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5 p-4 md:p-6">
+    <DashboardPageShell maxWidth="2xl">
       <form onSubmit={handleSubmit}>
         <div>
           <Link
@@ -239,6 +279,66 @@ export default function NovoVeiculoPage() {
                 </select>
               </div>
             </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="new-vehicle-type">Tipo de veículo *</Label>
+              <select
+                id="new-vehicle-type"
+                value={form.vehicleType}
+                onChange={(e) => setField('vehicleType', e.target.value)}
+                className="flex h-9 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              >
+                {(Object.keys(VEHICLE_TYPE_LABELS) as VehicleType[]).map((key) => (
+                  <option key={key} value={key}>
+                    {VEHICLE_TYPE_LABELS[key]}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {form.vehicleType === 'CAVALO_MECANICO' && (
+              <div className="space-y-1.5">
+                <Label htmlFor="new-trailer">Semi-reboque acoplado</Label>
+                <select
+                  id="new-trailer"
+                  value={linkedVehicleId}
+                  onChange={(e) => setLinkedVehicleId(e.target.value)}
+                  className="flex h-9 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Nenhum</option>
+                  {semiOptions.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.plate} · {v.brand} {v.model}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-zinc-500" style={{ fontSize: '0.78rem' }}>
+                  Cadastre o semi-reboque antes se ainda não estiver na lista.
+                </p>
+              </div>
+            )}
+
+            {form.vehicleType === 'SEMI_REBOQUE' && (
+              <div className="space-y-1.5">
+                <Label htmlFor="new-tractor">Cavalo mecânico</Label>
+                <select
+                  id="new-tractor"
+                  value={linkedVehicleId}
+                  onChange={(e) => setLinkedVehicleId(e.target.value)}
+                  className="flex h-9 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="">Nenhum</option>
+                  {cavaloOptions.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.plate} · {v.brand} {v.model}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-zinc-500" style={{ fontSize: '0.78rem' }}>
+                  Ou vincule depois ao editar o cavalo ou este semi-reboque.
+                </p>
+              </div>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -332,25 +432,25 @@ export default function NovoVeiculoPage() {
               </button>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-3 pt-2">
+            <div className={`${mobileFormActionsRowClass} pt-2`}>
+              <Link
+                href="/dashboard/veiculos"
+                className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-300 px-4 py-2 font-medium text-zinc-700 hover:bg-zinc-50 sm:w-auto"
+              >
+                Cancelar
+              </Link>
               <button
                 type="submit"
                 disabled={saving || uploading}
-                className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
               >
                 <Save className="h-4 w-4 shrink-0" aria-hidden />
                 {saving ? 'Salvando…' : 'Cadastrar veículo'}
               </button>
-              <Link
-                href="/dashboard/veiculos"
-                className="inline-flex rounded-lg border border-zinc-300 px-4 py-2 font-medium text-zinc-700 hover:bg-zinc-50"
-              >
-                Cancelar
-              </Link>
             </div>
           </CardContent>
         </Card>
       </form>
-    </div>
+    </DashboardPageShell>
   );
 }

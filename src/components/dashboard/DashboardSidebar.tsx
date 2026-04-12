@@ -32,6 +32,7 @@ interface NavItem {
   label: string;
   href: string;
   icon: React.ReactNode;
+  /** Só dono (OWNER): ex. configurações da empresa */
   ownerOnly?: boolean;
   /** Destinos relacionados (ex.: cadastro ainda em /motoristas/novo) */
   activePathPrefixes?: string[];
@@ -150,28 +151,54 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
 
   const toggleSidebar = () => setSidebarCollapsed((v) => !v);
 
-  const SidebarContent = ({ collapsed = false }: { collapsed?: boolean }) => (
-    <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div
-        className={cn(
-          'flex items-center gap-3 px-6 py-5 border-b border-zinc-200 transition-all duration-300',
-          collapsed && 'px-3 justify-center'
-        )}
-      >
-        <div className="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
-          <TruckIcon className="w-5 h-5 text-white" />
+  const SidebarContent = ({ collapsed = false, mobile = false }: { collapsed?: boolean; mobile?: boolean }) => (
+    <div className="flex h-full min-h-0 flex-col">
+      {mobile ? (
+        <div className="flex w-full shrink-0 items-center border-b border-zinc-200 px-3 py-3 sm:px-4">
+          <Link
+            href="/dashboard"
+            onClick={() => setSidebarOpen(false)}
+            className="flex min-w-0 flex-1 items-center gap-2 rounded-lg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-500"
+            title="Truck Finanças — Início"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600">
+              <TruckIcon className="h-5 w-5 text-white" aria-hidden />
+            </div>
+            <span className="truncate text-base font-bold text-blue-600">Truck Finanças</span>
+          </Link>
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            className="ml-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-700 transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+            aria-label="Fechar menu"
+          >
+            <X className="h-5 w-5" aria-hidden />
+          </button>
         </div>
-        {!collapsed && (
-          <div className="overflow-hidden">
-            <p className="text-blue-600 whitespace-nowrap font-bold text-base leading-tight">Truck Finanças</p>
-            <p className="text-zinc-500 whitespace-nowrap text-[0.7rem]">Gestão de frotas</p>
+      ) : (
+        <Link
+          href="/dashboard"
+          onClick={() => setSidebarOpen(false)}
+          className={cn(
+            'flex items-center gap-3 border-b border-zinc-200 px-6 py-5 transition-all duration-300 outline-none hover:bg-zinc-50/90 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset',
+            collapsed && 'justify-center px-3'
+          )}
+          title="Truck Finanças — Início"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600">
+            <TruckIcon className="h-5 w-5 text-white" aria-hidden />
           </div>
-        )}
-      </div>
+          {!collapsed && (
+            <div className="min-w-0 overflow-hidden text-left">
+              <p className="text-base font-bold leading-tight whitespace-nowrap text-blue-600">Truck Finanças</p>
+              <p className="whitespace-nowrap text-[0.7rem] text-zinc-500">Gestão de frotas</p>
+            </div>
+          )}
+        </Link>
+      )}
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-200 [&::-webkit-scrollbar-thumb]:rounded-full">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-200">
         {navItems.map((item) => {
           const extraActive =
             item.activePathPrefixes?.some((p) => pathname.startsWith(p)) ?? false;
@@ -281,32 +308,42 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} />
-          <aside className="absolute left-0 top-0 bottom-0 w-72 bg-white shadow-xl">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200">
-              <span className="text-blue-600 font-bold">Truck Finanças</span>
-              <button onClick={() => setSidebarOpen(false)} className="p-1 rounded-lg hover:bg-zinc-100">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <SidebarContent />
+        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Menu de navegação">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} aria-hidden />
+          <aside
+            id="dashboard-mobile-sidebar"
+            className="absolute left-0 top-0 bottom-0 flex w-72 max-w-[85vw] flex-col bg-white shadow-xl"
+          >
+            <SidebarContent mobile />
           </aside>
         </div>
       )}
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="md:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-zinc-200">
-          <button onClick={() => setSidebarOpen(true)} className="p-1.5 rounded-lg hover:bg-zinc-100">
-            <Menu className="w-5 h-5" />
+        <header className="md:hidden sticky top-0 z-40 flex min-h-[52px] shrink-0 items-center gap-3 border-b border-zinc-200 bg-white px-3 py-2.5 shadow-sm sm:px-4">
+          <button
+            type="button"
+            onClick={() => setSidebarOpen(true)}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-800 shadow-sm transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            aria-label="Abrir menu de navegação"
+            aria-expanded={sidebarOpen}
+          >
+            <Menu className="h-6 w-6" strokeWidth={2.25} aria-hidden />
           </button>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-blue-600 rounded-md flex items-center justify-center">
-              <TruckIcon className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-blue-600 font-bold">Truck Finanças</span>
-          </div>
+          {!sidebarOpen && (
+            <Link
+              href="/dashboard"
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-lg outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-500"
+              title="Truck Finanças — Início"
+            >
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-600">
+                <TruckIcon className="h-4 w-4 text-white" aria-hidden />
+              </div>
+              <span className="truncate text-base font-bold text-blue-600">Truck Finanças</span>
+            </Link>
+          )}
+          {sidebarOpen && <span className="min-w-0 flex-1" aria-hidden />}
         </header>
 
         <main className="flex-1 overflow-y-auto safe-main">{children}</main>

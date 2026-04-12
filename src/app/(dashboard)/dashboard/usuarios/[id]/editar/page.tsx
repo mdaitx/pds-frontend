@@ -18,6 +18,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
+import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 const selectClass =
@@ -135,7 +137,7 @@ export default function EditarUsuarioPage() {
   if (!member) return null;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5 bg-zinc-50 p-4 md:p-6">
+    <DashboardPageShell maxWidth="2xl">
       <div>
         <Link
           href={`/dashboard/usuarios/${id}`}
@@ -219,8 +221,12 @@ export default function EditarUsuarioPage() {
           </CardContent>
         </Card>
 
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          <Button type="submit" disabled={saving} className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700">
+        <div className={mobileFormActionsRowClass}>
+          <Button
+            type="submit"
+            disabled={saving}
+            className="flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
+          >
             <Save className="h-4 w-4" />
             {saving ? 'Salvando…' : 'Salvar'}
           </Button>
@@ -230,7 +236,7 @@ export default function EditarUsuarioPage() {
               variant="outline"
               disabled={saving}
               onClick={handleDelete}
-              className="text-red-600 hover:bg-red-50 border-red-200"
+              className="w-full border-red-200 text-red-600 hover:bg-red-50 sm:w-auto"
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Excluir usuário
@@ -238,6 +244,6 @@ export default function EditarUsuarioPage() {
           ) : null}
         </div>
       </form>
-    </div>
+    </DashboardPageShell>
   );
 }

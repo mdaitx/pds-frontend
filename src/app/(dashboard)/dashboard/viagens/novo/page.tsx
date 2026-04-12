@@ -15,7 +15,10 @@ import {
   type Vehicle,
   type Driver,
 } from '@/lib';
-import { Card, CardContent, CardHeader } from '@/components/ui';
+import { Card, CardContent, CardHeader, LocalizedDateField } from '@/components/ui';
+import { DASHBOARD_FORM_PADDING } from '@/components/dashboard/DashboardPageShell';
+import { cn } from '@/lib/cn';
+import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
 
 /** Campos como no Figma Make (vE): borda zinc-300, ring azul no foco. */
 const inputClass =
@@ -27,6 +30,12 @@ const STATUS_OPTIONS: { value: TripStatus; label: string }[] = [
   { value: 'IN_PROGRESS', label: 'Em Andamento' },
   { value: 'CANCELLED', label: 'Cancelada' },
 ];
+
+/** Converte yyyy-MM-dd (input date) para ISO no início do dia local. */
+function dateOnlyToIso(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0, 0).toISOString();
+}
 
 export default function NovaViagemPage() {
   const router = useRouter();
@@ -53,7 +62,9 @@ export default function NovaViagemPage() {
   }, [authLoading, session, router]);
 
   useEffect(() => {
-    if (appUser?.role === 'OWNER') {
+    if (!appUser) return;
+    const fleetStaff = appUser.role === 'OWNER' || appUser.role === 'ADMIN';
+    if (fleetStaff) {
       Promise.all([getVehicles(), getDrivers()])
         .then(([v, d]) => {
           setVehicles(v);
@@ -79,13 +90,13 @@ export default function NovaViagemPage() {
       const payload: CreateTripPayload = {
         vehicleId,
         driverId,
-        startDate: new Date(startDate).toISOString(),
+        startDate: dateOnlyToIso(startDate.trim()),
         status,
       };
       if (clientName.trim()) payload.clientName = clientName.trim();
       if (origin.trim()) payload.origin = origin.trim();
       if (destination.trim()) payload.destination = destination.trim();
-      if (endDate.trim()) payload.endDate = new Date(endDate).toISOString();
+      if (endDate.trim()) payload.endDate = dateOnlyToIso(endDate.trim());
       const fv = parseFloat(freightValue.replace(',', '.'));
       if (!Number.isNaN(fv)) payload.freightValue = fv;
       const ik = parseInt(initialKm, 10);
@@ -93,7 +104,7 @@ export default function NovaViagemPage() {
       if (loadType.trim()) payload.loadType = loadType.trim();
       if (notes.trim()) payload.notes = notes.trim();
       await createTrip(payload);
-      toast.success('Viagem criada. O motorista recebe notificação por e-mail (se SMTP estiver configurado).');
+      toast.success('Viagem criada com sucesso.');
       router.push('/dashboard/viagens');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar');
@@ -111,48 +122,28 @@ export default function NovaViagemPage() {
   }
 
   return (
-    <div className="settings-font-inter min-h-screen bg-zinc-50">
+    <div className="settings-font-inter flex min-h-screen flex-col bg-zinc-50">
       <form
         onSubmit={handleSubmit}
-        className="mx-auto max-w-3xl space-y-5 p-4 md:p-6"
+        className={cn(DASHBOARD_FORM_PADDING, 'max-w-3xl settings-font-inter')}
         style={{ fontSize: '0.9rem' }}
       >
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
         )}
 
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <Link
-              href="/dashboard/viagens"
-              className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
-              style={{ fontSize: '0.85rem' }}
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Voltar à lista
-            </Link>
-            <h1 className="text-zinc-900" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
-              Nova Viagem
-            </h1>
-          </div>
-          <div className="flex gap-2">
-            <Link
-              href="/dashboard/viagens"
-              className="inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-700 transition-colors hover:bg-zinc-50"
-              style={{ fontSize: '0.875rem' }}
-            >
-              Cancelar
-            </Link>
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
-              style={{ fontSize: '0.875rem' }}
-            >
-              <Save className="h-4 w-4" />
-              {saving ? 'Salvando…' : 'Salvar'}
-            </button>
-          </div>
+        <div>
+          <Link
+            href="/dashboard/viagens"
+            className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
+            style={{ fontSize: '0.85rem' }}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Voltar à lista
+          </Link>
+          <h1 className="text-zinc-900" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
+            Nova Viagem
+          </h1>
         </div>
 
         <Card className="border-zinc-200 shadow-sm">
@@ -247,31 +238,22 @@ export default function NovaViagemPage() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label htmlFor="startDate" className={labelClass}>
-                  Data início *
-                </label>
-                <input
-                  id="startDate"
-                  type="datetime-local"
-                  required
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label htmlFor="endDate" className={labelClass}>
-                  Data fim
-                </label>
-                <input
-                  id="endDate"
-                  type="datetime-local"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
+              <LocalizedDateField
+                label="Data início *"
+                value={startDate}
+                onChange={setStartDate}
+                className="w-full min-w-0"
+                labelClassName={labelClass}
+                buttonClassName={`${inputClass} w-full min-w-0 text-left font-normal`}
+              />
+              <LocalizedDateField
+                label="Data fim"
+                value={endDate}
+                onChange={setEndDate}
+                className="w-full min-w-0"
+                labelClassName={labelClass}
+                buttonClassName={`${inputClass} w-full min-w-0 text-left font-normal`}
+              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -352,6 +334,25 @@ export default function NovaViagemPage() {
             </div>
           </CardContent>
         </Card>
+
+        <div className={`${mobileFormActionsRowClass} mt-auto border-t border-zinc-200 pt-6 pb-2`}>
+          <Link
+            href="/dashboard/viagens"
+            className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-700 transition-colors hover:bg-zinc-50 sm:w-auto"
+            style={{ fontSize: '0.875rem' }}
+          >
+            Cancelar
+          </Link>
+          <button
+            type="submit"
+            disabled={saving}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
+            style={{ fontSize: '0.875rem' }}
+          >
+            <Save className="h-4 w-4" />
+            {saving ? 'Salvando…' : 'Salvar'}
+          </button>
+        </div>
       </form>
     </div>
   );

@@ -25,6 +25,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ImageUpload } from '@/components/ui/image-upload';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
+import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
 
 const selectClass =
   'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
@@ -183,7 +185,7 @@ export default function NovoMotoristaPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5 bg-zinc-50 p-4 md:p-6">
+    <DashboardPageShell maxWidth="2xl">
       <div>
         <Link
           href="/dashboard/motoristas"
@@ -355,11 +357,12 @@ export default function NovoMotoristaPage() {
           </CardContent>
         </Card>
 
-        <div className="mt-6 flex items-center justify-end gap-3">
+        <div className={`${mobileFormActionsRowClass} mt-6`}>
           <Button
             variant="outline"
             type="button"
             disabled={loading}
+            className="w-full sm:w-auto"
             onClick={() => router.push('/dashboard/motoristas')}
           >
             Cancelar
@@ -367,13 +370,13 @@ export default function NovoMotoristaPage() {
           <Button
             type="submit"
             disabled={loading}
-            className="flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
+            className="flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
           >
             <Save className="h-4 w-4" />
             {loading ? 'Salvando...' : 'Salvar'}
           </Button>
         </div>
       </form>
-    </div>
+    </DashboardPageShell>
   );
 }

@@ -14,6 +14,8 @@ import {
   type CreateOnboardingCompanyPayload,
   type CreateOnboardingFirstVehiclePayload,
   type CreateOnboardingFirstDriverPayload,
+  type VehicleType,
+  VEHICLE_TYPE_LABELS,
 } from '@/lib';
 import { Card, CardContent } from '@/components/ui';
 import { Button } from '@/components/ui/button';
@@ -102,6 +104,7 @@ export function OnboardingWizard({ initialStep }: Props) {
     brand: '',
     year: '',
     nickname: '',
+    vehicleType: 'CAMINHAO' as VehicleType,
   });
   const [vehicleErrors, setVehicleErrors] = useState<Record<string, string>>({});
 
@@ -191,6 +194,7 @@ export function OnboardingWizard({ initialStep }: Props) {
           brand: vehicle.brand.trim(),
           year: yearNum,
           nickname: vehicle.nickname.trim() || undefined,
+          vehicleType: vehicle.vehicleType,
         };
         await createOnboardingFirstVehicle(payload);
         setStep(3);
@@ -399,6 +403,22 @@ export function OnboardingWizard({ initialStep }: Props) {
                     onChange={(e) => setVehicle((f) => ({ ...f, plate: e.target.value.toUpperCase() }))}
                   />
                   {vehicleErrors.plate && <p className="text-sm text-red-600">{vehicleErrors.plate}</p>}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Tipo de veículo *</Label>
+                  <select
+                    value={vehicle.vehicleType}
+                    onChange={(e) =>
+                      setVehicle((f) => ({ ...f, vehicleType: e.target.value as VehicleType }))
+                    }
+                    className="flex h-9 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  >
+                    {(Object.keys(VEHICLE_TYPE_LABELS) as VehicleType[]).map((key) => (
+                      <option key={key} value={key}>
+                        {VEHICLE_TYPE_LABELS[key]}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">

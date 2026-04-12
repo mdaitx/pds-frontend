@@ -17,7 +17,10 @@ import {
   type Vehicle,
   type Driver,
 } from '@/lib';
-import { Card, CardContent, CardHeader } from '@/components/ui';
+import { Card, CardContent, CardHeader, LocalizedDateField } from '@/components/ui';
+import { DashboardPageShell, DASHBOARD_FORM_PADDING } from '@/components/dashboard/DashboardPageShell';
+import { cn } from '@/lib/cn';
+import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
 
 const inputClass =
   'mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
@@ -29,10 +32,18 @@ const STATUS_OPTIONS_EDIT: { value: TripStatus; label: string }[] = [
   { value: 'CANCELLED', label: 'Cancelada' },
 ];
 
-function formatDateTime(s: string | null): string {
-  if (!s) return '';
-  const d = new Date(s);
-  return d.toISOString().slice(0, 16);
+function formatDateForInput(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function dateOnlyToIso(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0, 0).toISOString();
 }
 
 export default function EditarViagemPage() {
@@ -62,7 +73,8 @@ export default function EditarViagemPage() {
 
   useEffect(() => {
     if (!session || !appUser || !id) return;
-    if (appUser.role !== 'OWNER') {
+    const fleetStaff = appUser.role === 'OWNER' || appUser.role === 'ADMIN';
+    if (!fleetStaff) {
       router.replace('/dashboard');
       return;
     }
@@ -76,8 +88,8 @@ export default function EditarViagemPage() {
         setClientName(t.clientName ?? '');
         setOrigin(t.origin ?? '');
         setDestination(t.destination ?? '');
-        setStartDate(formatDateTime(t.startDate));
-        setEndDate(formatDateTime(t.endDate));
+        setStartDate(formatDateForInput(t.startDate));
+        setEndDate(formatDateForInput(t.endDate));
         setFreightValue(t.freightValue != null ? String(t.freightValue) : '');
         setInitialKm(t.initialKm != null ? String(t.initialKm) : '');
         setLoadType(t.loadType ?? '');
@@ -101,13 +113,13 @@ export default function EditarViagemPage() {
       const payload: UpdateTripPayload = {
         vehicleId,
         driverId,
-        startDate: new Date(startDate).toISOString(),
+        startDate: dateOnlyToIso(startDate),
         status,
       };
       payload.clientName = clientName.trim() || undefined;
       payload.origin = origin.trim() || undefined;
       payload.destination = destination.trim() || undefined;
-      payload.endDate = endDate ? new Date(endDate).toISOString() : undefined;
+      payload.endDate = endDate ? dateOnlyToIso(endDate) : undefined;
       const fv = parseFloat(freightValue.replace(',', '.'));
       payload.freightValue = !Number.isNaN(fv) ? fv : undefined;
       const ik = parseInt(initialKm, 10);
@@ -155,74 +167,44 @@ export default function EditarViagemPage() {
 
   if (!trip) {
     return (
-      <div className="settings-font-inter min-h-screen bg-zinc-50 p-4 tracking-tight md:p-6">
-        <div className="mx-auto max-w-3xl">
-          <Link
-            href="/dashboard/viagens"
-            className="flex items-center gap-1 text-[0.85rem] text-zinc-500 hover:text-zinc-700"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Viagens
-          </Link>
-          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-            {error || 'Viagem não encontrada.'}
-          </div>
+      <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="3xl">
+        <Link
+          href="/dashboard/viagens"
+          className="flex items-center gap-1 text-[0.85rem] text-zinc-500 hover:text-zinc-700"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Viagens
+        </Link>
+        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {error || 'Viagem não encontrada.'}
         </div>
-      </div>
+      </DashboardPageShell>
     );
   }
 
   return (
-    <div className="settings-font-inter min-h-screen bg-zinc-50">
+    <div className="settings-font-inter flex min-h-screen flex-col bg-zinc-50">
       <form
         onSubmit={handleSubmit}
-        className="mx-auto max-w-3xl space-y-5 p-4 md:p-6"
+        className={cn(DASHBOARD_FORM_PADDING, 'max-w-3xl settings-font-inter')}
         style={{ fontSize: '0.9rem' }}
       >
         {error && (
           <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
         )}
 
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <Link
-              href="/dashboard/viagens"
-              className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
-              style={{ fontSize: '0.85rem' }}
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              Voltar à lista
-            </Link>
-            <h1 className="text-zinc-900" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
-              Editar {trip.code}
-            </h1>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={deleting}
-              className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
-            >
-              {deleting ? 'Excluindo…' : 'Excluir'}
-            </button>
-            <Link
-              href={`/dashboard/viagens/${trip.id}`}
-              className="inline-flex items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-700 hover:bg-zinc-50"
-              style={{ fontSize: '0.875rem' }}
-            >
-              Cancelar
-            </Link>
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-              style={{ fontSize: '0.875rem' }}
-            >
-              <Save className="h-4 w-4" />
-              {saving ? 'Salvando…' : 'Salvar'}
-            </button>
-          </div>
+        <div>
+          <Link
+            href="/dashboard/viagens"
+            className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
+            style={{ fontSize: '0.85rem' }}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Voltar à lista
+          </Link>
+          <h1 className="text-zinc-900" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
+            Editar {trip.code}
+          </h1>
         </div>
 
         <Card className="border-zinc-200 shadow-sm">
@@ -319,31 +301,22 @@ export default function EditarViagemPage() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label htmlFor="startDate" className={labelClass}>
-                  Data início *
-                </label>
-                <input
-                  id="startDate"
-                  type="datetime-local"
-                  required
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label htmlFor="endDate" className={labelClass}>
-                  Data fim
-                </label>
-                <input
-                  id="endDate"
-                  type="datetime-local"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className={inputClass}
-                />
-              </div>
+              <LocalizedDateField
+                label="Data início *"
+                value={startDate}
+                onChange={setStartDate}
+                className="w-full min-w-0"
+                labelClassName={labelClass}
+                buttonClassName={`${inputClass} w-full min-w-0 text-left font-normal`}
+              />
+              <LocalizedDateField
+                label="Data fim"
+                value={endDate}
+                onChange={setEndDate}
+                className="w-full min-w-0"
+                labelClassName={labelClass}
+                buttonClassName={`${inputClass} w-full min-w-0 text-left font-normal`}
+              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -432,6 +405,33 @@ export default function EditarViagemPage() {
             </div>
           </CardContent>
         </Card>
+
+        <div className={`${mobileFormActionsRowClass} mt-auto border-t border-zinc-200 pt-6 pb-2`}>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 sm:w-auto"
+          >
+            {deleting ? 'Excluindo…' : 'Excluir'}
+          </button>
+          <Link
+            href={`/dashboard/viagens/${trip.id}`}
+            className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-700 hover:bg-zinc-50 sm:w-auto"
+            style={{ fontSize: '0.875rem' }}
+          >
+            Cancelar
+          </Link>
+          <button
+            type="submit"
+            disabled={saving}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
+            style={{ fontSize: '0.875rem' }}
+          >
+            <Save className="h-4 w-4" />
+            {saving ? 'Salvando…' : 'Salvar'}
+          </button>
+        </div>
       </form>
     </div>
   );

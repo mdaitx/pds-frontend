@@ -3,10 +3,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Truck, Eye, FileText, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Truck, FileText, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth, useActivityHint } from '@/hooks';
 import { getTrips, type Trip, type TripStatus } from '@/lib';
 import { Card, CardContent, Input } from '@/components/ui';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
+import { VehicleTruckOrTrailerIcon } from '@/components/vehicles/VehicleTruckOrTrailerIcon';
+import { cn } from '@/lib/cn';
+import { mobileFilterPillRowClass } from '@/lib/dashboard-mobile';
 
 const PAGE_SIZE = 6;
 
@@ -68,7 +72,8 @@ export default function ViagensPage() {
 
   useEffect(() => {
     if (!session || !appUser) return;
-    if (appUser.role !== 'OWNER' && appUser.role !== 'DRIVER') {
+    const fleetStaff = appUser.role === 'OWNER' || appUser.role === 'ADMIN';
+    if (!fleetStaff && appUser.role !== 'DRIVER') {
       router.replace('/dashboard');
       return;
     }
@@ -83,8 +88,8 @@ export default function ViagensPage() {
     if (!authLoading && !session) router.replace('/login');
   }, [authLoading, session, router]);
 
-  const isOwner = appUser?.role === 'OWNER';
-  const title = isOwner ? 'Viagens' : 'Minhas viagens';
+  const isFleetStaff = appUser?.role === 'OWNER' || appUser?.role === 'ADMIN';
+  const title = isFleetStaff ? 'Viagens' : 'Minhas viagens';
 
   const sorted = useMemo(() => {
     const byStatus = statusFilter === '' ? list : list.filter((t) => t.status === statusFilter);
@@ -122,10 +127,9 @@ export default function ViagensPage() {
   }
 
   return (
-    <div className="settings-font-inter min-h-screen bg-zinc-50 p-4 tracking-tight md:p-6">
-      <div className="mx-auto max-w-4xl space-y-5">
+    <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="4xl">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+          <div className="min-w-0">
             <Link
               href="/dashboard"
               className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
@@ -134,15 +138,15 @@ export default function ViagensPage() {
               <ArrowLeft className="h-3.5 w-3.5" />
               Voltar ao dashboard
             </Link>
-            <h1 className="text-zinc-900" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
+            <h1 className="break-words text-zinc-900" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
               {title}
             </h1>
           </div>
-          {isOwner && (
-            <Link href="/dashboard/viagens/novo">
+          {isFleetStaff && (
+            <Link href="/dashboard/viagens/novo" className="w-full sm:w-auto">
               <button
                 type="button"
-                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 sm:w-auto"
                 style={{ fontSize: '0.875rem' }}
               >
                 <Plus className="h-4 w-4" />
@@ -169,7 +173,8 @@ export default function ViagensPage() {
           />
         </div>
 
-        <div className="flex gap-1 overflow-x-auto pb-1">
+        <div className={cn(mobileFilterPillRowClass)}>
+          <div className="flex w-max min-w-full flex-nowrap gap-1 sm:w-auto sm:flex-wrap">
           {FILTER_TABS.map((tab) => {
             const active = statusFilter === tab.value;
             const count = countFor(tab.value);
@@ -198,6 +203,7 @@ export default function ViagensPage() {
               </button>
             );
           })}
+          </div>
         </div>
 
         {sorted.length === 0 ? (
@@ -205,7 +211,7 @@ export default function ViagensPage() {
             <CardContent className="py-16 text-center">
               <Truck className="mx-auto mb-4 h-12 w-12 text-zinc-300" />
               <p className="text-zinc-500">Nenhuma viagem encontrada.</p>
-              {isOwner && (
+              {isFleetStaff && (
                 <Link href="/dashboard/viagens/novo">
                   <button
                     type="button"
@@ -228,8 +234,21 @@ export default function ViagensPage() {
                   key={t.id}
                   className="border-zinc-200 transition-all hover:border-blue-200 hover:shadow-sm"
                 >
-                  <CardContent className="p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <CardContent className="p-0">
+                    <div
+                      role="link"
+                      tabIndex={0}
+                      className="cursor-pointer p-4 outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                      aria-label={`Abrir viagem ${t.code}`}
+                      onClick={() => router.push(`/dashboard/viagens/${t.id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          router.push(`/dashboard/viagens/${t.id}`);
+                        }
+                      }}
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-3">
                           <span className="text-zinc-900" style={{ fontWeight: 700, fontSize: '0.95rem' }}>
@@ -243,7 +262,10 @@ export default function ViagensPage() {
                           className="mt-1 flex items-center gap-2 text-zinc-600"
                           style={{ fontSize: '0.85rem' }}
                         >
-                          <Truck className="h-3.5 w-3.5 flex-shrink-0 text-zinc-400" />
+                          <VehicleTruckOrTrailerIcon
+                            vehicleType={t.vehicle?.vehicleType}
+                            className="h-3.5 w-3.5 flex-shrink-0 text-zinc-400"
+                          />
                           <span className="truncate">
                             {t.vehicle
                               ? `${t.vehicle.plate} · ${t.vehicle.brand} ${t.vehicle.model}`
@@ -269,22 +291,16 @@ export default function ViagensPage() {
                           </span>
                         </div>
                       </div>
-                      <div className="flex flex-shrink-0 items-center gap-2">
-                        <Link href={`/dashboard/viagens/${t.id}`}>
-                          <button
-                            type="button"
-                            className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-blue-700 transition-colors hover:bg-blue-100"
-                            style={{ fontSize: '0.82rem' }}
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            Ver
-                          </button>
-                        </Link>
+                      <div
+                        className="flex w-full flex-shrink-0 flex-col gap-2 sm:w-auto sm:flex-row sm:items-center"
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                      >
                         {t.status === 'COMPLETED' && (
-                          <Link href={`/dashboard/viagens/${t.id}/acerto`}>
+                          <Link href={`/dashboard/viagens/${t.id}/acerto`} className="w-full sm:w-auto">
                             <button
                               type="button"
-                              className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-white transition-colors hover:bg-blue-700"
+                              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-white transition-colors hover:bg-blue-700 sm:w-auto"
                               style={{ fontSize: '0.82rem' }}
                             >
                               <FileText className="h-3.5 w-3.5" />
@@ -292,11 +308,11 @@ export default function ViagensPage() {
                             </button>
                           </Link>
                         )}
-                        {isOwner && (
-                          <Link href={`/dashboard/viagens/${t.id}/editar`}>
+                        {isFleetStaff && (
+                          <Link href={`/dashboard/viagens/${t.id}/editar`} className="w-full sm:w-auto">
                             <button
                               type="button"
-                              className="flex items-center gap-1.5 rounded-lg bg-zinc-100 px-3 py-1.5 text-zinc-700 transition-colors hover:bg-zinc-200"
+                              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-zinc-100 px-3 py-1.5 text-zinc-700 transition-colors hover:bg-zinc-200 sm:w-auto"
                               style={{ fontSize: '0.82rem' }}
                             >
                               Editar
@@ -305,12 +321,13 @@ export default function ViagensPage() {
                         )}
                       </div>
                     </div>
+                    </div>
                   </CardContent>
                 </Card>
               );
             })}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between gap-3 border-t border-zinc-200 pt-4">
+              <div className="flex flex-col gap-3 border-t border-zinc-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <button
                   type="button"
                   disabled={safePage <= 1}
@@ -343,7 +360,6 @@ export default function ViagensPage() {
             )}
           </div>
         )}
-      </div>
-    </div>
+    </DashboardPageShell>
   );
 }

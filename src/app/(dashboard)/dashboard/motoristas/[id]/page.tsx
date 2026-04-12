@@ -25,6 +25,7 @@ import { getDriver, getTrips, deleteDriver } from '@/lib';
 import type { Driver, DriverStatus } from '@/lib';
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { Button } from '@/components/ui/button';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 
 const statusConfig: Record<DriverStatus, { label: string; className: string }> = {
   ACTIVE: { label: 'Ativo', className: 'bg-green-100 text-green-800' },
@@ -173,7 +174,7 @@ export default function DetalheMotoristaPage() {
   const totalRevenue = completedTrips.reduce((sum, t) => sum + (t.freightValue ?? 0), 0);
 
   return (
-    <div className="p-4 md:p-6 space-y-5 max-w-3xl mx-auto">
+    <DashboardPageShell maxWidth="3xl">
       {/* Header */}
       <div>
           <Link
@@ -465,6 +466,6 @@ export default function DetalheMotoristaPage() {
           </div>
         </div>
       )}
-    </div>
+    </DashboardPageShell>
   );
 }
