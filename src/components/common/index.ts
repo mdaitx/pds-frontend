@@ -1,3 +1,0 @@
-/**
- * Componentes compartilhados (layouts, etc.)
- */

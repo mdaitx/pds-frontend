@@ -16,6 +16,7 @@ import {
   CheckCircle,
   Receipt,
   Wallet,
+  History,
 } from 'lucide-react';
 import { useAuth } from '@/hooks';
 import {
@@ -31,7 +32,13 @@ import {
 import type { AuthUser, Trip, Vehicle, Driver, Expense, Advance, Settlement } from '@/lib';
 import { cn } from '@/lib/cn';
 import { mobileTableScrollClass } from '@/lib/dashboard-mobile';
-import { Card, CardHeader, CardContent } from '@/components/ui';
+import { Card, CardHeader, CardContent, Skeleton } from '@/components/ui';
+import { DashboardBootSkeleton, RecentTripsTableSkeleton } from '@/components/dashboard/DashboardLoadingSkeleton';
+import {
+  dashboardLinkGhostBlueClass,
+  dashboardLinkMutedNavClass,
+  dashboardLinkPrimaryClass,
+} from '@/lib/dashboard-action-buttons';
 import {
   LineChart,
   Line,
@@ -109,7 +116,7 @@ function calendarMonthWeekBuckets(year: number, month: number): { start: Date; e
   const first = startOfDay(new Date(year, month, 1));
   const last = endOfDay(new Date(year, month + 1, 0));
   const buckets: { start: Date; end: Date; label: string }[] = [];
-  let cur = new Date(first);
+  const cur = new Date(first);
   let w = 1;
   while (cur <= last) {
     const segStart = startOfDay(new Date(cur));
@@ -210,7 +217,7 @@ export default function DashboardPage() {
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [, setDrivers] = useState<Driver[]>([]);
   /** Contas com login (OWNER/ADMIN/DRIVER) — mesma lista que /dashboard/usuarios */
   const [staffUsersCount, setStaffUsersCount] = useState(0);
   const [dataLoading, setDataLoading] = useState(true);
@@ -222,7 +229,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (loading || !appUser || pathname !== '/dashboard') return;
     if (appUser.role !== 'OWNER') {
-      setOnboardingChecked(true);
+      queueMicrotask(() => setOnboardingChecked(true));
       return;
     }
     getOnboardingStatus()
@@ -239,9 +246,11 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!session || !appUser) return;
     if (appUser.role === 'OWNER' || appUser.role === 'ADMIN') {
-      setDataLoading(true);
-      setDriverSettlementsByTripId({});
-      setDriverRecentAdvances([]);
+      queueMicrotask(() => {
+        setDataLoading(true);
+        setDriverSettlementsByTripId({});
+        setDriverRecentAdvances([]);
+      });
       Promise.all([
         getTrips(),
         getVehicles(),
@@ -261,8 +270,10 @@ export default function DashboardPage() {
       return;
     }
     if (appUser.role === 'DRIVER') {
-      setDataLoading(true);
-      setOwnerExpenses([]);
+      queueMicrotask(() => {
+        setDataLoading(true);
+        setOwnerExpenses([]);
+      });
       getTrips()
         .then(async (t) => {
           setTrips(t);
@@ -299,11 +310,13 @@ export default function DashboardPage() {
         })
         .catch(() => {})
         .finally(() => setDataLoading(false));
-      setVehicles([]);
-      setDrivers([]);
+      queueMicrotask(() => {
+        setVehicles([]);
+        setDrivers([]);
+      });
       return;
     }
-    setDataLoading(false);
+    queueMicrotask(() => setDataLoading(false));
   }, [session, appUser]);
 
   useEffect(() => {
@@ -338,11 +351,7 @@ export default function DashboardPage() {
         </div>
       );
     }
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-zinc-500">Carregando…</p>
-      </div>
-    );
+    return <DashboardBootSkeleton />;
   }
 
   // Owner Dashboard
@@ -383,12 +392,10 @@ export default function DashboardPage() {
             <h1 className="text-zinc-900 text-xl font-semibold">Dashboard</h1>
             <p className="text-zinc-500 text-sm">Olá, {appUser.email} · {ROLE_LABEL[appUser.role]}</p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <Link href="/dashboard/viagens/novo">
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm">
-                <Truck className="w-4 h-4" />
-                Nova Viagem
-              </button>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/dashboard/viagens/novo" className={dashboardLinkPrimaryClass}>
+              <Truck className="h-4 w-4" />
+              Nova Viagem
             </Link>
           </div>
         </div>
@@ -622,11 +629,7 @@ export default function DashboardPage() {
                 </thead>
                 <tbody>
                   {dataLoading ? (
-                    <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-zinc-500">
-                        Carregando…
-                      </td>
-                    </tr>
+                    <RecentTripsTableSkeleton rows={5} />
                   ) : recentTrips.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="px-4 py-8 text-center text-zinc-500">
@@ -689,6 +692,11 @@ export default function DashboardPage() {
     if (ini != null && fin != null) kmMonth += fin - ini;
   }
 
+  const completedThisMonthSorted = [...completedThisMonthList].sort(
+    (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+  );
+  const monthHistoryLabel = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
   return (
     <div className="mx-auto min-w-0 max-w-[1400px] space-y-6 px-3 py-4 sm:p-4 md:p-6">
       <div className="min-w-0">
@@ -703,7 +711,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-stretch">
         {[
-          { title: 'Viagens ativas', value: activeTrips.length.toString(), icon: <Truck className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
+          { title: 'Viagens ativas', value: activeTrips.length.toString(), icon: <Route className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
           {
             title: 'Comissões (mês)',
             value: dataLoading ? '…' : formatCurrency(commissionMonth),
@@ -739,57 +747,126 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <Card className="border-zinc-200">
-        <CardHeader className="flex flex-col gap-2 pb-2 sm:flex-row sm:items-center sm:justify-between">
-          <h3 className="text-zinc-800">Minhas Viagens Ativas</h3>
-          <Link href="/dashboard/viagens" className="w-full sm:w-auto">
-            <button
-              type="button"
-              className="flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-[0.8rem] text-blue-600 transition-colors hover:bg-blue-50 sm:w-auto"
-            >
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch lg:gap-6">
+        <Card className="flex h-full flex-col border-zinc-200">
+          <CardHeader className="pb-2">
+            <div className="flex items-start gap-2">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-100">
+                <History className="h-5 w-5 text-zinc-600" aria-hidden />
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-base font-semibold text-zinc-900">Histórico do mês</h2>
+                <p className="text-sm text-zinc-500">Viagens concluídas em {monthHistoryLabel}</p>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {dataLoading ? (
+              <div className="space-y-3 py-1">
+                {Array.from({ length: 2 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                ))}
+              </div>
+            ) : completedThisMonthSorted.length === 0 ? (
+              <p className="py-4 text-center text-sm text-zinc-500">
+                Nenhuma viagem concluída neste mês até o momento.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {completedThisMonthSorted.map((trip) => {
+                  const settlement = driverSettlementsByTripId[trip.id];
+                  const commission = settlement?.driverCommissionAmt;
+                  return (
+                    <li key={trip.id}>
+                      <div className="flex flex-col gap-2 rounded-lg border border-zinc-100 bg-zinc-50/80 p-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-semibold text-zinc-900">{trip.code}</span>
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusConfig.COMPLETED.className}`}
+                            >
+                              {statusConfig.COMPLETED.label}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-[0.83rem] text-zinc-600">
+                            {(trip.origin ?? '').split(',')[0]} → {(trip.destination ?? '').split(',')[0]}
+                          </p>
+                          <p className="text-[0.78rem] text-zinc-500">
+                            {new Date(trip.startDate).toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                            {commission != null && (
+                              <span className="text-zinc-600">
+                                {' '}
+                                · Comissão {formatCurrency(commission)}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <Link
+                          href={`/dashboard/viagens/${trip.id}`}
+                          className={`${dashboardLinkGhostBlueClass} shrink-0`}
+                        >
+                          Ver viagem
+                        </Link>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="flex h-full flex-col border-zinc-200">
+          <CardHeader className="flex flex-col gap-2 pb-2 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
+                <Route className="h-5 w-5 text-blue-600" aria-hidden />
+              </div>
+              <h3 className="text-zinc-800">Minhas Viagens Ativas</h3>
+            </div>
+            <Link href="/dashboard/viagens" className={dashboardLinkMutedNavClass}>
               Ver todas
-            </button>
-          </Link>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {activeTrips.length === 0 ? (
-            <p className="text-zinc-400 text-center py-6 text-sm">Nenhuma viagem ativa no momento.</p>
-          ) : (
-            activeTrips.map((trip) => {
-              const cfg = statusConfig[trip.status] ?? statusConfig.PENDING;
-              return (
-                <div
-                  key={trip.id}
-                  className="flex flex-col gap-3 rounded-lg border border-zinc-100 bg-zinc-50 p-3 sm:flex-row sm:items-start sm:justify-between"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-semibold text-zinc-800">{trip.code}</span>
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${cfg.className}`}>
-                        {cfg.label}
-                      </span>
+            </Link>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {activeTrips.length === 0 ? (
+              <p className="text-zinc-400 text-center py-6 text-sm">Nenhuma viagem ativa no momento.</p>
+            ) : (
+              activeTrips.map((trip) => {
+                const cfg = statusConfig[trip.status] ?? statusConfig.PENDING;
+                return (
+                  <div
+                    key={trip.id}
+                    className="flex flex-col gap-3 rounded-lg border border-zinc-100 bg-zinc-50 p-3 sm:flex-row sm:items-start sm:justify-between"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-semibold text-zinc-800">{trip.code}</span>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${cfg.className}`}>
+                          {cfg.label}
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-[0.83rem] text-zinc-600">
+                        {(trip.origin ?? '').split(',')[0]} → {(trip.destination ?? '').split(',')[0]}
+                      </p>
+                      <p className="text-[0.78rem] text-zinc-500">{new Date(trip.startDate).toLocaleDateString('pt-BR')}</p>
                     </div>
-                    <p className="mt-0.5 text-[0.83rem] text-zinc-600">
-                      {(trip.origin ?? '').split(',')[0]} → {(trip.destination ?? '').split(',')[0]}
-                    </p>
-                    <p className="text-[0.78rem] text-zinc-500">{new Date(trip.startDate).toLocaleDateString('pt-BR')}</p>
-                  </div>
-                  <div className="flex w-full shrink-0 sm:w-auto sm:ml-3">
-                    <Link href={`/dashboard/viagens/${trip.id}`} className="w-full sm:w-auto">
-                      <button
-                        type="button"
-                        className="flex w-full items-center justify-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-[0.8rem] text-blue-700 transition-colors hover:bg-blue-100 sm:w-auto"
-                      >
+                    <div className="flex w-full shrink-0 sm:ml-3 sm:w-auto">
+                      <Link href={`/dashboard/viagens/${trip.id}`} className={dashboardLinkGhostBlueClass}>
                         Ver
-                      </button>
-                    </Link>
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              );
-            })
-          )}
-        </CardContent>
-      </Card>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className="border-zinc-200">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -800,7 +877,18 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {dataLoading ? (
-            <p className="text-zinc-400 text-center py-6 text-sm">Carregando…</p>
+            <div className="space-y-3 py-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex flex-col gap-2 rounded-lg border border-zinc-100 bg-zinc-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="space-y-2">
+                    <Skeleton className="h-5 w-28" />
+                    <Skeleton className="h-4 w-48" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                  <Skeleton className="h-4 w-full max-w-[200px] sm:ml-auto" />
+                </div>
+              ))}
+            </div>
           ) : driverRecentAdvances.length === 0 ? (
             <p className="text-zinc-400 text-center py-6 text-sm">Nenhum adiantamento registrado nas viagens recentes.</p>
           ) : (

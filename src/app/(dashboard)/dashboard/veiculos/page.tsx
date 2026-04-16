@@ -3,7 +3,7 @@
 /**
  * Lista de veículos — mesmo estilo visual das páginas Usuários e Motoristas.
  */
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -34,6 +34,7 @@ import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { VehicleTruckOrTrailerIcon } from '@/components/vehicles/VehicleTruckOrTrailerIcon';
 import { cn } from '@/lib/cn';
 import { mobileFilterPillRowClass } from '@/lib/dashboard-mobile';
+import { dashboardCardDeleteButtonClass, dashboardCardEditButtonClass } from '@/lib/dashboard-action-buttons';
 
 const statusConfig: Record<
   Vehicle['status'],
@@ -240,7 +241,7 @@ export default function VeiculosPage() {
       router.replace('/dashboard');
       return;
     }
-    setLoading(true);
+    queueMicrotask(() => setLoading(true));
     setError(null);
     getVehicles()
       .then(setList)
@@ -254,26 +255,32 @@ export default function VeiculosPage() {
 
   const q = search.trim().toLowerCase();
 
-  const vehicleMatches = (vehicle: Vehicle) => {
-    if (filterActive && vehicle.status !== 'ACTIVE') return false;
-    if (filterMaintenance && vehicle.status !== 'MAINTENANCE') return false;
-    if (filterInactive && vehicle.status !== 'INACTIVE') return false;
-    if (q) {
-      const pairHay =
-        vehicle.trailerVehicle?.plate ??
-        vehicle.tractorVehicle?.plate ??
-        '';
-      const hay = `${vehicle.plate} ${vehicle.brand} ${vehicle.model} ${vehicle.nickname ?? ''} ${VEHICLE_TYPE_LABELS[(vehicle.vehicleType ?? 'CAMINHAO') as VehicleType]} ${pairHay}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  };
+  const vehicleMatches = useCallback(
+    (vehicle: Vehicle) => {
+      if (filterActive && vehicle.status !== 'ACTIVE') return false;
+      if (filterMaintenance && vehicle.status !== 'MAINTENANCE') return false;
+      if (filterInactive && vehicle.status !== 'INACTIVE') return false;
+      if (q) {
+        const pairHay =
+          vehicle.trailerVehicle?.plate ??
+          vehicle.tractorVehicle?.plate ??
+          '';
+        const hay = `${vehicle.plate} ${vehicle.brand} ${vehicle.model} ${vehicle.nickname ?? ''} ${VEHICLE_TYPE_LABELS[(vehicle.vehicleType ?? 'CAMINHAO') as VehicleType]} ${pairHay}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    },
+    [filterActive, filterMaintenance, filterInactive, q]
+  );
 
   const typeFiltersActive = filterCaminhao || filterCavaloMecanico || filterSemiReboque;
-  const matchesTypeFilter = (v: Vehicle) =>
-    (filterCaminhao && v.vehicleType === 'CAMINHAO') ||
-    (filterCavaloMecanico && v.vehicleType === 'CAVALO_MECANICO') ||
-    (filterSemiReboque && v.vehicleType === 'SEMI_REBOQUE');
+  const matchesTypeFilter = useCallback(
+    (v: Vehicle) =>
+      (filterCaminhao && v.vehicleType === 'CAMINHAO') ||
+      (filterCavaloMecanico && v.vehicleType === 'CAVALO_MECANICO') ||
+      (filterSemiReboque && v.vehicleType === 'SEMI_REBOQUE'),
+    [filterCaminhao, filterCavaloMecanico, filterSemiReboque]
+  );
 
   const displayUnits = useMemo(() => {
     const units = buildDisplayUnits(list);
@@ -290,16 +297,7 @@ export default function VeiculosPage() {
       }
       return vehicleMatches(u.vehicle);
     });
-  }, [
-    list,
-    filterActive,
-    filterMaintenance,
-    filterInactive,
-    filterCaminhao,
-    filterCavaloMecanico,
-    filterSemiReboque,
-    q,
-  ]);
+  }, [list, typeFiltersActive, matchesTypeFilter, vehicleMatches]);
 
   const hasFilters =
     filterActive ||
@@ -545,10 +543,7 @@ export default function VeiculosPage() {
                         onKeyDown={(e) => e.stopPropagation()}
                       >
                         <Link href={`/dashboard/veiculos/${unit.tractor.id}`} className="min-w-0 flex-1">
-                          <Button
-                            variant="outline"
-                            className="w-full justify-center gap-1.5 border-0 bg-blue-50 px-3 py-1.5 text-xs text-blue-700 hover:bg-blue-100"
-                          >
+                          <Button variant="outline" className={dashboardCardEditButtonClass}>
                             <Edit className="h-3.5 w-3.5" />
                             Editar
                           </Button>
@@ -556,7 +551,7 @@ export default function VeiculosPage() {
                         <Button
                           variant="outline"
                           onClick={() => setDeleteTarget(unit.tractor)}
-                          className="justify-center gap-1.5 border-0 bg-red-50 px-3 py-1.5 text-xs text-red-600 hover:bg-red-100"
+                          className={dashboardCardDeleteButtonClass}
                           aria-label={`Excluir conjunto (cavalo ${unit.tractor.plate})`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -589,10 +584,7 @@ export default function VeiculosPage() {
                         onKeyDown={(e) => e.stopPropagation()}
                       >
                         <Link href={`/dashboard/veiculos/${unit.vehicle.id}`} className="min-w-0 flex-1">
-                          <Button
-                            variant="outline"
-                            className="w-full justify-center gap-1.5 border-0 bg-blue-50 px-3 py-1.5 text-xs text-blue-700 hover:bg-blue-100"
-                          >
+                          <Button variant="outline" className={dashboardCardEditButtonClass}>
                             <Edit className="h-3.5 w-3.5" />
                             Editar
                           </Button>
@@ -600,7 +592,7 @@ export default function VeiculosPage() {
                         <Button
                           variant="outline"
                           onClick={() => setDeleteTarget(unit.vehicle)}
-                          className="justify-center gap-1.5 border-0 bg-red-50 px-3 py-1.5 text-xs text-red-600 hover:bg-red-100"
+                          className={dashboardCardDeleteButtonClass}
                           aria-label={`Excluir veículo ${unit.vehicle.plate}`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />

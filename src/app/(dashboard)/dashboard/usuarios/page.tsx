@@ -13,7 +13,7 @@ import { useAuth } from '@/hooks';
 import {
   getCompanyStaff,
   deleteCompanyStaffUser,
-  type AuthUser,
+  formatPhoneBr,
   type CompanyStaffMember,
 } from '@/lib';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Plus, Search, UserCircle, Shield, Truck as TruckIcon, ArrowLeft, Trash2 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
+import { dashboardCardDeleteButtonClass } from '@/lib/dashboard-action-buttons';
 
 type UserRole = 'OWNER' | 'ADMIN' | 'DRIVER';
 
@@ -117,7 +118,7 @@ function UserCardInner({ user }: { user: ListUser }) {
         </div>
         {user.phone ? (
           <p className="mt-2 text-zinc-400" style={{ fontSize: '0.75rem' }}>
-            {user.phone}
+            {formatPhoneBr(user.phone ?? '')}
           </p>
         ) : null}
       </div>
@@ -193,7 +194,7 @@ export default function UsuariosPage() {
     }
   };
 
-  const resolveCard = (user: ListUser, app: AuthUser | null) => {
+  const resolveCard = (user: ListUser) => {
     const detalhesHref = `/dashboard/usuarios/${user.id}`;
     const showExcluir = canDelete(user);
 
@@ -220,7 +221,7 @@ export default function UsuariosPage() {
                 e.stopPropagation();
                 setDeleteTarget(user);
               }}
-              className="justify-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border-0 text-xs"
+              className={dashboardCardDeleteButtonClass}
             >
               <Trash2 className="h-3.5 w-3.5" />
               Excluir
@@ -338,7 +339,7 @@ export default function UsuariosPage() {
               <p className="text-zinc-500">Nenhum usuário encontrado.</p>
             </div>
           ) : (
-            filtered.map((user) => <div key={user.id}>{resolveCard(user, appUser)}</div>)
+            filtered.map((user) => <div key={user.id}>{resolveCard(user)}</div>)
           )}
         </div>
 

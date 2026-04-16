@@ -16,6 +16,9 @@ import {
   createExpenseCategory,
   updateExpenseCategory,
   deleteExpenseCategory,
+  digitsOnly,
+  formatCpfCnpjDocument,
+  formatPhoneBr,
   type Company,
   type CommissionCalculationMethod,
   type ExpenseCategoryItem,
@@ -27,6 +30,10 @@ import { Input } from '@/components/ui/input';
 import { ArrowLeft, Plus, Pencil, Trash2, Save } from 'lucide-react';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
+import {
+  dashboardFormCancelButtonClass,
+  dashboardFormSaveButtonClass,
+} from '@/lib/dashboard-action-buttons';
 
 /** Paleta de cores do protótipo (modal Nova / Editar categoria). */
 const CATEGORY_COLOR_PRESETS = [
@@ -260,6 +267,7 @@ export default function ConfigPage() {
           </CardHeader>
           <CardContent>
             <CompanyForm
+              key={`${company.id}-${company.updatedAt}`}
               company={company}
               onSave={(payload) => {
                 if (!payload.name?.trim()) {
@@ -298,6 +306,7 @@ export default function ConfigPage() {
           </CardHeader>
           <CardContent>
             <CalculationPreferencesForm
+              key={`${company.id}-${company.updatedAt}-prefs`}
               company={company}
               saving={prefsSaving}
               serverError={prefsError}
@@ -486,18 +495,19 @@ export default function ConfigPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full sm:w-auto"
+                className={dashboardFormCancelButtonClass}
                 onClick={() => setCategoryDialogOpen(false)}
               >
                 Cancelar
               </Button>
               <Button
                 type="button"
-                className="w-full bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
+                className={dashboardFormSaveButtonClass}
                 disabled={categorySaving}
                 onClick={saveCategory}
               >
-                {categorySaving ? 'Salvando...' : 'Salvar'}
+                <Save className="h-4 w-4" />
+                {categorySaving ? 'Salvando…' : 'Salvar'}
               </Button>
             </div>
           </div>
@@ -525,26 +535,18 @@ function CompanyForm({
   serverError: string | null;
 }) {
   const [name, setName] = useState(company.name);
-  const [document, setDocument] = useState(company.document ?? '');
+  const [document, setDocument] = useState(formatCpfCnpjDocument(company.document ?? ''));
   const [address, setAddress] = useState(company.address ?? '');
-  const [phone, setPhone] = useState(company.phone ?? '');
+  const [phone, setPhone] = useState(formatPhoneBr(company.phone ?? ''));
   const [email, setEmail] = useState(company.email ?? '');
-
-  useEffect(() => {
-    setName(company.name);
-    setDocument(company.document ?? '');
-    setAddress(company.address ?? '');
-    setPhone(company.phone ?? '');
-    setEmail(company.email ?? '');
-  }, [company.id, company.updatedAt]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSave({
       name: name.trim(),
-      document: document.trim() || undefined,
+      document: digitsOnly(document) || undefined,
       address: address.trim() || undefined,
-      phone: phone.trim() || undefined,
+      phone: digitsOnly(phone) || undefined,
       email: email.trim() || undefined,
     });
   };
@@ -574,9 +576,12 @@ function CompanyForm({
           </label>
           <Input
             id="cfg-document"
-            placeholder="00.000.000/0001-00"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="00.000.000/0001-00 ou 000.000.000-00"
+            maxLength={18}
             value={document}
-            onChange={(e) => setDocument(e.target.value)}
+            onChange={(e) => setDocument(formatCpfCnpjDocument(e.target.value))}
             className="bg-white"
           />
         </div>
@@ -601,9 +606,12 @@ function CompanyForm({
           <Input
             id="cfg-phone"
             type="tel"
-            placeholder="(00) 0000-0000"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="(00) 00000-0000"
+            maxLength={16}
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => setPhone(formatPhoneBr(e.target.value))}
             className="bg-white"
           />
         </div>
@@ -622,13 +630,9 @@ function CompanyForm({
         </div>
       </div>
       <div className={`${mobileFormActionsRowClass} border-t border-zinc-100 pt-4`}>
-        <Button
-          type="submit"
-          disabled={saving}
-          className="flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
-        >
+        <Button type="submit" disabled={saving} className={dashboardFormSaveButtonClass}>
           <Save className="h-4 w-4" />
-          {saving ? 'Salvando...' : 'Salvar dados da empresa'}
+          {saving ? 'Salvando…' : 'Salvar dados da empresa'}
         </Button>
       </div>
     </form>
@@ -657,12 +661,6 @@ function CalculationPreferencesForm({
     company.commissionMethod ?? 'GROSS_PROFIT'
   );
   const [timezone, setTimezone] = useState(company.timezone ?? '');
-
-  useEffect(() => {
-    setDefaultCommission(company.defaultCommission != null ? String(company.defaultCommission) : '');
-    setCommissionMethod(company.commissionMethod ?? 'GROSS_PROFIT');
-    setTimezone(company.timezone ?? '');
-  }, [company.id, company.updatedAt, company.commissionMethod, company.timezone, company.defaultCommission]);
 
   const tzOptions = listTimezoneOptions(company.timezone ?? undefined);
 
@@ -750,13 +748,9 @@ function CalculationPreferencesForm({
         </p>
       </div>
       <div className={`${mobileFormActionsRowClass} border-t border-zinc-100 pt-4`}>
-        <Button
-          type="submit"
-          disabled={saving}
-          className="flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
-        >
+        <Button type="submit" disabled={saving} className={dashboardFormSaveButtonClass}>
           <Save className="h-4 w-4" />
-          {saving ? 'Salvando...' : 'Salvar preferências'}
+          {saving ? 'Salvando…' : 'Salvar preferências'}
         </Button>
       </div>
     </form>

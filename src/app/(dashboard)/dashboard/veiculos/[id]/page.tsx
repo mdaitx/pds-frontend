@@ -28,6 +28,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
+import {
+  dashboardFormCancelLinkClass,
+  dashboardFormDeleteButtonClass,
+  dashboardFormSaveButtonClass,
+} from '@/lib/dashboard-action-buttons';
 
 const PLATE_REGEX = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$|^[A-Z]{3}[0-9]{4}$/;
 const CURRENT_YEAR = new Date().getFullYear();
@@ -500,31 +505,29 @@ export default function EditarVeiculoPage() {
             </div>
 
             <div className={`${mobileFormActionsRowClass} pt-2`}>
-              <Link
-                href="/dashboard/veiculos"
-                className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-300 px-4 py-2 font-medium text-zinc-700 hover:bg-zinc-50 sm:w-auto"
-              >
+              <Link href="/dashboard/veiculos" className={dashboardFormCancelLinkClass}>
                 Cancelar
               </Link>
-              <button
+              <Button
                 type="submit"
                 disabled={saving || uploading}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
+                className={dashboardFormSaveButtonClass}
               >
                 <Save className="h-4 w-4 shrink-0" aria-hidden />
                 {saving ? 'Salvando…' : 'Salvar'}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="outline"
                 onClick={handleDelete}
                 disabled={deleting || saving}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 sm:w-auto"
+                className={dashboardFormDeleteButtonClass}
                 aria-label={deleting ? 'Excluindo…' : 'Excluir veículo'}
                 title="Excluir veículo"
               >
-                <Trash2 className="h-5 w-5 shrink-0" aria-hidden />
-                <span className="sm:hidden">Excluir veículo</span>
-              </button>
+                <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
+                Excluir veículo
+              </Button>
             </div>
           </CardContent>
         </Card>

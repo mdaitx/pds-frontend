@@ -14,6 +14,8 @@ import {
   getCompanyStaff,
   getDrivers,
   uploadDriverPhoto,
+  digitsOnly,
+  formatPhoneBr,
 } from '@/lib';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -107,7 +109,7 @@ export default function NovoUsuarioPage() {
               role: 'DRIVER',
               name: driver.name,
               email: driver.email ?? '',
-              phone: driver.phone ?? '',
+              phone: formatPhoneBr(driver.phone ?? ''),
             }));
             setLinkedDriverId(driver.id);
             setPhotoPreview(driver.photoUrl ?? null);
@@ -153,7 +155,7 @@ export default function NovoUsuarioPage() {
         password: role === 'DRIVER' ? form.password : inviteByEmail ? undefined : form.password,
         role,
         name: form.name.trim(),
-        phone: form.phone.trim() || undefined,
+        phone: digitsOnly(form.phone) || undefined,
         status: form.status,
         photoUrl: photoPreview?.startsWith('http') ? photoPreview : undefined,
         ...(role === 'DRIVER' && linkedDriverId && { driverId: linkedDriverId }),
@@ -225,7 +227,7 @@ export default function NovoUsuarioPage() {
                         role: 'DRIVER',
                         name: d.name,
                         email: d.email ?? '',
-                        phone: d.phone ?? '',
+                        phone: formatPhoneBr(d.phone ?? ''),
                       }));
                       setPhotoPreview(d.photoUrl ?? null);
                     } else {
@@ -322,8 +324,11 @@ export default function NovoUsuarioPage() {
               <Input
                 id="phone"
                 placeholder="(00) 00000-0000"
+                inputMode="tel"
+                autoComplete="tel"
+                maxLength={16}
                 value={form.phone}
-                onChange={(e) => setField('phone', e.target.value)}
+                onChange={(e) => setField('phone', formatPhoneBr(e.target.value))}
               />
             </div>
           </CardContent>

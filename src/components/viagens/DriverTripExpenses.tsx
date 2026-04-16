@@ -9,6 +9,8 @@ import {
   uploadExpenseReceipt,
   createExpense,
   deleteExpense,
+  formatBrlCurrencyInput,
+  parseBrlInputString,
   type Expense,
   type ExpenseCategoryItem,
   type TripStatus,
@@ -34,8 +36,9 @@ function formatBrl(n: number): string {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-const selectClass =
-  'mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-base text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
+/** Modal “Nova despesa”: mesmo ritmo do {@link LocalizedDateField} (rótulo + controle alinhados). */
+const modalSelectClass =
+  'block h-11 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 type Props = {
   tripId: string;
@@ -117,8 +120,8 @@ export function DriverTripExpenses({ tripId, tripStatus, embed = false }: Props)
       toast.error('Preencha data, categoria e valor.');
       return;
     }
-    const amount = parseFloat(amountStr.replace(',', '.'));
-    if (Number.isNaN(amount) || amount <= 0) {
+    const amount = parseBrlInputString(amountStr);
+    if (amount === null || Number.isNaN(amount) || amount <= 0) {
       toast.error('Informe um valor válido.');
       return;
     }
@@ -306,22 +309,24 @@ export function DriverTripExpenses({ tripId, tripStatus, embed = false }: Props)
               {formError && (
                 <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{formError}</div>
               )}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2 min-[400px]:items-start">
                 <LocalizedDateField
                   label="Data *"
                   value={dateYmd}
                   onChange={setDateYmd}
+                  className="min-w-0 !gap-1.5"
                   labelClassName="text-sm font-medium leading-none text-zinc-700"
-                  buttonClassName="h-11 w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-left text-sm text-zinc-900 hover:bg-zinc-50"
+                  buttonClassName="h-11 w-full min-w-0 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-left text-sm text-zinc-900 hover:bg-zinc-50"
                 />
-                <div className="space-y-1.5">
-                  <Label htmlFor="modal-exp-cat">Categoria *</Label>
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <Label htmlFor="modal-exp-cat" className="text-sm font-medium leading-none text-zinc-700">
+                    Categoria *
+                  </Label>
                   <select
                     id="modal-exp-cat"
                     value={categoryId}
                     onChange={(e) => setCategoryId(e.target.value)}
-                    className={selectClass}
-                    style={{ fontSize: '0.9rem' }}
+                    className={modalSelectClass}
                   >
                     {categories.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -340,7 +345,7 @@ export function DriverTripExpenses({ tripId, tripStatus, embed = false }: Props)
                   placeholder="0,00"
                   className="h-11 bg-white"
                   value={amountStr}
-                  onChange={(e) => setAmountStr(e.target.value)}
+                  onChange={(e) => setAmountStr(formatBrlCurrencyInput(e.target.value))}
                 />
               </div>
               <div className="space-y-1.5">

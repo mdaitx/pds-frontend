@@ -3,14 +3,29 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Plus, Truck, FileText, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  ArrowLeft,
+  Plus,
+  Truck,
+  FileText,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+} from 'lucide-react';
 import { useAuth, useActivityHint } from '@/hooks';
 import { getTrips, type Trip, type TripStatus } from '@/lib';
-import { Card, CardContent, Input } from '@/components/ui';
+import { Card, CardContent, Input, Skeleton } from '@/components/ui';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
+import { ViagensCardsSkeleton } from '@/components/dashboard/DashboardLoadingSkeleton';
 import { VehicleTruckOrTrailerIcon } from '@/components/vehicles/VehicleTruckOrTrailerIcon';
 import { cn } from '@/lib/cn';
 import { mobileFilterPillRowClass } from '@/lib/dashboard-mobile';
+import {
+  dashboardLinkCardEditClass,
+  dashboardLinkPrimaryClass,
+  dashboardLinkPrimarySmClass,
+} from '@/lib/dashboard-action-buttons';
 
 const PAGE_SIZE = 6;
 
@@ -77,7 +92,7 @@ export default function ViagensPage() {
       router.replace('/dashboard');
       return;
     }
-    setLoading(true);
+    queueMicrotask(() => setLoading(true));
     getTrips()
       .then(setList)
       .catch((e) => setError(e instanceof Error ? e.message : 'Erro ao carregar'))
@@ -100,13 +115,13 @@ export default function ViagensPage() {
   }, [list, statusFilter, searchQuery]);
 
   useEffect(() => {
-    setPage(1);
+    queueMicrotask(() => setPage(1));
   }, [statusFilter, searchQuery]);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
 
   useEffect(() => {
-    setPage((p) => Math.min(p, totalPages));
+    queueMicrotask(() => setPage((p) => Math.min(p, totalPages)));
   }, [totalPages]);
   const safePage = Math.min(page, totalPages);
   const pageSlice = useMemo(() => {
@@ -120,9 +135,14 @@ export default function ViagensPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="settings-font-inter flex min-h-[50vh] items-center justify-center bg-zinc-50 tracking-tight">
-        <p className="text-sm text-zinc-500">Carregando viagens…</p>
-      </div>
+      <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="4xl">
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-40" />
+          <Skeleton className="h-8 w-56 max-w-full" />
+        </div>
+        <Skeleton className="mt-4 h-10 w-full rounded-lg sm:max-w-md" />
+        <ViagensCardsSkeleton count={4} />
+      </DashboardPageShell>
     );
   }
 
@@ -143,15 +163,12 @@ export default function ViagensPage() {
             </h1>
           </div>
           {isFleetStaff && (
-            <Link href="/dashboard/viagens/novo" className="w-full sm:w-auto">
-              <button
-                type="button"
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 sm:w-auto"
-                style={{ fontSize: '0.875rem' }}
-              >
-                <Plus className="h-4 w-4" />
-                Nova viagem
-              </button>
+            <Link
+              href="/dashboard/viagens/novo"
+              className={cn(dashboardLinkPrimaryClass, 'w-full sm:w-auto')}
+            >
+              <Plus className="h-4 w-4" />
+              Nova viagem
             </Link>
           )}
         </div>
@@ -209,17 +226,20 @@ export default function ViagensPage() {
         {sorted.length === 0 ? (
           <Card className="border-zinc-200 shadow-sm">
             <CardContent className="py-16 text-center">
-              <Truck className="mx-auto mb-4 h-12 w-12 text-zinc-300" />
-              <p className="text-zinc-500">Nenhuma viagem encontrada.</p>
+              <Truck className="mx-auto mb-4 h-12 w-12 text-zinc-300" aria-hidden />
+              <p className="text-zinc-800 font-medium">Nenhuma viagem encontrada</p>
+              <p className="mt-1 text-sm text-zinc-500">
+                {list.length === 0
+                  ? 'Cadastre uma viagem para acompanhar fretes e despesas.'
+                  : 'Tente outro filtro, status ou termo na busca.'}
+              </p>
               {isFleetStaff && (
-                <Link href="/dashboard/viagens/novo">
-                  <button
-                    type="button"
-                    className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
-                    style={{ fontSize: '0.875rem' }}
-                  >
-                    Criar primeira viagem
-                  </button>
+                <Link
+                  href="/dashboard/viagens/novo"
+                  className={cn(dashboardLinkPrimaryClass, 'mt-6 inline-flex')}
+                >
+                  <Plus className="h-4 w-4" />
+                  Criar primeira viagem
                 </Link>
               )}
             </CardContent>
@@ -297,26 +317,21 @@ export default function ViagensPage() {
                         onKeyDown={(e) => e.stopPropagation()}
                       >
                         {t.status === 'COMPLETED' && (
-                          <Link href={`/dashboard/viagens/${t.id}/acerto`} className="w-full sm:w-auto">
-                            <button
-                              type="button"
-                              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-white transition-colors hover:bg-blue-700 sm:w-auto"
-                              style={{ fontSize: '0.82rem' }}
-                            >
-                              <FileText className="h-3.5 w-3.5" />
-                              Acerto
-                            </button>
+                          <Link
+                            href={`/dashboard/viagens/${t.id}/acerto`}
+                            className={dashboardLinkPrimarySmClass}
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                            Acerto
                           </Link>
                         )}
                         {isFleetStaff && (
-                          <Link href={`/dashboard/viagens/${t.id}/editar`} className="w-full sm:w-auto">
-                            <button
-                              type="button"
-                              className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-zinc-100 px-3 py-1.5 text-zinc-700 transition-colors hover:bg-zinc-200 sm:w-auto"
-                              style={{ fontSize: '0.82rem' }}
-                            >
-                              Editar
-                            </button>
+                          <Link
+                            href={`/dashboard/viagens/${t.id}/editar`}
+                            className={dashboardLinkCardEditClass}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                            Editar
                           </Link>
                         )}
                       </div>

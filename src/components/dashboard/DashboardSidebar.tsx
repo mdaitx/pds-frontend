@@ -8,6 +8,7 @@ import {
   Route,
   Users,
   UserCog,
+  User,
   Settings,
   LogOut,
   Menu,
@@ -56,108 +57,42 @@ const ownerNav: NavItem[] = [
 const driverNav: NavItem[] = [
   { label: 'Painel', href: '/dashboard', icon: <LayoutDashboard className="w-5 h-5" /> },
   { label: 'Minhas Viagens', href: '/dashboard/viagens', icon: <Route className="w-5 h-5" /> },
+  {
+    label: 'Perfil',
+    href: '/dashboard/perfil',
+    icon: <User className="w-5 h-5" />,
+    activePathPrefixes: ['/dashboard/perfil'],
+  },
 ];
 
-export function DashboardSidebar({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { appUser, signOut } = useAuth();
-  const { tripsActivityCount } = useActivityHint();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  /** Só relevante para OWNER: evita mostrar a sidebar em /dashboard antes do redirect para o onboarding. */
-  const [ownerOnboardingComplete, setOwnerOnboardingComplete] = useState<boolean | null>(null);
-  const ownerOnboardingCacheRef = useRef<boolean | null>(null);
+type DashboardSidebarNavProps = {
+  collapsed?: boolean;
+  mobile?: boolean;
+  navItems: NavItem[];
+  pathname: string;
+  tripsActivityCount: number;
+  appUser: AuthUser | null;
+  onNavClick: () => void;
+  onLogout: () => void;
+};
 
-  useEffect(() => {
-    if (!appUser) {
-      ownerOnboardingCacheRef.current = null;
-      setOwnerOnboardingComplete(null);
-      return;
-    }
-    if (appUser.role !== 'OWNER') {
-      ownerOnboardingCacheRef.current = true;
-      setOwnerOnboardingComplete(true);
-      return;
-    }
-
-    const isDashboardRoot = pathname === '/dashboard';
-    const isOnboardingRouteCheck =
-      pathname === '/dashboard/onboarding' || pathname.startsWith('/dashboard/onboarding/');
-    const mustRefetch =
-      isDashboardRoot ||
-      isOnboardingRouteCheck ||
-      ownerOnboardingCacheRef.current === null;
-
-    if (!mustRefetch) {
-      setOwnerOnboardingComplete(ownerOnboardingCacheRef.current);
-      return;
-    }
-
-    let cancelled = false;
-    setOwnerOnboardingComplete(null);
-    getOnboardingStatus()
-      .then((s) => {
-        if (!cancelled) {
-          ownerOnboardingCacheRef.current = s.completed;
-          setOwnerOnboardingComplete(s.completed);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          ownerOnboardingCacheRef.current = true;
-          setOwnerOnboardingComplete(true);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [appUser, pathname]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('sidebarCollapsed');
-      setSidebarCollapsed(saved === 'true');
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
-  }, [sidebarCollapsed]);
-
-  const getNavItems = (): NavItem[] => {
-    if (!appUser) return ownerNav;
-    if (appUser.role === 'DRIVER') return driverNav;
-    if (appUser.role === 'ADMIN') return ownerNav.filter((item) => !item.ownerOnly);
-    return ownerNav;
-  };
-
-  const navItems = getNavItems();
-
-  const isOnboardingRoute =
-    pathname === '/dashboard/onboarding' || pathname.startsWith('/dashboard/onboarding/');
-
-  /** Layout full-width sem sidebar: rota de onboarding ou raiz do dashboard enquanto o OWNER ainda não concluiu o wizard. */
-  const suppressSidebarChrome =
-    isOnboardingRoute ||
-    (appUser?.role === 'OWNER' &&
-      pathname === '/dashboard' &&
-      ownerOnboardingComplete !== true);
-
-  const handleLogout = async () => {
-    await signOut();
-    router.replace('/login');
-  };
-
-  const toggleSidebar = () => setSidebarCollapsed((v) => !v);
-
-  const SidebarContent = ({ collapsed = false, mobile = false }: { collapsed?: boolean; mobile?: boolean }) => (
+function DashboardSidebarNav({
+  collapsed = false,
+  mobile = false,
+  navItems,
+  pathname,
+  tripsActivityCount,
+  appUser,
+  onNavClick,
+  onLogout,
+}: DashboardSidebarNavProps) {
+  return (
     <div className="flex h-full min-h-0 flex-col">
       {mobile ? (
         <div className="flex w-full shrink-0 items-center border-b border-zinc-200 px-3 py-3 sm:px-4">
           <Link
             href="/dashboard"
-            onClick={() => setSidebarOpen(false)}
+            onClick={onNavClick}
             className="flex min-w-0 flex-1 items-center gap-2 rounded-lg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-500"
             title="Truck Finanças — Início"
           >
@@ -168,7 +103,7 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
           </Link>
           <button
             type="button"
-            onClick={() => setSidebarOpen(false)}
+            onClick={onNavClick}
             className="ml-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 text-zinc-700 transition-colors hover:bg-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
             aria-label="Fechar menu"
           >
@@ -178,7 +113,7 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
       ) : (
         <Link
           href="/dashboard"
-          onClick={() => setSidebarOpen(false)}
+          onClick={onNavClick}
           className={cn(
             'flex items-center gap-3 border-b border-zinc-200 px-6 py-5 transition-all duration-300 outline-none hover:bg-zinc-50/90 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset',
             collapsed && 'justify-center px-3'
@@ -197,7 +132,6 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
         </Link>
       )}
 
-      {/* Nav */}
       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-zinc-200">
         {navItems.map((item) => {
           const extraActive =
@@ -210,7 +144,7 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setSidebarOpen(false)}
+              onClick={onNavClick}
               className={cn(
                 'relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group',
                 isActive ? 'bg-blue-50 text-blue-700' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900',
@@ -246,7 +180,6 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
         })}
       </nav>
 
-      {/* User Info */}
       <div className={cn('px-3 py-4 border-t border-zinc-200 space-y-2', collapsed && 'px-2')}>
         {!collapsed && appUser && (
           <>
@@ -255,7 +188,8 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
               <p className="text-zinc-500 text-[0.72rem]">{ROLE_LABEL[appUser.role]}</p>
             </div>
             <button
-              onClick={handleLogout}
+              type="button"
+              onClick={onLogout}
               className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 transition-colors text-[0.8rem]"
             >
               <LogOut className="w-4 h-4" />
@@ -265,7 +199,8 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
         )}
         {collapsed && (
           <button
-            onClick={handleLogout}
+            type="button"
+            onClick={onLogout}
             className="w-full flex items-center justify-center p-2.5 rounded-lg text-red-600 hover:bg-red-50 transition-colors group relative"
             title="Sair"
           >
@@ -278,6 +213,102 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
       </div>
     </div>
   );
+}
+
+export function DashboardSidebar({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { appUser, signOut } = useAuth();
+  const { tripsActivityCount } = useActivityHint();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  /** Só relevante para OWNER: evita mostrar a sidebar em /dashboard antes do redirect para o onboarding. */
+  const [ownerOnboardingComplete, setOwnerOnboardingComplete] = useState<boolean | null>(null);
+  const ownerOnboardingCacheRef = useRef<boolean | null>(null);
+
+  useEffect(() => {
+    if (!appUser) {
+      ownerOnboardingCacheRef.current = null;
+      queueMicrotask(() => setOwnerOnboardingComplete(null));
+      return;
+    }
+    if (appUser.role !== 'OWNER') {
+      ownerOnboardingCacheRef.current = true;
+      queueMicrotask(() => setOwnerOnboardingComplete(true));
+      return;
+    }
+
+    const isDashboardRoot = pathname === '/dashboard';
+    const isOnboardingRouteCheck =
+      pathname === '/dashboard/onboarding' || pathname.startsWith('/dashboard/onboarding/');
+    const mustRefetch =
+      isDashboardRoot ||
+      isOnboardingRouteCheck ||
+      ownerOnboardingCacheRef.current === null;
+
+    if (!mustRefetch) {
+      queueMicrotask(() => setOwnerOnboardingComplete(ownerOnboardingCacheRef.current));
+      return;
+    }
+
+    let cancelled = false;
+    queueMicrotask(() => setOwnerOnboardingComplete(null));
+    getOnboardingStatus()
+      .then((s) => {
+        if (!cancelled) {
+          ownerOnboardingCacheRef.current = s.completed;
+          setOwnerOnboardingComplete(s.completed);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          ownerOnboardingCacheRef.current = true;
+          setOwnerOnboardingComplete(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [appUser, pathname]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sidebarCollapsed');
+      queueMicrotask(() => setSidebarCollapsed(saved === 'true'));
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
+
+  const getNavItems = (): NavItem[] => {
+    if (!appUser) return ownerNav;
+    if (appUser.role === 'DRIVER') return driverNav;
+    if (appUser.role === 'ADMIN') return ownerNav.filter((item) => !item.ownerOnly);
+    return ownerNav;
+  };
+
+  const navItems = getNavItems();
+
+  const isOnboardingRoute =
+    pathname === '/dashboard/onboarding' || pathname.startsWith('/dashboard/onboarding/');
+
+  /** Layout full-width sem sidebar: rota de onboarding ou raiz do dashboard enquanto o OWNER ainda não concluiu o wizard. */
+  const suppressSidebarChrome =
+    isOnboardingRoute ||
+    (appUser?.role === 'OWNER' &&
+      pathname === '/dashboard' &&
+      ownerOnboardingComplete !== true);
+
+  const handleLogout = async () => {
+    await signOut();
+    router.replace('/login');
+  };
+
+  const toggleSidebar = () => setSidebarCollapsed((v) => !v);
+
+  const closeMobileNav = () => setSidebarOpen(false);
 
   if (suppressSidebarChrome) {
     return <div className="min-h-screen w-full bg-zinc-50">{children}</div>;
@@ -292,7 +323,15 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
           sidebarCollapsed ? 'w-20' : 'w-64'
         )}
       >
-        <SidebarContent collapsed={sidebarCollapsed} />
+        <DashboardSidebarNav
+          collapsed={sidebarCollapsed}
+          navItems={navItems}
+          pathname={pathname}
+          tripsActivityCount={tripsActivityCount}
+          appUser={appUser}
+          onNavClick={closeMobileNav}
+          onLogout={handleLogout}
+        />
         <button
           onClick={toggleSidebar}
           className="absolute -right-3 top-6 w-6 h-6 bg-white border border-zinc-200 rounded-full flex items-center justify-center text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 transition-colors shadow-sm z-10"
@@ -314,7 +353,15 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
             id="dashboard-mobile-sidebar"
             className="absolute left-0 top-0 bottom-0 flex w-72 max-w-[85vw] flex-col bg-white shadow-xl"
           >
-            <SidebarContent mobile />
+            <DashboardSidebarNav
+              mobile
+              navItems={navItems}
+              pathname={pathname}
+              tripsActivityCount={tripsActivityCount}
+              appUser={appUser}
+              onNavClick={closeMobileNav}
+              onLogout={handleLogout}
+            />
           </aside>
         </div>
       )}

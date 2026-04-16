@@ -36,6 +36,7 @@ export function SettlementAcertoView({
   backLabel = 'Voltar',
 }: Props) {
   const trip = s.trip;
+  const finalKmShown = s.finalKm ?? trip.finalKm;
 
   return (
     <div className="min-h-screen bg-zinc-50 px-3 py-4 sm:p-4 md:p-6">
@@ -80,7 +81,7 @@ export function SettlementAcertoView({
             </div>
             <div>
               <dt className="text-zinc-500">Frete</dt>
-              <dd className="font-medium text-zinc-900">{formatBRL(trip.freightValue)}</dd>
+              <dd className="font-semibold tabular-nums text-zinc-900">{formatBRL(trip.freightValue)}</dd>
             </div>
             <div>
               <dt className="text-zinc-500">Período</dt>
@@ -91,8 +92,9 @@ export function SettlementAcertoView({
             </div>
             <div>
               <dt className="text-zinc-500">Km</dt>
-              <dd className="font-medium text-zinc-900">
-                inicial {trip.initialKm ?? '—'} · final {s.finalKm ?? trip.finalKm ?? '—'}
+              <dd className="font-medium tabular-nums text-zinc-900">
+                inicial {trip.initialKm != null ? trip.initialKm.toLocaleString('pt-BR') : '—'} · final{' '}
+                {finalKmShown != null ? finalKmShown.toLocaleString('pt-BR') : '—'}
               </dd>
             </div>
           </dl>
@@ -103,28 +105,28 @@ export function SettlementAcertoView({
           <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
             <div className="flex justify-between gap-4 rounded-lg bg-white/90 px-3 py-2">
               <dt className="text-zinc-600">Total despesas</dt>
-              <dd className="font-medium">{formatBRL(s.totalExpenses)}</dd>
+              <dd className="font-semibold tabular-nums text-zinc-900">{formatBRL(s.totalExpenses)}</dd>
             </div>
             <div className="flex justify-between gap-4 rounded-lg bg-white/90 px-3 py-2">
               <dt className="text-zinc-600">Frete − despesas</dt>
-              <dd className="font-medium">{formatBRL(s.grossProfit)}</dd>
+              <dd className="font-semibold tabular-nums text-zinc-900">{formatBRL(s.grossProfit)}</dd>
             </div>
             <div className="flex justify-between gap-4 rounded-lg bg-white/90 px-3 py-2">
               <dt className="text-zinc-600">Comissão ({s.driverCommissionPct}%)</dt>
-              <dd className="font-medium">{formatBRL(s.driverCommissionAmt)}</dd>
+              <dd className="font-semibold tabular-nums text-zinc-900">{formatBRL(s.driverCommissionAmt)}</dd>
             </div>
             <div className="flex justify-between gap-4 rounded-lg bg-white/90 px-3 py-2">
               <dt className="text-zinc-600">Adiantamentos</dt>
-              <dd className="font-medium">{formatBRL(s.totalAdvances)}</dd>
+              <dd className="font-semibold tabular-nums text-zinc-900">{formatBRL(s.totalAdvances)}</dd>
             </div>
             <div className="flex justify-between gap-4 rounded-lg bg-emerald-100 px-3 py-2 sm:col-span-2">
-              <dt className="font-medium text-emerald-900">A pagar ao motorista</dt>
-              <dd className="text-lg font-bold text-emerald-900">{formatBRL(s.amountToPayDriver)}</dd>
+              <dt className="font-medium text-emerald-950">A pagar ao motorista</dt>
+              <dd className="text-lg font-bold tabular-nums text-emerald-950">{formatBRL(s.amountToPayDriver)}</dd>
             </div>
             {isOwner && (
               <div className="flex justify-between gap-4 rounded-lg bg-white/90 px-3 py-2 sm:col-span-2">
                 <dt className="text-zinc-600">Resultado do dono</dt>
-                <dd className="font-semibold text-zinc-900">{formatBRL(s.ownerResult)}</dd>
+                <dd className="font-semibold tabular-nums text-zinc-950">{formatBRL(s.ownerResult)}</dd>
               </div>
             )}
           </dl>
@@ -156,7 +158,7 @@ export function SettlementAcertoView({
           <div className={cn('mt-3', mobileTableScrollClass)}>
             <table className="w-full min-w-[520px] text-left text-sm">
               <thead>
-                <tr className="border-b border-zinc-200 text-zinc-500">
+                <tr className="border-b border-zinc-200 text-zinc-600">
                   <th className="pb-2 pr-3 font-medium">Data</th>
                   <th className="pb-2 pr-3 font-medium">Categoria</th>
                   <th className="pb-2 pr-3 font-medium">Descrição</th>
@@ -173,12 +175,12 @@ export function SettlementAcertoView({
                 ) : (
                   trip.expenses.map((e) => (
                     <tr key={e.id} className="border-b border-zinc-100">
-                      <td className="py-2 pr-3 whitespace-nowrap">
+                      <td className="py-2 pr-3 whitespace-nowrap text-zinc-800">
                         {new Date(e.date).toLocaleDateString('pt-BR')}
                       </td>
-                      <td className="py-2 pr-3">{e.category.name}</td>
+                      <td className="py-2 pr-3 text-zinc-800">{e.category.name}</td>
                       <td className="py-2 pr-3 text-zinc-600">{e.description || '—'}</td>
-                      <td className="py-2 text-right font-medium">{formatBRL(e.amount)}</td>
+                      <td className="py-2 text-right font-semibold tabular-nums text-zinc-900">{formatBRL(e.amount)}</td>
                     </tr>
                   ))
                 )}
@@ -192,7 +194,7 @@ export function SettlementAcertoView({
           <div className={cn('mt-3', mobileTableScrollClass)}>
             <table className="w-full min-w-[520px] text-left text-sm">
               <thead>
-                <tr className="border-b border-zinc-200 text-zinc-500">
+                <tr className="border-b border-zinc-200 text-zinc-600">
                   <th className="pb-2 pr-3 font-medium">Data</th>
                   <th className="pb-2 pr-3 font-medium">Método</th>
                   <th className="pb-2 pr-3 font-medium">Descrição</th>
@@ -209,12 +211,12 @@ export function SettlementAcertoView({
                 ) : (
                   trip.advances.map((a) => (
                     <tr key={a.id} className="border-b border-zinc-100">
-                      <td className="py-2 pr-3 whitespace-nowrap">
+                      <td className="py-2 pr-3 whitespace-nowrap text-zinc-800">
                         {new Date(a.date).toLocaleDateString('pt-BR')}
                       </td>
-                      <td className="py-2 pr-3">{ADVANCE_METHOD_LABEL[a.method] ?? a.method}</td>
+                      <td className="py-2 pr-3 text-zinc-800">{ADVANCE_METHOD_LABEL[a.method] ?? a.method}</td>
                       <td className="py-2 pr-3 text-zinc-600">{a.description || '—'}</td>
-                      <td className="py-2 text-right font-medium">{formatBRL(a.amount)}</td>
+                      <td className="py-2 text-right font-semibold tabular-nums text-zinc-900">{formatBRL(a.amount)}</td>
                     </tr>
                   ))
                 )}
