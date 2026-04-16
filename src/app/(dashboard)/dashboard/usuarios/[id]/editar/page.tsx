@@ -20,16 +20,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
+import {
+  dashboardFormDeleteButtonClass,
+  dashboardFormSaveButtonClass,
+} from '@/lib/dashboard-action-buttons';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 
 const selectClass =
   'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
-
-function staffDisplayName(m: CompanyStaffMember): string {
-  if (m.name?.trim()) return m.name.trim();
-  const local = m.email?.split('@')[0];
-  return local || m.email;
-}
 
 export default function EditarUsuarioPage() {
   const params = useParams();
@@ -225,7 +223,7 @@ export default function EditarUsuarioPage() {
           <Button
             type="submit"
             disabled={saving}
-            className="flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
+            className={dashboardFormSaveButtonClass}
           >
             <Save className="h-4 w-4" />
             {saving ? 'Salvando…' : 'Salvar'}
@@ -236,9 +234,9 @@ export default function EditarUsuarioPage() {
               variant="outline"
               disabled={saving}
               onClick={handleDelete}
-              className="w-full border-red-200 text-red-600 hover:bg-red-50 sm:w-auto"
+              className={dashboardFormDeleteButtonClass}
             >
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash2 className="h-4 w-4" />
               Excluir usuário
             </Button>
           ) : null}

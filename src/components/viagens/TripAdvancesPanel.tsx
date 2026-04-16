@@ -7,6 +7,8 @@ import {
   getAdvancesByTrip,
   createAdvance,
   deleteAdvance,
+  formatBrlCurrencyInput,
+  parseBrlInputString,
   type Advance,
   type AdvanceMethod,
   type TripStatus,
@@ -97,8 +99,8 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
       toast.error('Preencha valor e data.');
       return;
     }
-    const amount = parseFloat(amountStr.replace(',', '.'));
-    if (Number.isNaN(amount) || amount <= 0) {
+    const amount = parseBrlInputString(amountStr);
+    if (amount === null || Number.isNaN(amount) || amount <= 0) {
       toast.error('Informe um valor válido.');
       return;
     }
@@ -278,7 +280,7 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
                     placeholder="0,00"
                     className="h-11 bg-white"
                     value={amountStr}
-                    onChange={(e) => setAmountStr(e.target.value)}
+                    onChange={(e) => setAmountStr(formatBrlCurrencyInput(e.target.value))}
                   />
                 </div>
                 <LocalizedDateField

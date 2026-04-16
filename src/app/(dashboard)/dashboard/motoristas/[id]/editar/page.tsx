@@ -6,12 +6,11 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks';
 import {
   getDriver,
   getVehicles,
-  getDrivers,
   updateDriver,
   deleteDriver,
   uploadDriverPhoto,
@@ -19,6 +18,12 @@ import {
   type DriverStatus,
   type UpdateDriverPayload,
   type Vehicle,
+  digitsOnly,
+  formatCpf,
+  formatPhoneBr,
+  formatBrlCurrencyInput,
+  numberToBrlInputDigits,
+  parseBrlInputString,
 } from '@/lib';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,19 +32,16 @@ import { Card, CardContent, CardHeader } from '@/components/ui';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
+import {
+  dashboardFormCancelButtonClass,
+  dashboardFormDeleteButtonClass,
+  dashboardFormSaveButtonClass,
+} from '@/lib/dashboard-action-buttons';
 
 const selectClass =
   'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
 
 const PAYMENT_METHODS = ['PIX', 'Transferência', 'Dinheiro', 'Outro'];
-
-function formatCpf(v: string): string {
-  const d = v.replace(/\D/g, '').slice(0, 11);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
-  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
-  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
-}
 
 export default function EditarMotoristaPage() {
   const router = useRouter();
@@ -48,7 +50,6 @@ export default function EditarMotoristaPage() {
   const { session, appUser, loading: authLoading } = useAuth();
   const [driver, setDriver] = useState<Driver | null>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [existingEmails, setExistingEmails] = useState<string[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pageLoading, setPageLoading] = useState(true);
 
@@ -61,6 +62,7 @@ export default function EditarMotoristaPage() {
     rg: '',
     cnh: '',
     commissionPct: '',
+    monthlySalary: '',
     paymentMethod: '',
     pixKey: '',
     bankName: '',
@@ -89,26 +91,21 @@ export default function EditarMotoristaPage() {
       router.replace('/dashboard');
       return;
     }
-    setPageLoading(true);
-    Promise.all([getDriver(id), getVehicles(), getDrivers()])
-      .then(([d, vList, allDrivers]) => {
+    queueMicrotask(() => setPageLoading(true));
+    Promise.all([getDriver(id), getVehicles()])
+      .then(([d, vList]) => {
         setDriver(d);
         setVehicles(vList);
-        setExistingEmails(
-          allDrivers
-            .filter((x) => x.id !== id)
-            .map((x) => (x.email ?? '').trim().toLowerCase())
-            .filter(Boolean)
-        );
         setForm({
           name: d.name,
           email: d.email ?? '',
           status: d.status,
-          phone: d.phone ?? '',
+          phone: formatPhoneBr(d.phone ?? ''),
           cpf: formatCpf(d.cpf ?? ''),
           rg: d.rg ?? '',
           cnh: d.cnh ?? '',
           commissionPct: d.commissionPct != null ? String(d.commissionPct) : '',
+          monthlySalary: formatBrlCurrencyInput(numberToBrlInputDigits(d.monthlySalary ?? 0)),
           paymentMethod: d.paymentMethod ?? '',
           pixKey: d.pixKey ?? '',
           bankName: d.bankName ?? '',
@@ -148,6 +145,10 @@ export default function EditarMotoristaPage() {
 
     const cpfDigits = form.cpf.replace(/\D/g, '');
     if (cpfDigits.length > 0 && cpfDigits.length !== 11) errs.cpf = 'CPF deve ter 11 dígitos.';
+    const sal = parseBrlInputString(form.monthlySalary);
+    if (sal === null || sal < 0) {
+      errs.monthlySalary = 'Informe o salário mensal (pode ser R$ 0,00).';
+    }
 
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -160,12 +161,14 @@ export default function EditarMotoristaPage() {
     setLoading(true);
     try {
       const cpfClean = form.cpf.replace(/\D/g, '');
+      const salParsed = parseBrlInputString(form.monthlySalary);
       const payload: UpdateDriverPayload = {
         name: form.name.trim(),
+        monthlySalary: salParsed != null ? Math.max(0, salParsed) : 0,
         cpf: cpfClean.length === 11 ? cpfClean : cpfClean.length === 0 ? '' : undefined,
         rg: form.rg.trim() || undefined,
         cnh: form.cnh.trim() || undefined,
-        phone: form.phone.trim() || undefined,
+        phone: digitsOnly(form.phone) || undefined,
         email: form.email.trim() || undefined,
         paymentMethod: form.paymentMethod.trim() || undefined,
         pixKey: form.pixKey.trim() || undefined,
@@ -268,7 +271,15 @@ export default function EditarMotoristaPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="phone">Telefone</Label>
-              <Input id="phone" placeholder="(00) 00000-0000" value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
+              <Input
+                id="phone"
+                placeholder="(00) 00000-0000"
+                inputMode="tel"
+                autoComplete="tel"
+                maxLength={16}
+                value={form.phone}
+                onChange={(e) => setField('phone', formatPhoneBr(e.target.value))}
+              />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -305,6 +316,23 @@ export default function EditarMotoristaPage() {
                 value={form.commissionPct}
                 onChange={(e) => setField('commissionPct', e.target.value)}
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="monthlySalary">Salário mensal *</Label>
+              <Input
+                id="monthlySalary"
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="0,00"
+                className="tabular-nums"
+                value={form.monthlySalary}
+                onChange={(e) => setField('monthlySalary', formatBrlCurrencyInput(e.target.value))}
+              />
+              {errors.monthlySalary && <p className="text-sm text-red-600">{errors.monthlySalary}</p>}
+              <p className="text-xs text-zinc-500">
+                Valor em reais (pt-BR). Usado no relatório por motorista (proporcional ao período).
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="paymentMethod">Forma de pagamento</Label>
@@ -385,28 +413,25 @@ export default function EditarMotoristaPage() {
           <Button
             type="button"
             variant="outline"
-            className="w-full border-red-200 text-red-700 hover:bg-red-50 sm:w-auto"
+            className={dashboardFormDeleteButtonClass}
             disabled={loading || deleting}
             onClick={handleDelete}
           >
-            {deleting ? 'Excluindo...' : 'Excluir motorista'}
+            <Trash2 className="h-4 w-4" />
+            {deleting ? 'Excluindo…' : 'Excluir motorista'}
           </Button>
           <Button
             type="button"
             variant="outline"
-            className="w-full sm:w-auto"
+            className={dashboardFormCancelButtonClass}
             disabled={loading}
             onClick={() => router.push(`/dashboard/motoristas/${id}`)}
           >
             Cancelar
           </Button>
-          <Button
-            type="submit"
-            disabled={loading}
-            className="flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
-          >
+          <Button type="submit" disabled={loading} className={dashboardFormSaveButtonClass}>
             <Save className="h-4 w-4" />
-            {loading ? 'Salvando...' : 'Salvar'}
+            {loading ? 'Salvando…' : 'Salvar'}
           </Button>
         </div>
       </form>

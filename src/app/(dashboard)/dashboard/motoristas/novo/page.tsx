@@ -19,6 +19,11 @@ import {
   type DriverStatus,
   type Vehicle,
   type CompanyStaffMember,
+  digitsOnly,
+  formatCpf,
+  formatPhoneBr,
+  formatBrlCurrencyInput,
+  parseBrlInputString,
 } from '@/lib';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,14 +36,6 @@ import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
 const selectClass =
   'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
 
-function formatCpf(v: string): string {
-  const d = v.replace(/\D/g, '').slice(0, 11);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
-  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
-  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
-}
-
 export default function NovoMotoristaPage() {
   const router = useRouter();
   const { session, appUser, loading: authLoading } = useAuth();
@@ -48,7 +45,7 @@ export default function NovoMotoristaPage() {
   const [linkableStaffDrivers, setLinkableStaffDrivers] = useState<CompanyStaffMember[]>([]);
   const [linkedUserId, setLinkedUserId] = useState('');
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(() => ({
     name: '',
     email: '',
     status: 'ACTIVE' as DriverStatus,
@@ -57,8 +54,9 @@ export default function NovoMotoristaPage() {
     rg: '',
     cnh: '',
     commissionPct: '',
+    monthlySalary: formatBrlCurrencyInput('0'),
     preferredVehicleId: '',
-  });
+  }));
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -139,6 +137,10 @@ export default function NovoMotoristaPage() {
     }
     const cpfDigits = form.cpf.replace(/\D/g, '');
     if (cpfDigits.length > 0 && cpfDigits.length !== 11) errs.cpf = 'CPF deve ter 11 dígitos.';
+    const sal = parseBrlInputString(form.monthlySalary);
+    if (sal === null || sal < 0) {
+      errs.monthlySalary = 'Informe o salário mensal (pode ser R$ 0,00).';
+    }
 
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -149,8 +151,10 @@ export default function NovoMotoristaPage() {
     if (!validate()) return;
     setLoading(true);
     try {
+      const salParsed = parseBrlInputString(form.monthlySalary);
       const payload: CreateDriverPayload = {
         name: form.name.trim(),
+        monthlySalary: salParsed != null ? Math.max(0, salParsed) : 0,
         ...(form.cpf.replace(/\D/g, '').length === 11 && {
           cpf: form.cpf.replace(/\D/g, ''),
         }),
@@ -158,7 +162,8 @@ export default function NovoMotoristaPage() {
       };
       if (form.rg.trim()) payload.rg = form.rg.trim();
       if (form.cnh.trim()) payload.cnh = form.cnh.trim();
-      if (form.phone.trim()) payload.phone = form.phone.trim();
+      const phoneDigits = digitsOnly(form.phone);
+      if (phoneDigits) payload.phone = phoneDigits;
       if (form.email.trim()) payload.email = form.email.trim();
       const commission = parseFloat(form.commissionPct);
       if (!Number.isNaN(commission)) payload.commissionPct = commission;
@@ -228,7 +233,7 @@ export default function NovoMotoristaPage() {
                     setForm((f) => ({
                       ...f,
                       email: m.email,
-                      phone: m.phone ?? '',
+                      phone: formatPhoneBr(m.phone ?? ''),
                     }));
                   }
                   setErrors((er) => ({ ...er, email: '' }));
@@ -276,8 +281,11 @@ export default function NovoMotoristaPage() {
               <Input
                 id="phone"
                 placeholder="(00) 00000-0000"
+                inputMode="tel"
+                autoComplete="tel"
+                maxLength={16}
                 value={form.phone}
-                onChange={(e) => setField('phone', e.target.value)}
+                onChange={(e) => setField('phone', formatPhoneBr(e.target.value))}
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
@@ -336,6 +344,24 @@ export default function NovoMotoristaPage() {
                 value={form.commissionPct}
                 onChange={(e) => setField('commissionPct', e.target.value)}
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="monthlySalary">Salário mensal *</Label>
+              <Input
+                id="monthlySalary"
+                type="text"
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="0,00"
+                className="tabular-nums"
+                value={form.monthlySalary}
+                onChange={(e) => setField('monthlySalary', formatBrlCurrencyInput(e.target.value))}
+              />
+              {errors.monthlySalary && <p className="text-sm text-red-600">{errors.monthlySalary}</p>}
+              <p className="text-xs text-zinc-500">
+                Digite o valor em reais (separador de milhar e centavos como no Brasil). Usado no relatório por
+                motorista (proporcional ao período) junto com as comissões das viagens.
+              </p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="preferredVehicleId">Veículo preferencial</Label>

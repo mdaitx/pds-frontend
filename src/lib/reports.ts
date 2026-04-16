@@ -1,5 +1,126 @@
 import type { Advance, Expense, Settlement, Trip, TripStatus } from '@/services/api';
 
+export type DriverExpenseLine = {
+  id: string;
+  tripId: string;
+  tripCode: string;
+  date: string;
+  categoryName: string;
+  amount: number;
+  description: string | null;
+};
+
+/** Salário mensal proporcional aos dias do recorte em cada mês civil (período inclusivo). */
+export function proratedMonthlySalary(
+  monthlySalary: number | null | undefined,
+  fromYmd: string,
+  toYmd: string
+): number {
+  if (monthlySalary == null || !Number.isFinite(monthlySalary) || monthlySalary <= 0) return 0;
+  const parse = (ymd: string) => {
+    const [y, mo, d] = ymd.split('-').map(Number);
+    return new Date(y, mo - 1, d);
+  };
+  const from = parse(fromYmd);
+  const to = parse(toYmd);
+  if (from > to) return 0;
+  let total = 0;
+  let y = from.getFullYear();
+  let m = from.getMonth();
+  for (;;) {
+    const dim = new Date(y, m + 1, 0).getDate();
+    const monthStart = new Date(y, m, 1);
+    const monthEnd = new Date(y, m, dim);
+    const overlapStart = from > monthStart ? from : monthStart;
+    const overlapEnd = to < monthEnd ? to : monthEnd;
+    if (overlapStart <= overlapEnd) {
+      const days = Math.floor((overlapEnd.getTime() - overlapStart.getTime()) / 86400000) + 1;
+      total += monthlySalary * (days / dim);
+    }
+    if (y === to.getFullYear() && m === to.getMonth()) break;
+    m++;
+    if (m > 11) {
+      m = 0;
+      y++;
+    }
+  }
+  return total;
+}
+
+export function buildDriverExpenseLines(
+  operationalRows: TripReportRow[],
+  expensesByTripId: Record<string, Expense[]>
+): DriverExpenseLine[] {
+  const tripIds = new Set(operationalRows.map((r) => r.tripId));
+  const codeByTrip = new Map(operationalRows.map((r) => [r.tripId, r.code]));
+  const lines: DriverExpenseLine[] = [];
+  for (const tripId of tripIds) {
+    const exps = expensesByTripId[tripId] ?? [];
+    for (const e of exps) {
+      lines.push({
+        id: e.id,
+        tripId,
+        tripCode: codeByTrip.get(tripId) ?? '—',
+        date: e.date,
+        categoryName: e.category?.name ?? '—',
+        amount: safeNum(e.amount, 0),
+        description: e.description,
+      });
+    }
+  }
+  lines.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  return lines;
+}
+
+export type DriverReportSummary = {
+  proratedSalary: number;
+  monthlySalaryCadastro: number;
+  totalCommissions: number | null;
+  encargosMotorista: number;
+  ownerResultAcertos: number | null;
+  ownerAfterSalary: number | null;
+  /** Soma do “a pagar ao motorista” nos acertos das viagens do período. */
+  totalAmountToPayTrips: number | null;
+  /** Valor total a pagar ao motorista: acertos das viagens + salário proporcional ao período. */
+  totalToPayDriver: number;
+};
+
+export function computeDriverReportSummary(
+  agg: ReportAggregate,
+  operationalRows: TripReportRow[],
+  monthlySalary: number,
+  fromYmd: string,
+  toYmd: string
+): DriverReportSummary {
+  const proratedSalary = proratedMonthlySalary(monthlySalary, fromYmd, toYmd);
+  const settled = operationalRows.filter((r) => r.hasSettlement && r.ownerResult != null);
+  const ownerResultAcertos =
+    settled.length === 0 ? null : settled.reduce((s, r) => s + (r.ownerResult as number), 0);
+  const totalCommissions = agg.driverCommission;
+  const commNum = totalCommissions != null ? totalCommissions : 0;
+  const encargosMotorista = commNum + proratedSalary;
+  const ownerAfterSalary =
+    ownerResultAcertos != null ? ownerResultAcertos - proratedSalary : null;
+
+  const withApd = operationalRows.filter((r) => r.hasSettlement && r.amountToPayDriver != null);
+  const totalAmountToPayTrips =
+    withApd.length === 0
+      ? null
+      : withApd.reduce((s, r) => s + (r.amountToPayDriver as number), 0);
+  const totalToPayDriver = (totalAmountToPayTrips ?? 0) + proratedSalary;
+
+  return {
+    proratedSalary,
+    monthlySalaryCadastro: monthlySalary,
+    totalCommissions,
+    encargosMotorista,
+    ownerResultAcertos,
+    ownerAfterSalary,
+    totalAmountToPayTrips,
+    totalToPayDriver,
+  };
+}
+
 /** Garante número finito (respostas parciais da API / JSON). */
 function safeNum(n: unknown, fallback = 0): number {
   if (n == null || n === '') return fallback;

@@ -23,6 +23,8 @@ import {
   getTrip,
   finalizeTrip,
   getSettlement,
+  formatKmInput,
+  parseKmInputString,
   type Trip,
   type TripStatus,
   type SettlementWithTrip,
@@ -33,6 +35,10 @@ import { DriverTripExpenses } from '@/components/viagens/DriverTripExpenses';
 import { TripAdvancesPanel } from '@/components/viagens/TripAdvancesPanel';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { VehicleTruckOrTrailerIcon } from '@/components/vehicles/VehicleTruckOrTrailerIcon';
+import {
+  dashboardLinkPrimaryToolbarClass,
+  dashboardLinkToolbarEditClass,
+} from '@/lib/dashboard-action-buttons';
 
 /** Figma Make (HE / zV): pills e rótulos. */
 const STATUS_LABEL: Record<TripStatus, string> = {
@@ -128,11 +134,15 @@ export default function ViagemDetalhePage() {
     setFinalizeError(null);
     setFinalizing(true);
     try {
-      const km = finalKmFinalize.trim() ? parseInt(finalKmFinalize, 10) : undefined;
-      if (finalKmFinalize.trim() && Number.isNaN(km)) {
-        setFinalizeError('Km final inválido');
-        setFinalizing(false);
-        return;
+      let km: number | undefined;
+      if (finalKmFinalize.trim()) {
+        const parsed = parseKmInputString(finalKmFinalize);
+        if (parsed === null || Number.isNaN(parsed) || parsed < 0) {
+          setFinalizeError('Km final inválido');
+          setFinalizing(false);
+          return;
+        }
+        km = parsed;
       }
       await finalizeTrip(trip.id, km);
       await refreshTripAndSettlement();
@@ -234,26 +244,14 @@ export default function ViagemDetalhePage() {
               </button>
             )}
             {trip.status === 'COMPLETED' && (
-              <Link href={`/dashboard/viagens/${trip.id}/acerto`} className="w-full sm:w-auto">
-                <button
-                  type="button"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 sm:w-auto"
-                  style={{ fontSize: '0.875rem' }}
-                >
-                  <FileText className="h-4 w-4" />
-                  Ver acerto
-                </button>
+              <Link href={`/dashboard/viagens/${trip.id}/acerto`} className={dashboardLinkPrimaryToolbarClass}>
+                <FileText className="h-4 w-4" />
+                Ver acerto
               </Link>
             )}
-            <Link href={`/dashboard/viagens/${trip.id}/editar`} className="w-full sm:w-auto">
-              <button
-                type="button"
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-800 transition-colors hover:bg-zinc-50 sm:w-auto"
-                style={{ fontSize: '0.875rem' }}
-              >
-                <Pencil className="h-4 w-4" />
-                Editar
-              </button>
+            <Link href={`/dashboard/viagens/${trip.id}/editar`} className={dashboardLinkToolbarEditClass}>
+              <Pencil className="h-4 w-4" />
+              Editar
             </Link>
           </div>
         </div>
@@ -384,12 +382,17 @@ export default function ViagemDetalhePage() {
               </label>
               <input
                 id="modalFinalKm"
-                type="number"
-                min={0}
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
                 value={finalKmFinalize}
-                onChange={(e) => setFinalKmFinalize(e.target.value)}
+                onChange={(e) => setFinalKmFinalize(formatKmInput(e.target.value))}
                 className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder={trip.initialKm != null ? `ex.: ${trip.initialKm + 100}` : ''}
+                placeholder={
+                  trip.initialKm != null
+                    ? `ex.: ${(trip.initialKm + 100).toLocaleString('pt-BR')}`
+                    : ''
+                }
               />
               {finalizeError && <p className="mt-2 text-sm text-red-600">{finalizeError}</p>}
               <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

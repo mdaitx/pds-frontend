@@ -65,9 +65,11 @@ pds-frontend/
 ├── hooks/
 │   └── index.ts            # Re-exporta useAuth (e futuros hooks)
 ├── lib/
-│   ├── api.ts              # Cliente HTTP (apiFetch, fetchMe, registerProfile, recoverPassword)
+│   ├── api-client.ts       # Cliente HTTP base (apiFetch, ApiError, getAccessToken)
 │   ├── supabase.ts         # Cliente Supabase (browser)
 │   └── index.ts
+├── services/
+│   └── api/                # Chamadas ao backend por domínio (auth, viagens, …); barrel em index.ts
 ├── types/
 │   ├── auth.ts
 │   └── index.ts

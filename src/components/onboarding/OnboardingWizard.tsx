@@ -11,6 +11,13 @@ import {
   createOnboardingCompany,
   createOnboardingFirstVehicle,
   createOnboardingFirstDriver,
+  digitsOnly,
+  formatBrlCurrencyInput,
+  formatCnpjMask,
+  formatCpf,
+  formatPhoneBr,
+  isValidCnpj,
+  parseBrlInputString,
   type CreateOnboardingCompanyPayload,
   type CreateOnboardingFirstVehiclePayload,
   type CreateOnboardingFirstDriverPayload,
@@ -26,53 +33,6 @@ const PLATE_REGEX = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$|^[A-Z]{3}[0-9]{4}$/;
 
 function normalizePlate(plate: string): string {
   return plate.replace(/[\s-]/g, '').toUpperCase().slice(0, 7);
-}
-
-function normalizeCpf(cpf: string): string {
-  return cpf.replace(/\D/g, '').slice(0, 11);
-}
-
-function normalizeCnpjDigits(value: string): string {
-  return value.replace(/\D/g, '').slice(0, 14);
-}
-
-/** Máscara 00.000.000/0001-00 — aceita somente dígitos, máx. 14. */
-function formatCnpjMask(value: string): string {
-  const x = normalizeCnpjDigits(value);
-  if (x.length <= 2) return x;
-  let s = `${x.slice(0, 2)}.${x.slice(2, 5)}`;
-  if (x.length > 5) s += `.${x.slice(5, 8)}`;
-  if (x.length > 8) s += `/${x.slice(8, 12)}`;
-  if (x.length > 12) s += `-${x.slice(12, 14)}`;
-  return s;
-}
-
-function isValidCnpj(digits: string): boolean {
-  const c = digits.replace(/\D/g, '');
-  if (c.length !== 14 || /^(\d)\1{13}$/.test(c)) return false;
-
-  let length = c.length - 2;
-  let numbers = c.substring(0, length);
-  const verifiers = c.substring(length);
-  let sum = 0;
-  let pos = length - 7;
-  for (let i = length; i >= 1; i--) {
-    sum += parseInt(numbers.charAt(length - i), 10) * pos--;
-    if (pos < 2) pos = 9;
-  }
-  let result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
-  if (result !== parseInt(verifiers.charAt(0), 10)) return false;
-
-  length += 1;
-  numbers = c.substring(0, length);
-  sum = 0;
-  pos = length - 7;
-  for (let i = length; i >= 1; i--) {
-    sum += parseInt(numbers.charAt(length - i), 10) * pos--;
-    if (pos < 2) pos = 9;
-  }
-  result = sum % 11 < 2 ? 0 : 11 - (sum % 11);
-  return result === parseInt(verifiers.charAt(1), 10);
 }
 
 type WizardStep = 1 | 2 | 3;
@@ -114,6 +74,7 @@ export function OnboardingWizard({ initialStep }: Props) {
     phone: '',
     email: '',
     commission: '10',
+    monthlySalary: formatBrlCurrencyInput('0'),
   });
   const [driverErrors, setDriverErrors] = useState<Record<string, string>>({});
 
@@ -121,7 +82,7 @@ export function OnboardingWizard({ initialStep }: Props) {
     const errs: Record<string, string> = {};
     if (!company.name.trim()) errs.name = isAutonomous ? 'Informe seu nome.' : 'Nome fantasia é obrigatório.';
     if (!isAutonomous) {
-      const cnpjDigits = normalizeCnpjDigits(company.cnpj);
+      const cnpjDigits = digitsOnly(company.cnpj, 14);
       if (cnpjDigits.length !== 14) {
         errs.cnpj = 'Informe um CNPJ com 14 dígitos.';
       } else if (!isValidCnpj(cnpjDigits)) {
@@ -150,8 +111,12 @@ export function OnboardingWizard({ initialStep }: Props) {
   const validateStep3 = () => {
     const errs: Record<string, string> = {};
     if (!driver.name.trim()) errs.name = 'Nome é obrigatório.';
-    const cpfNorm = normalizeCpf(driver.cpf);
+    const cpfNorm = digitsOnly(driver.cpf, 11);
     if (cpfNorm.length < 11) errs.cpf = 'CPF deve ter 11 dígitos.';
+    const sal = parseBrlInputString(driver.monthlySalary);
+    if (sal === null || sal < 0) {
+      errs.monthlySalary = 'Informe o salário mensal (pode ser R$ 0,00).';
+    }
     setDriverErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -167,9 +132,9 @@ export function OnboardingWizard({ initialStep }: Props) {
           defaultCommission: Number(company.defaultCommission) || 10,
         };
         if (!isAutonomous) {
-          payload.document = normalizeCnpjDigits(company.cnpj) || undefined;
+          payload.document = digitsOnly(company.cnpj, 14) || undefined;
           payload.address = company.address.trim() || undefined;
-          payload.phone = company.phone.trim() || undefined;
+          payload.phone = digitsOnly(company.phone) || undefined;
           payload.email = company.email.trim() || undefined;
         }
         await createOnboardingCompany(payload);
@@ -209,13 +174,15 @@ export function OnboardingWizard({ initialStep }: Props) {
     if (!validateStep3()) return;
     setLoading(true);
     try {
-      const cpfNorm = normalizeCpf(driver.cpf);
+      const cpfNorm = digitsOnly(driver.cpf, 11);
+      const salNum = parseBrlInputString(driver.monthlySalary);
       const payload: CreateOnboardingFirstDriverPayload = {
         name: driver.name.trim(),
         cpf: cpfNorm,
-        phone: driver.phone.trim() || undefined,
+        phone: digitsOnly(driver.phone) || undefined,
         email: driver.email.trim() || undefined,
         commissionPct: driver.commission ? Number(driver.commission) : undefined,
+        monthlySalary: salNum != null ? Math.max(0, salNum) : 0,
       };
       await createOnboardingFirstDriver(payload);
       toast.success('Configuração concluída! Bem-vindo ao Truck Finanças!');
@@ -336,9 +303,12 @@ export function OnboardingWizard({ initialStep }: Props) {
                       <div className="space-y-1.5">
                         <Label>Telefone</Label>
                         <Input
-                          placeholder="(00) 0000-0000"
+                          inputMode="tel"
+                          autoComplete="tel"
+                          placeholder="(00) 00000-0000"
+                          maxLength={16}
                           value={company.phone}
-                          onChange={(e) => setCompany((f) => ({ ...f, phone: e.target.value }))}
+                          onChange={(e) => setCompany((f) => ({ ...f, phone: formatPhoneBr(e.target.value) }))}
                         />
                       </div>
                     </div>
@@ -481,18 +451,23 @@ export function OnboardingWizard({ initialStep }: Props) {
                   <div className="space-y-1.5">
                     <Label>CPF *</Label>
                     <Input
+                      inputMode="numeric"
                       placeholder="000.000.000-00"
+                      maxLength={14}
                       value={driver.cpf}
-                      onChange={(e) => setDriver((f) => ({ ...f, cpf: e.target.value }))}
+                      onChange={(e) => setDriver((f) => ({ ...f, cpf: formatCpf(e.target.value) }))}
                     />
                     {driverErrors.cpf && <p className="text-sm text-red-600">{driverErrors.cpf}</p>}
                   </div>
                   <div className="space-y-1.5">
                     <Label>Telefone</Label>
                     <Input
+                      inputMode="tel"
+                      autoComplete="tel"
                       placeholder="(00) 00000-0000"
+                      maxLength={16}
                       value={driver.phone}
-                      onChange={(e) => setDriver((f) => ({ ...f, phone: e.target.value }))}
+                      onChange={(e) => setDriver((f) => ({ ...f, phone: formatPhoneBr(e.target.value) }))}
                     />
                   </div>
                 </div>
@@ -517,6 +492,26 @@ export function OnboardingWizard({ initialStep }: Props) {
                       onChange={(e) => setDriver((f) => ({ ...f, commission: e.target.value }))}
                     />
                   </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Salário mensal *</Label>
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    placeholder="0,00"
+                    className="tabular-nums"
+                    value={driver.monthlySalary}
+                    onChange={(e) =>
+                      setDriver((f) => ({ ...f, monthlySalary: formatBrlCurrencyInput(e.target.value) }))
+                    }
+                  />
+                  {driverErrors.monthlySalary && (
+                    <p className="text-sm text-red-600">{driverErrors.monthlySalary}</p>
+                  )}
+                  <p className="text-xs text-zinc-500">
+                    Valor fixo mensal; no relatório por motorista será proporcional ao período escolhido.
+                  </p>
                 </div>
               </>
             )}

@@ -19,10 +19,11 @@ import {
   LogIn,
 } from 'lucide-react';
 import { useAuth } from '@/hooks';
-import { getDrivers, getCompanyStaff, deleteDriver } from '@/lib';
+import { getDrivers, getCompanyStaff, deleteDriver, formatPhoneBr } from '@/lib';
 import type { Driver } from '@/lib';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { dashboardCardDeleteButtonClass, dashboardCardEditButtonClass } from '@/lib/dashboard-action-buttons';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
@@ -52,9 +53,24 @@ function DriverCardInner({ driver, driverHasAccess }: { driver: Driver; driverHa
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <h3 className="truncate text-zinc-900" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
-          {driver.name}
-        </h3>
+        <div className="flex items-center justify-between gap-2">
+          <h3
+            className="min-w-0 flex-1 truncate text-zinc-900"
+            style={{ fontSize: '0.95rem', fontWeight: 600 }}
+          >
+            {driver.name}
+          </h3>
+          {!driverHasAccess && (driver.email ?? '').trim() && (
+            <Link
+              href={`/dashboard/usuarios/novo?driverId=${driver.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+            >
+              <LogIn className="h-3.5 w-3.5" aria-hidden />
+              Acesso
+            </Link>
+          )}
+        </div>
         <p className="truncate text-zinc-500" style={{ fontSize: '0.8rem' }}>
           {driver.email ?? '—'}
         </p>
@@ -80,7 +96,7 @@ function DriverCardInner({ driver, driverHasAccess }: { driver: Driver; driverHa
           {driver.phone ? (
             <>
               {' · '}
-              <span className="text-zinc-400">{driver.phone}</span>
+              <span className="text-zinc-400">{formatPhoneBr(driver.phone ?? '')}</span>
             </>
           ) : null}
         </p>
@@ -290,29 +306,15 @@ export default function MotoristasListaPage() {
                         onKeyDown={(e) => e.stopPropagation()}
                       >
                         <Link href={`/dashboard/motoristas/${driver.id}`} className="min-w-0 flex-1">
-                          <Button
-                            variant="outline"
-                            className="w-full justify-center gap-1.5 border-0 bg-blue-50 px-3 py-1.5 text-xs text-blue-700 hover:bg-blue-100"
-                          >
+                          <Button variant="outline" className={dashboardCardEditButtonClass}>
                             <Edit className="h-3.5 w-3.5" />
                             Editar
                           </Button>
                         </Link>
-                        {!hasAccess && (driver.email ?? '').trim() && (
-                          <Link href={`/dashboard/usuarios/novo?driverId=${driver.id}`}>
-                            <Button
-                              variant="outline"
-                              className="gap-1 border-0 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-700 hover:bg-emerald-100"
-                            >
-                              <LogIn className="h-3.5 w-3.5" />
-                              Acesso
-                            </Button>
-                          </Link>
-                        )}
                         <Button
                           variant="outline"
                           onClick={() => setDeleteTarget(driver)}
-                          className="justify-center gap-1.5 border-0 bg-red-50 px-3 py-1.5 text-xs text-red-600 hover:bg-red-100"
+                          className={dashboardCardDeleteButtonClass}
                           aria-label={`Excluir ${driver.name}`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />

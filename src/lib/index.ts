@@ -1,3 +1,16 @@
+export {
+  digitsOnly,
+  formatCpf,
+  formatCnpjMask,
+  formatCpfCnpjDocument,
+  formatPhoneBr,
+  formatBrlCurrencyInput,
+  numberToBrlInputDigits,
+  parseBrlInputString,
+  formatKmInput,
+  parseKmInputString,
+  isValidCnpj,
+} from './br-format';
 export { createClient } from './supabase';
 export {
   DASHBOARD_HOME,
@@ -12,6 +25,8 @@ export {
   fetchMe,
   registerProfile,
   recoverPassword,
+  patchAuthProfile,
+  uploadAuthProfilePhoto,
   getOnboardingStatus,
   createOnboardingCompany,
   createOnboardingFirstVehicle,

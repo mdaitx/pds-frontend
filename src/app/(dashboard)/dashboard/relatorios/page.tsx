@@ -22,10 +22,15 @@ import {
   buildTripReportRows,
   filterTripRows,
   aggregateRows,
+  operationalReportRows,
+  buildDriverExpenseLines,
+  computeDriverReportSummary,
   type TripReportRow,
   type ReportAggregate,
+  type DriverExpenseLine,
+  type DriverReportSummary,
 } from '@/lib/reports';
-import { downloadTripsReportPdf, downloadSummaryReportPdf } from '@/lib/reports-pdf';
+import { downloadTripsReportPdf, downloadSummaryReportPdf, downloadMotoristaReportPdf } from '@/lib/reports-pdf';
 import { Card, CardHeader, CardContent, LocalizedDateField } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { FileDown, Loader2 } from 'lucide-react';
@@ -107,6 +112,7 @@ export default function RelatoriosPage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [allRows, setAllRows] = useState<TripReportRow[]>([]);
+  const [expensesByTripId, setExpensesByTripId] = useState<Record<string, Expense[]>>({});
 
   const [tab, setTab] = useState<TabId>('viagens');
   const [fromYmd, setFromYmd] = useState(ymdFirstOfMonth);
@@ -170,6 +176,7 @@ export default function RelatoriosPage() {
           setAllRows(rows);
           setVehicles(vList);
           setDrivers(dList);
+          setExpensesByTripId(expensesByTripId);
         }
       } catch (e) {
         if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Erro ao carregar dados');
@@ -207,6 +214,9 @@ export default function RelatoriosPage() {
     [allRows, fromYmd, toYmd, filterVehicle, filterDriver, filterStatus]
   );
 
+  /** Totais das viagens que entram nos filtros atuais (visão rápida antes das abas). */
+  const periodSummary = useMemo(() => aggregateRows(filteredRows), [filteredRows]);
+
   const sortedRows = useMemo(
     () => sortTripRows(filteredRows, sortCol, sortDir),
     [filteredRows, sortCol, sortDir]
@@ -240,6 +250,30 @@ export default function RelatoriosPage() {
 
   const vehicleAgg: ReportAggregate = useMemo(() => aggregateRows(vehicleScopedRows), [vehicleScopedRows]);
   const driverAgg: ReportAggregate = useMemo(() => aggregateRows(driverScopedRows), [driverScopedRows]);
+
+  const driverOperationalRows = useMemo(
+    () => operationalReportRows(driverScopedRows),
+    [driverScopedRows]
+  );
+  const selectedDriverMonthlySalary = useMemo(() => {
+    const d = drivers.find((x) => x.id === reportDriverId);
+    return d?.monthlySalary ?? 0;
+  }, [drivers, reportDriverId]);
+  const driverReportSummary = useMemo(
+    () =>
+      computeDriverReportSummary(
+        driverAgg,
+        driverOperationalRows,
+        selectedDriverMonthlySalary,
+        fromYmd,
+        toYmd
+      ),
+    [driverAgg, driverOperationalRows, selectedDriverMonthlySalary, fromYmd, toYmd]
+  );
+  const driverExpenseLines = useMemo(
+    () => buildDriverExpenseLines(driverOperationalRows, expensesByTripId),
+    [driverOperationalRows, expensesByTripId]
+  );
 
   const periodLabel = `${new Date(`${fromYmd}T12:00:00`).toLocaleDateString('pt-BR')} — ${new Date(`${toYmd}T12:00:00`).toLocaleDateString('pt-BR')}`;
 
@@ -395,6 +429,48 @@ export default function RelatoriosPage() {
         </CardContent>
       </Card>
 
+      {!loading && (
+        <Card className="border-zinc-200 bg-gradient-to-br from-zinc-50/80 to-white">
+          <CardHeader className="pb-2">
+            <h2 className="text-sm font-medium text-zinc-800">Resumo do período</h2>
+            <p className="text-xs text-zinc-500">
+              Com base nos filtros acima (viagens operacionais no intervalo).
+            </p>
+          </CardHeader>
+          <CardContent>
+            <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-lg border border-zinc-100 bg-white/80 px-3 py-2 shadow-sm">
+                <dt className="text-[0.7rem] font-medium uppercase tracking-wide text-zinc-500">Viagens</dt>
+                <dd className="mt-0.5 text-lg font-semibold tabular-nums text-zinc-900">{periodSummary.trips}</dd>
+              </div>
+              <div className="rounded-lg border border-zinc-100 bg-white/80 px-3 py-2 shadow-sm">
+                <dt className="text-[0.7rem] font-medium uppercase tracking-wide text-zinc-500">Frete</dt>
+                <dd className="mt-0.5 text-lg font-semibold tabular-nums text-zinc-900">
+                  {formatBrl(periodSummary.freight)}
+                </dd>
+              </div>
+              <div className="rounded-lg border border-zinc-100 bg-white/80 px-3 py-2 shadow-sm">
+                <dt className="text-[0.7rem] font-medium uppercase tracking-wide text-zinc-500">Despesas</dt>
+                <dd className="mt-0.5 text-lg font-semibold tabular-nums text-zinc-900">
+                  {formatBrl(periodSummary.expenses)}
+                </dd>
+              </div>
+              <div className="rounded-lg border border-zinc-100 bg-white/80 px-3 py-2 shadow-sm">
+                <dt className="text-[0.7rem] font-medium uppercase tracking-wide text-zinc-500">Margem bruta</dt>
+                <dd className="mt-0.5 text-lg font-semibold tabular-nums text-zinc-900">
+                  {formatBrl(periodSummary.grossProfit)}
+                </dd>
+              </div>
+            </dl>
+            {periodSummary.tripsCancelled > 0 ? (
+              <p className="mt-3 text-xs text-zinc-500">
+                {periodSummary.tripsCancelled} viagem(ns) cancelada(s) no período não entram nos totais acima.
+              </p>
+            ) : null}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-2 gap-2 border-b border-zinc-200 pb-2 sm:flex sm:flex-wrap sm:gap-2">
         {(
           [
@@ -450,10 +526,11 @@ export default function RelatoriosPage() {
           }
         />
       ) : tab === 'motorista' ? (
-        <AggregateTab
-          title="Por motorista"
+        <MotoristaRelatorioTab
           agg={driverAgg}
           detailRows={driverScopedRows}
+          expenseLines={driverExpenseLines}
+          summary={driverReportSummary}
           periodLabel={periodLabel}
           entityLabel={drivers.find((d) => d.id === reportDriverId)?.name ?? '—'}
         />
@@ -578,6 +655,259 @@ function ViagensTab(props: {
                     <td className="px-3 py-2 text-zinc-800">{r.km > 0 ? r.km.toLocaleString('pt-BR') : '—'}</td>
                     <td className="px-3 py-2 text-zinc-800">
                       {r.costPerKm != null ? formatBrl(r.costPerKm) : '—'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+    </>
+  );
+}
+
+function MotoristaRelatorioTab(props: {
+  agg: ReportAggregate;
+  detailRows: TripReportRow[];
+  expenseLines: DriverExpenseLine[];
+  summary: DriverReportSummary;
+  periodLabel: string;
+  entityLabel: string;
+}) {
+  const { agg, detailRows, expenseLines, summary, periodLabel, entityLabel } = props;
+  const sortedDetail = useMemo(
+    () => [...detailRows].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()),
+    [detailRows]
+  );
+  const title = `Por motorista: ${entityLabel}`;
+  const canPdf = sortedDetail.length > 0 || expenseLines.length > 0;
+
+  return (
+    <>
+      <p className="text-sm text-zinc-600">
+        O salário mensal cadastrado no motorista é proporcional aos dias do período selecionado.{' '}
+        <strong>A pagar (viagens)</strong> é a soma do valor do acerto em cada viagem;{' '}
+        <strong>Total a pagar ao motorista</strong> inclui esse total mais o salário proporcional ao período.
+      </p>
+      <div className="flex w-full justify-stretch sm:justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full gap-2 sm:w-auto"
+          disabled={!canPdf}
+          onClick={() =>
+            downloadMotoristaReportPdf({
+              title,
+              subtitle: periodLabel,
+              aggregate: agg,
+              detailRows: sortedDetail,
+              summary,
+              expenseLines,
+            })
+          }
+        >
+          <FileDown className="w-4 h-4" />
+          Baixar PDF
+        </Button>
+      </div>
+      <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 items-stretch">
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-zinc-500 text-xs">Viagens no recorte</p>
+            <p className="text-xl font-bold text-zinc-900">{agg.trips}</p>
+            {agg.tripsCancelled > 0 ? (
+              <p className="text-zinc-500 text-xs mt-1">{agg.tripsCancelled} cancelada(s) fora dos totais</p>
+            ) : null}
+          </CardContent>
+        </Card>
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-zinc-500 text-xs">Faturamento (frete)</p>
+            <p className="text-xl font-bold text-zinc-900">{formatBrl(agg.freight)}</p>
+          </CardContent>
+        </Card>
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-zinc-500 text-xs">Despesas (viagens)</p>
+            <p className="text-xl font-bold text-zinc-900">{formatBrl(agg.expenses)}</p>
+          </CardContent>
+        </Card>
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-zinc-500 text-xs">Adiantamentos</p>
+            <p className="text-xl font-bold text-zinc-900">{formatBrl(agg.advances)}</p>
+          </CardContent>
+        </Card>
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-zinc-500 text-xs">Margem bruta</p>
+            <p className="text-xl font-bold text-zinc-900">{formatBrl(agg.grossProfit)}</p>
+          </CardContent>
+        </Card>
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-zinc-500 text-xs">Comissões (soma no período)</p>
+            <p className="text-xl font-bold text-zinc-900">
+              {agg.driverCommission != null ? formatBrl(agg.driverCommission) : '—'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="flex min-h-[92px] flex-col border-emerald-200 bg-emerald-50/50">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-emerald-800 text-xs font-medium">A pagar (viagens / acertos)</p>
+            <p className="text-xl font-bold text-emerald-950">
+              {summary.totalAmountToPayTrips != null ? formatBrl(summary.totalAmountToPayTrips) : '—'}
+            </p>
+            <p className="mt-1 text-xs text-emerald-700/90">Soma do “a pagar” em cada viagem com acerto</p>
+          </CardContent>
+        </Card>
+        <Card className="flex min-h-[92px] flex-col border-emerald-300 bg-emerald-50">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-emerald-900 text-xs font-semibold">Total a pagar ao motorista</p>
+            <p className="text-xl font-bold text-emerald-950">{formatBrl(summary.totalToPayDriver)}</p>
+            <p className="mt-1 text-xs text-emerald-800">Acertos + salário proporcional ao período</p>
+          </CardContent>
+        </Card>
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-zinc-500 text-xs">Salário mensal (cadastro)</p>
+            <p className="text-xl font-bold text-zinc-900">{formatBrl(summary.monthlySalaryCadastro)}</p>
+          </CardContent>
+        </Card>
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-zinc-500 text-xs">Salário no período (proporcional)</p>
+            <p className="text-xl font-bold text-zinc-900">{formatBrl(summary.proratedSalary)}</p>
+          </CardContent>
+        </Card>
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-zinc-500 text-xs">Comissões + salário no período</p>
+            <p className="text-xl font-bold text-zinc-900">{formatBrl(summary.encargosMotorista)}</p>
+          </CardContent>
+        </Card>
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-zinc-500 text-xs">Resultado proprietário (só acertos)</p>
+            <p className="text-xl font-bold text-zinc-900">
+              {agg.ownerResult != null ? formatBrl(agg.ownerResult) : '—'}
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">Soma das viagens com acerto</p>
+          </CardContent>
+        </Card>
+        <Card className="flex min-h-[92px] flex-col border-zinc-200 md:col-span-2 lg:col-span-2">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-zinc-500 text-xs">Resultado proprietário após salário</p>
+            <p className="text-xl font-bold text-zinc-900">
+              {summary.ownerAfterSalary != null ? formatBrl(summary.ownerAfterSalary) : '—'}
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              Resultado das viagens com acerto menos o salário proporcional ao período
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-zinc-500 text-xs">Km rodados</p>
+            <p className="text-xl font-bold text-zinc-900">{agg.km.toLocaleString('pt-BR')}</p>
+          </CardContent>
+        </Card>
+        <Card className="flex min-h-[92px] flex-col border-zinc-200">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-zinc-500 text-xs">Custo / km</p>
+            <p className="text-xl font-bold text-zinc-900">
+              {agg.costPerKm != null ? formatBrl(agg.costPerKm) : '—'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-zinc-200 overflow-hidden">
+        <CardHeader className="pb-2">
+          <h3 className="break-words text-sm text-zinc-800">Viagens no período ({entityLabel})</h3>
+        </CardHeader>
+        <CardContent className={cn('p-0', mobileTableScrollClass)}>
+          <table className="w-full min-w-[1020px] text-sm">
+            <thead>
+              <tr className="border-b border-zinc-100 bg-zinc-50">
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Código</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Data</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Status</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Frete</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Despesas</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Margem</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">A pagar mot.</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Res. dono</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Km</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">R$/km</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedDetail.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="px-4 py-10 text-center text-zinc-500">
+                    Nenhuma viagem no período para este recorte.
+                  </td>
+                </tr>
+              ) : (
+                sortedDetail.map((r) => (
+                  <tr key={r.tripId} className="border-b border-zinc-50 hover:bg-zinc-50">
+                    <td className="px-3 py-2 font-medium text-zinc-900">{r.code}</td>
+                    <td className="px-3 py-2 text-zinc-600">{new Date(r.startDate).toLocaleDateString('pt-BR')}</td>
+                    <td className="px-3 py-2 text-zinc-600">{TRIP_STATUS_LABEL[r.status]}</td>
+                    <td className="px-3 py-2 text-zinc-800">{formatBrl(r.freight)}</td>
+                    <td className="px-3 py-2 text-zinc-800">{formatBrl(r.expenses)}</td>
+                    <td className="px-3 py-2 text-zinc-800">{formatBrl(r.grossProfit)}</td>
+                    <td className="px-3 py-2 text-zinc-800 tabular-nums">
+                      {r.amountToPayDriver != null ? formatBrl(r.amountToPayDriver) : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-zinc-800">
+                      {r.ownerResult != null ? formatBrl(r.ownerResult) : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-zinc-800">{r.km > 0 ? r.km.toLocaleString('pt-BR') : '—'}</td>
+                    <td className="px-3 py-2 text-zinc-800">
+                      {r.costPerKm != null ? formatBrl(r.costPerKm) : '—'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
+      <Card className="border-zinc-200 overflow-hidden">
+        <CardHeader className="pb-2">
+          <h3 className="break-words text-sm text-zinc-800">Despesas — cada lançamento ({entityLabel})</h3>
+        </CardHeader>
+        <CardContent className={cn('p-0', mobileTableScrollClass)}>
+          <table className="w-full min-w-[800px] text-sm">
+            <thead>
+              <tr className="border-b border-zinc-100 bg-zinc-50">
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Data</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Viagem</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Categoria</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Valor</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Descrição</th>
+              </tr>
+            </thead>
+            <tbody>
+              {expenseLines.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-zinc-500">
+                    Nenhuma despesa nas viagens deste motorista no período.
+                  </td>
+                </tr>
+              ) : (
+                expenseLines.map((e) => (
+                  <tr key={e.id} className="border-b border-zinc-50 hover:bg-zinc-50">
+                    <td className="px-3 py-2 text-zinc-600">{new Date(e.date).toLocaleDateString('pt-BR')}</td>
+                    <td className="px-3 py-2 font-medium text-zinc-900">{e.tripCode}</td>
+                    <td className="px-3 py-2 text-zinc-700">{e.categoryName}</td>
+                    <td className="px-3 py-2 text-zinc-800">{formatBrl(e.amount)}</td>
+                    <td className="px-3 py-2 text-zinc-600 max-w-[280px] truncate" title={e.description ?? undefined}>
+                      {e.description?.trim() || '—'}
                     </td>
                   </tr>
                 ))

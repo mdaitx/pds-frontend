@@ -29,9 +29,15 @@ import {
   deleteCompanyStaffUser,
   type CompanyStaffMember,
   type Driver,
+  formatCpf,
+  formatPhoneBr,
 } from '@/lib';
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { Button } from '@/components/ui/button';
+import {
+  dashboardToolbarDeleteButtonClass,
+  dashboardToolbarEditButtonClass,
+} from '@/lib/dashboard-action-buttons';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 
 const roleConfig: Record<string, { label: string; className: string; description: string }> = {
@@ -51,14 +57,6 @@ const roleConfig: Record<string, { label: string; className: string; description
     description: 'Acesso limitado às próprias viagens, despesas e acertos.',
   },
 };
-
-function formatCpf(v: string): string {
-  const d = v.replace(/\D/g, '').slice(0, 11);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
-  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
-  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
-}
 
 function formatCurrency(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -131,7 +129,7 @@ export default function DetalheUsuarioPage() {
       router.replace('/dashboard');
       return;
     }
-    setPageLoading(true);
+    queueMicrotask(() => setPageLoading(true));
     Promise.all([getCompanyStaff(), getDrivers(), getTrips()])
       .then(([staffRes, drivers, tList]) => {
         const staffMember = staffRes.staff.find((s) => s.id === id);
@@ -295,7 +293,7 @@ export default function DetalheUsuarioPage() {
                 iconBg="bg-green-50"
                 iconColor="text-green-600"
                 label="Telefone"
-                value={member.phone}
+                value={formatPhoneBr(member.phone)}
               />
             )}
           </div>
@@ -463,11 +461,8 @@ export default function DetalheUsuarioPage() {
         )}
         {canEdit && (
           <Link href={`/dashboard/usuarios/${id}/editar`}>
-            <Button
-              variant="outline"
-              className="flex items-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border-0"
-            >
-              <Edit className="w-4 h-4" />
+            <Button variant="outline" className={dashboardToolbarEditButtonClass}>
+              <Edit className="h-4 w-4" />
               Editar
             </Button>
           </Link>
@@ -483,10 +478,10 @@ export default function DetalheUsuarioPage() {
         {canDelete && (
           <Button
             variant="outline"
-            className="flex items-center gap-2 bg-red-50 text-red-600 hover:bg-red-100 border-0"
+            className={dashboardToolbarDeleteButtonClass}
             onClick={() => setDeleteOpen(true)}
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="h-4 w-4" />
             Excluir
           </Button>
         )}

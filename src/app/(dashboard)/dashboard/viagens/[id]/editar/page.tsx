@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks';
 import {
   getTrip,
@@ -11,6 +11,11 @@ import {
   deleteTrip,
   getVehicles,
   getDrivers,
+  formatBrlCurrencyInput,
+  formatKmInput,
+  numberToBrlInputDigits,
+  parseBrlInputString,
+  parseKmInputString,
   type Trip,
   type TripStatus,
   type UpdateTripPayload,
@@ -18,9 +23,15 @@ import {
   type Driver,
 } from '@/lib';
 import { Card, CardContent, CardHeader, LocalizedDateField } from '@/components/ui';
+import { Button } from '@/components/ui/button';
 import { DashboardPageShell, DASHBOARD_FORM_PADDING } from '@/components/dashboard/DashboardPageShell';
 import { cn } from '@/lib/cn';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
+import {
+  dashboardFormCancelLinkClass,
+  dashboardFormDeleteButtonClass,
+  dashboardFormSaveButtonClass,
+} from '@/lib/dashboard-action-buttons';
 
 const inputClass =
   'mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
@@ -90,8 +101,10 @@ export default function EditarViagemPage() {
         setDestination(t.destination ?? '');
         setStartDate(formatDateForInput(t.startDate));
         setEndDate(formatDateForInput(t.endDate));
-        setFreightValue(t.freightValue != null ? String(t.freightValue) : '');
-        setInitialKm(t.initialKm != null ? String(t.initialKm) : '');
+        setFreightValue(
+          t.freightValue != null ? formatBrlCurrencyInput(numberToBrlInputDigits(t.freightValue)) : ''
+        );
+        setInitialKm(t.initialKm != null ? formatKmInput(String(t.initialKm)) : '');
         setLoadType(t.loadType ?? '');
         setNotes(t.notes ?? '');
         setStatus(t.status);
@@ -120,10 +133,10 @@ export default function EditarViagemPage() {
       payload.origin = origin.trim() || undefined;
       payload.destination = destination.trim() || undefined;
       payload.endDate = endDate ? dateOnlyToIso(endDate) : undefined;
-      const fv = parseFloat(freightValue.replace(',', '.'));
-      payload.freightValue = !Number.isNaN(fv) ? fv : undefined;
-      const ik = parseInt(initialKm, 10);
-      payload.initialKm = !Number.isNaN(ik) ? ik : undefined;
+      const fv = parseBrlInputString(freightValue);
+      payload.freightValue = fv !== null && !Number.isNaN(fv) ? fv : undefined;
+      const ik = parseKmInputString(initialKm);
+      payload.initialKm = ik !== null && !Number.isNaN(ik) && ik >= 0 ? ik : undefined;
       payload.loadType = loadType.trim() || undefined;
       payload.notes = notes.trim() || undefined;
       const updated = await updateTrip(trip.id, payload);
@@ -327,8 +340,10 @@ export default function EditarViagemPage() {
                 <input
                   id="freightValue"
                   type="text"
+                  inputMode="decimal"
+                  placeholder="0,00"
                   value={freightValue}
-                  onChange={(e) => setFreightValue(e.target.value)}
+                  onChange={(e) => setFreightValue(formatBrlCurrencyInput(e.target.value))}
                   className={inputClass}
                 />
               </div>
@@ -338,11 +353,12 @@ export default function EditarViagemPage() {
                 </label>
                 <input
                   id="initialKm"
-                  type="number"
-                  min={0}
+                  type="text"
+                  inputMode="numeric"
                   placeholder="0"
+                  autoComplete="off"
                   value={initialKm}
-                  onChange={(e) => setInitialKm(e.target.value)}
+                  onChange={(e) => setInitialKm(formatKmInput(e.target.value))}
                   className={inputClass}
                 />
               </div>
@@ -407,30 +423,23 @@ export default function EditarViagemPage() {
         </Card>
 
         <div className={`${mobileFormActionsRowClass} mt-auto border-t border-zinc-200 pt-6 pb-2`}>
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={handleDelete}
             disabled={deleting}
-            className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50 sm:w-auto"
+            className={dashboardFormDeleteButtonClass}
           >
-            {deleting ? 'Excluindo…' : 'Excluir'}
-          </button>
-          <Link
-            href={`/dashboard/viagens/${trip.id}`}
-            className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-700 hover:bg-zinc-50 sm:w-auto"
-            style={{ fontSize: '0.875rem' }}
-          >
+            <Trash2 className="h-4 w-4" />
+            {deleting ? 'Excluindo…' : 'Excluir viagem'}
+          </Button>
+          <Link href={`/dashboard/viagens/${trip.id}`} className={dashboardFormCancelLinkClass}>
             Cancelar
           </Link>
-          <button
-            type="submit"
-            disabled={saving}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
-            style={{ fontSize: '0.875rem' }}
-          >
+          <Button type="submit" disabled={saving} className={dashboardFormSaveButtonClass}>
             <Save className="h-4 w-4" />
             {saving ? 'Salvando…' : 'Salvar'}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

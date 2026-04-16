@@ -21,10 +21,14 @@ import {
   Activity,
 } from 'lucide-react';
 import { useAuth } from '@/hooks';
-import { getDriver, getTrips, deleteDriver } from '@/lib';
+import { getDriver, getTrips, deleteDriver, formatCpf, formatPhoneBr } from '@/lib';
 import type { Driver, DriverStatus } from '@/lib';
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { Button } from '@/components/ui/button';
+import {
+  dashboardToolbarDeleteButtonClass,
+  dashboardToolbarEditButtonClass,
+} from '@/lib/dashboard-action-buttons';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 
 const statusConfig: Record<DriverStatus, { label: string; className: string }> = {
@@ -44,14 +48,6 @@ const PAYMENT_LABELS: Record<string, string> = {
   Dinheiro: 'Dinheiro',
   Outro: 'Outro',
 };
-
-function formatCpf(v: string): string {
-  const d = v.replace(/\D/g, '').slice(0, 11);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
-  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
-  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
-}
 
 function formatCurrency(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -116,7 +112,7 @@ export default function DetalheMotoristaPage() {
       router.replace('/dashboard');
       return;
     }
-    setPageLoading(true);
+    queueMicrotask(() => setPageLoading(true));
     Promise.all([getDriver(id), getTrips()])
       .then(([d, tList]) => {
         setDriver(d);
@@ -135,7 +131,7 @@ export default function DetalheMotoristaPage() {
       })
       .catch((e) => setLoadError(e instanceof Error ? e.message : 'Erro ao carregar'))
       .finally(() => setPageLoading(false));
-  }, [session, appUser, id]);
+  }, [session, appUser, id, router]);
 
   const handleDelete = async () => {
     if (!driver) return;
@@ -240,7 +236,7 @@ export default function DetalheMotoristaPage() {
                 iconBg="bg-green-50"
                 iconColor="text-green-600"
                 label="Telefone"
-                value={driver.phone}
+                value={formatPhoneBr(driver.phone)}
               />
             )}
             {driver.cpf && (
@@ -289,6 +285,13 @@ export default function DetalheMotoristaPage() {
               iconColor="text-blue-600"
               label="Comissão"
               value={`${driver.commissionPct ?? '-'}%`}
+            />
+            <InfoRow
+              icon={DollarSign}
+              iconBg="bg-amber-50"
+              iconColor="text-amber-700"
+              label="Salário mensal"
+              value={formatCurrency(driver.monthlySalary ?? 0)}
             />
             <InfoRow
               icon={CreditCard}
@@ -428,17 +431,17 @@ export default function DetalheMotoristaPage() {
       {/* Actions */}
       <div className="flex flex-wrap gap-2 pt-2 justify-end">
         <Link href={`/dashboard/motoristas/${id}/editar`}>
-          <Button variant="outline" className="flex items-center gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border-0">
-            <Edit className="w-4 h-4" />
+          <Button variant="outline" className={dashboardToolbarEditButtonClass}>
+            <Edit className="h-4 w-4" />
             Editar
           </Button>
         </Link>
         <Button
           variant="outline"
-          className="flex items-center gap-2 bg-red-50 text-red-600 hover:bg-red-100 border-0"
+          className={dashboardToolbarDeleteButtonClass}
           onClick={() => setDeleteOpen(true)}
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="h-4 w-4" />
           Excluir
         </Button>
       </div>

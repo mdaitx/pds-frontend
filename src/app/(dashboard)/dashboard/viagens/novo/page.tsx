@@ -10,6 +10,10 @@ import {
   createTrip,
   getVehicles,
   getDrivers,
+  formatBrlCurrencyInput,
+  formatKmInput,
+  parseBrlInputString,
+  parseKmInputString,
   type CreateTripPayload,
   type TripStatus,
   type Vehicle,
@@ -97,10 +101,10 @@ export default function NovaViagemPage() {
       if (origin.trim()) payload.origin = origin.trim();
       if (destination.trim()) payload.destination = destination.trim();
       if (endDate.trim()) payload.endDate = dateOnlyToIso(endDate.trim());
-      const fv = parseFloat(freightValue.replace(',', '.'));
-      if (!Number.isNaN(fv)) payload.freightValue = fv;
-      const ik = parseInt(initialKm, 10);
-      if (!Number.isNaN(ik)) payload.initialKm = ik;
+      const fv = parseBrlInputString(freightValue);
+      if (fv !== null && !Number.isNaN(fv)) payload.freightValue = fv;
+      const ik = parseKmInputString(initialKm);
+      if (ik !== null && !Number.isNaN(ik) && ik >= 0) payload.initialKm = ik;
       if (loadType.trim()) payload.loadType = loadType.trim();
       if (notes.trim()) payload.notes = notes.trim();
       await createTrip(payload);
@@ -264,9 +268,10 @@ export default function NovaViagemPage() {
                 <input
                   id="freightValue"
                   type="text"
+                  inputMode="decimal"
                   placeholder="0,00"
                   value={freightValue}
-                  onChange={(e) => setFreightValue(e.target.value)}
+                  onChange={(e) => setFreightValue(formatBrlCurrencyInput(e.target.value))}
                   className={inputClass}
                 />
               </div>
@@ -276,11 +281,12 @@ export default function NovaViagemPage() {
                 </label>
                 <input
                   id="initialKm"
-                  type="number"
-                  min={0}
+                  type="text"
+                  inputMode="numeric"
                   placeholder="0"
+                  autoComplete="off"
                   value={initialKm}
-                  onChange={(e) => setInitialKm(e.target.value)}
+                  onChange={(e) => setInitialKm(formatKmInput(e.target.value))}
                   className={inputClass}
                 />
               </div>
