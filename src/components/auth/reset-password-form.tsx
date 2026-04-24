@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
+import { Button, Input, Label } from '@/components/ui';
 
 export function ResetPasswordForm() {
   const router = useRouter();
@@ -70,10 +71,10 @@ export function ResetPasswordForm() {
         </div>
       )}
       <div>
-        <label htmlFor="password" className="block text-sm font-medium text-zinc-700">
+        <Label htmlFor="password" className="block">
           Nova senha
-        </label>
-        <input
+        </Label>
+        <Input
           id="password"
           type="password"
           autoComplete="new-password"
@@ -81,14 +82,15 @@ export function ResetPasswordForm() {
           minLength={6}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          disabled={loading}
+          className="mt-1 bg-white"
         />
       </div>
       <div>
-        <label htmlFor="confirm" className="block text-sm font-medium text-zinc-700">
+        <Label htmlFor="confirm" className="block">
           Confirmar senha
-        </label>
-        <input
+        </Label>
+        <Input
           id="confirm"
           type="password"
           autoComplete="new-password"
@@ -96,16 +98,18 @@ export function ResetPasswordForm() {
           minLength={6}
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
-          className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          disabled={loading}
+          className="mt-1 bg-white"
         />
       </div>
-      <button
+      <Button
         type="submit"
         disabled={loading}
-        className="w-full rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        loading={loading}
+        className="w-full"
       >
         {loading ? 'Salvando…' : 'Definir nova senha'}
-      </button>
+      </Button>
       <p className="text-center text-sm text-zinc-600">
         <Link href="/login" className="font-medium text-blue-600 hover:text-blue-800">
           Voltar ao login

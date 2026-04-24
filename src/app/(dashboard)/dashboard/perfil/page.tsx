@@ -177,7 +177,12 @@ export default function PerfilPage() {
                   className="border-zinc-300"
                 />
               </div>
-              <Button type="submit" disabled={passwordBusy || !!configError} className={dashboardFormSaveButtonClass}>
+              <Button
+                type="submit"
+                disabled={passwordBusy || !!configError}
+                loading={passwordBusy}
+                className={dashboardFormSaveButtonClass}
+              >
                 {passwordBusy ? 'Salvando…' : 'Salvar nova senha'}
               </Button>
             </form>

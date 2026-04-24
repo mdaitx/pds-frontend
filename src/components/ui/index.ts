@@ -1,6 +1,10 @@
-export { Card, CardHeader, CardContent } from './card';
+export { Badge } from './badge';
+export { Card, CardHeader, CardContent, CardFooter } from './card';
 export { Button } from './button';
+export { Dialog } from './dialog';
 export { Input } from './input';
 export { Label } from './label';
+export { LoadingMessage, Spinner } from './loading';
 export { LocalizedDateField } from './localized-date-field';
 export { Skeleton } from './skeleton';
+export { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './table';

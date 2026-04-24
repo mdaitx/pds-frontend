@@ -134,7 +134,7 @@ function PairedVehicleCardInner({ tractor, trailer }: { tractor: Vehicle; traile
           ) : (
             <VehicleTruckOrTrailerIcon
               vehicleType={trailer.vehicleType ?? 'SEMI_REBOQUE'}
-              className="h-9 w-9 text-zinc-300"
+              className="h-9 w-9 text-zinc-400"
               aria-hidden
             />
           )}

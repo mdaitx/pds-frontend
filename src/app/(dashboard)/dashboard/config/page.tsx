@@ -13,6 +13,9 @@ import {
   getMyCompany,
   updateMyCompany,
   getExpenseCategories,
+  getSubscriptionStatus,
+  postSubscriptionCheckout,
+  postSubscriptionPortal,
   createExpenseCategory,
   updateExpenseCategory,
   deleteExpenseCategory,
@@ -23,11 +26,13 @@ import {
   type CommissionCalculationMethod,
   type ExpenseCategoryItem,
   type ExpenseCategoriesResponse,
+  type SubscriptionStatusResponse,
 } from '@/lib';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Plus, Pencil, Trash2, Save } from 'lucide-react';
+import { LoadingMessage } from '@/components/ui/loading';
+import { ArrowLeft, Plus, Pencil, Trash2, Save, CreditCard, ExternalLink } from 'lucide-react';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
 import {
@@ -127,6 +132,8 @@ export default function ConfigPage() {
   const [editingCategory, setEditingCategory] = useState<ExpenseCategoryItem | null>(null);
   const [categoryForm, setCategoryForm] = useState({ name: '', color: '#3b82f6' });
   const [categorySaving, setCategorySaving] = useState(false);
+  const [sub, setSub] = useState<SubscriptionStatusResponse | null>(null);
+  const [subBusy, setSubBusy] = useState(false);
 
   useEffect(() => {
     if (!session || !appUser) return;
@@ -134,16 +141,38 @@ export default function ConfigPage() {
       router.replace('/dashboard');
       return;
     }
-    Promise.all([getMyCompany(), getExpenseCategories()])
-      .then(([c, cat]) => {
+    Promise.all([
+      getMyCompany(),
+      getExpenseCategories(),
+      getSubscriptionStatus().catch(() => null),
+    ])
+      .then(([c, cat, s]) => {
         setCompany(c);
         setCategories(cat);
+        setSub(s);
       })
       .catch((e) => {
         setError(e instanceof Error ? e.message : 'Erro ao carregar');
       })
       .finally(() => setLoading(false));
   }, [session, appUser, router]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !session) return;
+    const s = new URLSearchParams(window.location.search).get('sub');
+    if (s === 'success') {
+      getSubscriptionStatus()
+        .then((data) => {
+          setSub(data);
+          toast.success('Pagamento concluído — assinatura atualizada.');
+        })
+        .catch(() => {});
+      router.replace('/dashboard/config', { scroll: false });
+    } else if (s === 'cancel') {
+      toast.info('Assinatura não concluída. Você pode tentar de novo quando quiser.');
+      router.replace('/dashboard/config', { scroll: false });
+    }
+  }, [session, router]);
 
   useEffect(() => {
     if (!authLoading && !session) router.replace('/login');
@@ -219,7 +248,7 @@ export default function ConfigPage() {
   if (authLoading || loading || appUser?.role !== 'OWNER') {
     return (
       <div className="settings-font-inter flex min-h-[50vh] items-center justify-center bg-zinc-50">
-        <p className="text-sm text-zinc-500">Carregando configurações…</p>
+        <LoadingMessage message="Carregando configurações…" />
       </div>
     );
   }
@@ -293,6 +322,104 @@ export default function ConfigPage() {
             />
           </CardContent>
         </Card>
+
+        {sub && (
+          <Card className="border-zinc-200 shadow-sm">
+            <CardHeader className="pb-2 pt-6">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 rounded-lg bg-blue-50 p-2 text-blue-600">
+                  <CreditCard className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-zinc-700" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+                    Plano e assinatura
+                  </h3>
+                  <p className="mt-0.5 text-zinc-500" style={{ fontSize: '0.8rem' }}>
+                    Teste 30 dias (até {sub.maxVehiclesTrial} veículos). Plano: R${' '}
+                    {sub.pricePerVehicleBrl.toFixed(2).replace('.', ',')}/veículo/mês via Stripe.
+                  </p>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 text-sm text-zinc-700">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={
+                    sub.isOperational
+                      ? 'rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800'
+                      : 'rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-900'
+                  }
+                >
+                  {sub.isOperational ? 'Acesso operacional' : 'Acesso bloqueado'}
+                </span>
+                <span className="text-xs text-zinc-500">Situação: {sub.status}</span>
+                {sub.vehicleCount != null && (
+                  <span className="text-xs text-zinc-500">Veículos: {sub.vehicleCount}</span>
+                )}
+              </div>
+              {sub.message && <p className="text-zinc-600 leading-relaxed">{sub.message}</p>}
+              {!sub.stripeConfigured && (
+                <p className="rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-600">
+                  O servidor ainda não definiu <code className="text-zinc-800">STRIPE_SECRET_KEY</code> e{' '}
+                  <code className="text-zinc-800">STRIPE_PRICE_ID</code>. Pagamento online fica desativado em dev; o
+                  acesso de contas legadas continua ativo.
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {sub.checkoutAvailable && (
+                  <Button
+                    type="button"
+                    className="gap-1.5"
+                    disabled={subBusy}
+                    loading={subBusy}
+                    onClick={async () => {
+                      setSubBusy(true);
+                      try {
+                        const { url } = await postSubscriptionCheckout({
+                          successPath: '/dashboard/config?sub=success',
+                          cancelPath: '/dashboard/config?sub=cancel',
+                        });
+                        if (url) window.location.assign(url);
+                        else toast.error('Não foi possível abrir o pagamento.');
+                      } catch (e) {
+                        toast.error(e instanceof Error ? e.message : 'Erro ao iniciar assinatura');
+                      } finally {
+                        setSubBusy(false);
+                      }
+                    }}
+                  >
+                    {!subBusy && <CreditCard className="h-4 w-4" />}
+                    {sub.status === 'TRIAL' || !sub.isOperational ? 'Assinar com cartão' : 'Alterar quantidade / plano'}
+                  </Button>
+                )}
+                {sub.checkoutAvailable && (sub.status === 'ACTIVE' || sub.status === 'PAST_DUE') && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="gap-1.5"
+                    disabled={subBusy}
+                    loading={subBusy}
+                    onClick={async () => {
+                      setSubBusy(true);
+                      try {
+                        const { url } = await postSubscriptionPortal({ returnPath: '/dashboard/config' });
+                        if (url) window.location.assign(url);
+                        else toast.error('Conclua uma assinatura antes de abrir o portal.');
+                      } catch (e) {
+                        toast.error(e instanceof Error ? e.message : 'Portal indisponível');
+                      } finally {
+                        setSubBusy(false);
+                      }
+                    }}
+                  >
+                    Faturas e cartão
+                    {!subBusy && <ExternalLink className="h-3.5 w-3.5" />}
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="border-zinc-200 shadow-sm">
           <CardHeader className="pb-2 pt-6">
@@ -504,9 +631,10 @@ export default function ConfigPage() {
                 type="button"
                 className={dashboardFormSaveButtonClass}
                 disabled={categorySaving}
+                loading={categorySaving}
                 onClick={saveCategory}
               >
-                <Save className="h-4 w-4" />
+                {!categorySaving && <Save className="h-4 w-4" />}
                 {categorySaving ? 'Salvando…' : 'Salvar'}
               </Button>
             </div>
@@ -630,8 +758,8 @@ function CompanyForm({
         </div>
       </div>
       <div className={`${mobileFormActionsRowClass} border-t border-zinc-100 pt-4`}>
-        <Button type="submit" disabled={saving} className={dashboardFormSaveButtonClass}>
-          <Save className="h-4 w-4" />
+        <Button type="submit" disabled={saving} loading={saving} className={dashboardFormSaveButtonClass}>
+          {!saving && <Save className="h-4 w-4" />}
           {saving ? 'Salvando…' : 'Salvar dados da empresa'}
         </Button>
       </div>
@@ -748,8 +876,8 @@ function CalculationPreferencesForm({
         </p>
       </div>
       <div className={`${mobileFormActionsRowClass} border-t border-zinc-100 pt-4`}>
-        <Button type="submit" disabled={saving} className={dashboardFormSaveButtonClass}>
-          <Save className="h-4 w-4" />
+        <Button type="submit" disabled={saving} loading={saving} className={dashboardFormSaveButtonClass}>
+          {!saving && <Save className="h-4 w-4" />}
           {saving ? 'Salvando…' : 'Salvar preferências'}
         </Button>
       </div>

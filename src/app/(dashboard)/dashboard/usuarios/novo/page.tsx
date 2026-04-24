@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { LoadingMessage } from '@/components/ui/loading';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
@@ -184,7 +185,7 @@ export default function NovoUsuarioPage() {
   if (authLoading || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <p className="text-zinc-500">Carregando…</p>
+        <LoadingMessage />
       </div>
     );
   }
@@ -421,9 +422,10 @@ export default function NovoUsuarioPage() {
           <Button
             className="flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
             disabled={loading}
+            loading={loading}
             type="submit"
           >
-            <Save className="w-4 h-4" />
+            {!loading && <Save className="w-4 h-4" />}
             {loading ? 'Salvando...' : 'Salvar'}
           </Button>
         </div>

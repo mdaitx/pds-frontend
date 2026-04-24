@@ -20,7 +20,7 @@ import {
   type VehicleType,
   VEHICLE_TYPE_LABELS,
 } from '@/lib';
-import { Card, CardContent, CardHeader } from '@/components/ui';
+import { Button, Card, CardContent, CardHeader, LoadingMessage } from '@/components/ui';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
@@ -204,7 +204,7 @@ export default function NovoVeiculoPage() {
   if (authLoading || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-zinc-500">Carregando…</p>
+        <LoadingMessage />
       </div>
     );
   }
@@ -213,7 +213,7 @@ export default function NovoVeiculoPage() {
   if (!appUser || !fleetStaff) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-zinc-500">Carregando…</p>
+        <LoadingMessage />
       </div>
     );
   }
@@ -439,14 +439,15 @@ export default function NovoVeiculoPage() {
               >
                 Cancelar
               </Link>
-              <button
+              <Button
                 type="submit"
                 disabled={saving || uploading}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
+                loading={saving}
+                className="w-full sm:w-auto"
               >
-                <Save className="h-4 w-4 shrink-0" aria-hidden />
+                {!saving && <Save className="h-4 w-4 shrink-0" aria-hidden />}
                 {saving ? 'Salvando…' : 'Cadastrar veículo'}
-              </button>
+              </Button>
             </div>
           </CardContent>
         </Card>

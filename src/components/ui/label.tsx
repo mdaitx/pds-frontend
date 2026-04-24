@@ -1,4 +1,5 @@
 import type { LabelHTMLAttributes, ReactNode } from 'react';
+import { cn } from '@/lib/cn';
 
 type LabelProps = LabelHTMLAttributes<HTMLLabelElement> & {
   className?: string;
@@ -8,7 +9,7 @@ type LabelProps = LabelHTMLAttributes<HTMLLabelElement> & {
 export function Label({ className = '', children, ...props }: LabelProps) {
   return (
     <label
-      className={['text-sm font-medium text-zinc-700', className].filter(Boolean).join(' ')}
+      className={cn('text-sm font-medium text-foreground', className)}
       {...props}
     >
       {children}

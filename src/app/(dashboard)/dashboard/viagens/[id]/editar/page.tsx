@@ -22,7 +22,7 @@ import {
   type Vehicle,
   type Driver,
 } from '@/lib';
-import { Card, CardContent, CardHeader, LocalizedDateField } from '@/components/ui';
+import { Card, CardContent, CardHeader, LoadingMessage, LocalizedDateField } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { DashboardPageShell, DASHBOARD_FORM_PADDING } from '@/components/dashboard/DashboardPageShell';
 import { cn } from '@/lib/cn';
@@ -165,7 +165,7 @@ export default function EditarViagemPage() {
   if (authLoading) {
     return (
       <div className="settings-font-inter flex min-h-[50vh] items-center justify-center bg-zinc-50 tracking-tight">
-        <p className="text-sm text-zinc-500">Carregando…</p>
+        <LoadingMessage />
       </div>
     );
   }
@@ -173,7 +173,7 @@ export default function EditarViagemPage() {
   if (loading) {
     return (
       <div className="settings-font-inter flex min-h-[50vh] items-center justify-center bg-zinc-50 tracking-tight">
-        <p className="text-sm text-zinc-500">Carregando viagem…</p>
+        <LoadingMessage message="Carregando viagem…" />
       </div>
     );
   }
@@ -427,17 +427,18 @@ export default function EditarViagemPage() {
             type="button"
             variant="outline"
             onClick={handleDelete}
-            disabled={deleting}
+            disabled={deleting || saving}
+            loading={deleting}
             className={dashboardFormDeleteButtonClass}
           >
-            <Trash2 className="h-4 w-4" />
+            {!deleting && <Trash2 className="h-4 w-4" />}
             {deleting ? 'Excluindo…' : 'Excluir viagem'}
           </Button>
           <Link href={`/dashboard/viagens/${trip.id}`} className={dashboardFormCancelLinkClass}>
             Cancelar
           </Link>
-          <Button type="submit" disabled={saving} className={dashboardFormSaveButtonClass}>
-            <Save className="h-4 w-4" />
+          <Button type="submit" disabled={saving || deleting} loading={saving} className={dashboardFormSaveButtonClass}>
+            {!saving && <Save className="h-4 w-4" />}
             {saving ? 'Salvando…' : 'Salvar'}
           </Button>
         </div>

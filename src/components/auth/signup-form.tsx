@@ -193,6 +193,7 @@ export function SignupForm() {
             type="submit"
             className="w-full bg-blue-600 text-white hover:bg-blue-700"
             disabled={loading}
+            loading={loading}
           >
             {loading ? 'Criando conta...' : 'Cadastrar'}
           </Button>

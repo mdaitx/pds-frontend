@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks';
 import { getTrip, getSettlement, markSettlementPaid, type SettlementWithTrip, type Trip } from '@/lib';
 import { SettlementAcertoView } from '@/components/settlement/SettlementAcertoView';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
+import { LoadingMessage } from '@/components/ui';
 
 export default function AcertoViagemPage() {
   const params = useParams();
@@ -58,7 +59,7 @@ export default function AcertoViagemPage() {
   if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <p className="text-zinc-500">Carregando…</p>
+        <LoadingMessage />
       </div>
     );
   }

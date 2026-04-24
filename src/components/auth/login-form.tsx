@@ -69,7 +69,7 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="shadow-xl border-zinc-200">
+    <Card className="border-zinc-200 shadow-xl shadow-blue-950/10">
       <CardHeader className="pb-2">
         <h2 className="text-zinc-800 text-center text-xl font-semibold">Entrar na sua conta</h2>
       </CardHeader>
@@ -116,7 +116,7 @@ export function LoginForm() {
             <div className="flex justify-end">
               <Link
                 href="/forgot-password"
-                className="text-blue-600 hover:text-blue-700 transition-colors text-sm"
+                className="text-blue-700 hover:text-blue-800 transition-colors text-sm"
               >
                 Esqueceu a senha?
               </Link>
@@ -129,8 +129,9 @@ export function LoginForm() {
 
           <Button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            className="w-full bg-blue-700 hover:bg-blue-800 text-white"
             disabled={loading}
+            loading={loading}
           >
             {loading ? 'Entrando...' : 'Entrar'}
           </Button>
@@ -139,7 +140,7 @@ export function LoginForm() {
         <div className="mt-6 text-center">
           <p className="text-zinc-500 text-sm">
             Não tem conta?{' '}
-            <Link href="/signup" className="text-blue-600 hover:text-blue-700 transition-colors font-semibold">
+            <Link href="/signup" className="text-blue-700 hover:text-blue-800 transition-colors font-semibold">
               Cadastre-se
             </Link>
           </p>

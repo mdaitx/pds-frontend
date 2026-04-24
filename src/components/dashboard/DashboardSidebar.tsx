@@ -22,6 +22,7 @@ import { useAuth, useActivityHint } from '@/hooks';
 import { getOnboardingStatus } from '@/lib';
 import { cn } from '@/lib/cn';
 import type { AuthUser } from '@/lib';
+import { BrandLogo } from '@/components/brand-logo';
 
 const ROLE_LABEL: Record<AuthUser['role'], string> = {
   OWNER: 'Dono da frota',
@@ -96,9 +97,7 @@ function DashboardSidebarNav({
             className="flex min-w-0 flex-1 items-center gap-2 rounded-lg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-500"
             title="Truck Finanças — Início"
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600">
-              <TruckIcon className="h-5 w-5 text-white" aria-hidden />
-            </div>
+            <BrandLogo size={48} className="shrink-0" />
             <span className="truncate text-base font-bold text-blue-600">Truck Finanças</span>
           </Link>
           <button
@@ -115,14 +114,12 @@ function DashboardSidebarNav({
           href="/dashboard"
           onClick={onNavClick}
           className={cn(
-            'flex items-center gap-3 border-b border-zinc-200 px-6 py-5 transition-all duration-300 outline-none hover:bg-zinc-50/90 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset',
+            'flex items-center gap-3 border-b border-zinc-200 px-5 py-5 transition-all duration-300 outline-none hover:bg-zinc-50/90 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset',
             collapsed && 'justify-center px-3'
           )}
           title="Truck Finanças — Início"
         >
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600">
-            <TruckIcon className="h-5 w-5 text-white" aria-hidden />
-          </div>
+          <BrandLogo size={56} className="shrink-0" />
           {!collapsed && (
             <div className="min-w-0 overflow-hidden text-left">
               <p className="text-base font-bold leading-tight whitespace-nowrap text-blue-600">Truck Finanças</p>
@@ -158,7 +155,7 @@ function DashboardSidebarNav({
                   <span className={isActive ? 'font-semibold' : 'font-normal'}>{item.label}</span>
                   {item.href === '/dashboard/viagens' && tripsActivityCount > 0 && (
                     <span
-                      className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-[0.65rem] font-bold text-white"
+                      className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 text-[0.65rem] font-bold text-white"
                       aria-label="Novidade em viagens"
                     >
                       {tripsActivityCount > 9 ? '9+' : tripsActivityCount}
@@ -168,7 +165,7 @@ function DashboardSidebarNav({
                 </>
               )}
               {collapsed && item.href === '/dashboard/viagens' && tripsActivityCount > 0 && (
-                <span className="absolute right-1 top-1.5 h-2 w-2 rounded-full bg-amber-500 ring-2 ring-white" />
+                <span className="absolute right-1 top-1.5 h-2 w-2 rounded-full bg-blue-600 ring-2 ring-white" />
               )}
               {collapsed && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-zinc-900 text-white text-xs rounded opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
@@ -315,7 +312,7 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen bg-zinc-50">
+    <div className="flex h-dvh bg-zinc-50">
       {/* Desktop Sidebar */}
       <aside
         className={cn(
@@ -368,7 +365,7 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="md:hidden sticky top-0 z-40 flex min-h-[52px] shrink-0 items-center gap-3 border-b border-zinc-200 bg-white px-3 py-2.5 shadow-sm sm:px-4">
+        <header className="safe-top md:hidden sticky top-0 z-40 flex min-h-[52px] shrink-0 items-center gap-3 border-b border-zinc-200 bg-white/95 px-3 py-2.5 shadow-sm backdrop-blur sm:px-4">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
@@ -384,16 +381,59 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
               className="flex min-w-0 flex-1 items-center gap-2 rounded-lg outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-500"
               title="Truck Finanças — Início"
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-600">
-                <TruckIcon className="h-4 w-4 text-white" aria-hidden />
-              </div>
+              <BrandLogo size={44} className="shrink-0" />
               <span className="truncate text-base font-bold text-blue-600">Truck Finanças</span>
             </Link>
           )}
           {sidebarOpen && <span className="min-w-0 flex-1" aria-hidden />}
         </header>
 
-        <main className="flex-1 overflow-y-auto safe-main">{children}</main>
+        <main className={cn('flex-1 overflow-y-auto safe-main', appUser && 'pb-24 md:pb-0')}>
+          {children}
+        </main>
+        {appUser && (
+          <nav
+            className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 px-2 pb-1 pt-1 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden"
+            aria-label="Navegação principal"
+          >
+            <div
+              className={cn(
+                'mx-auto gap-1',
+                appUser.role === 'DRIVER'
+                  ? 'grid max-w-md grid-cols-3'
+                  : 'flex max-w-full touch-pan-x overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]'
+              )}
+            >
+              {navItems.map((item) => {
+                const extraActive =
+                  item.activePathPrefixes?.some((p) => pathname.startsWith(p)) ?? false;
+                const isActive =
+                  pathname === item.href ||
+                  extraActive ||
+                  (item.href !== '/dashboard' && pathname.startsWith(item.href));
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      'relative flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[0.72rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+                      appUser.role !== 'DRIVER' && 'min-w-[76px]',
+                      isActive ? 'bg-blue-50 text-blue-700' : 'text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900'
+                    )}
+                  >
+                    <span className="flex h-5 w-5 items-center justify-center" aria-hidden>
+                      {item.icon}
+                    </span>
+                    <span className="max-w-full truncate">{item.label}</span>
+                    {item.href === '/dashboard/viagens' && tripsActivityCount > 0 && (
+                      <span className="absolute mt-[-2.1rem] ml-8 h-2 w-2 rounded-full bg-blue-600 ring-2 ring-white" />
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+        )}
       </div>
     </div>
   );
