@@ -29,6 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui';
+import { LoadingMessage } from '@/components/ui/loading';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
@@ -205,7 +206,7 @@ export default function EditarMotoristaPage() {
   if (authLoading || pageLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <p className="text-zinc-500">Carregando…</p>
+        <LoadingMessage />
       </div>
     );
   }
@@ -415,9 +416,10 @@ export default function EditarMotoristaPage() {
             variant="outline"
             className={dashboardFormDeleteButtonClass}
             disabled={loading || deleting}
+            loading={deleting}
             onClick={handleDelete}
           >
-            <Trash2 className="h-4 w-4" />
+            {!deleting && <Trash2 className="h-4 w-4" />}
             {deleting ? 'Excluindo…' : 'Excluir motorista'}
           </Button>
           <Button
@@ -429,8 +431,8 @@ export default function EditarMotoristaPage() {
           >
             Cancelar
           </Button>
-          <Button type="submit" disabled={loading} className={dashboardFormSaveButtonClass}>
-            <Save className="h-4 w-4" />
+          <Button type="submit" disabled={loading} loading={loading} className={dashboardFormSaveButtonClass}>
+            {!loading && <Save className="h-4 w-4" />}
             {loading ? 'Salvando…' : 'Salvar'}
           </Button>
         </div>

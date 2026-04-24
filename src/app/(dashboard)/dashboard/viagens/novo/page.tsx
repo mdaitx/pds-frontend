@@ -19,7 +19,7 @@ import {
   type Vehicle,
   type Driver,
 } from '@/lib';
-import { Card, CardContent, CardHeader, LocalizedDateField } from '@/components/ui';
+import { Button, Card, CardContent, CardHeader, LoadingMessage, LocalizedDateField } from '@/components/ui';
 import { DASHBOARD_FORM_PADDING } from '@/components/dashboard/DashboardPageShell';
 import { cn } from '@/lib/cn';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
@@ -120,7 +120,7 @@ export default function NovaViagemPage() {
   if (authLoading || !session) {
     return (
       <div className="settings-font-inter flex min-h-[50vh] items-center justify-center bg-zinc-50 tracking-tight">
-        <p className="text-sm text-zinc-500">Carregando…</p>
+        <LoadingMessage />
       </div>
     );
   }
@@ -349,15 +349,15 @@ export default function NovaViagemPage() {
           >
             Cancelar
           </Link>
-          <button
+          <Button
             type="submit"
             disabled={saving}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50 sm:w-auto"
-            style={{ fontSize: '0.875rem' }}
+            loading={saving}
+            className="w-full sm:w-auto"
           >
-            <Save className="h-4 w-4" />
+            {!saving && <Save className="h-4 w-4" />}
             {saving ? 'Salvando…' : 'Salvar'}
-          </button>
+          </Button>
         </div>
       </form>
     </div>

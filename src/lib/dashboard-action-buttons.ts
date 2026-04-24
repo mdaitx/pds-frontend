@@ -54,7 +54,7 @@ export const dashboardLinkPrimaryToolbarClass = `inline-flex w-full items-center
 export const dashboardLinkGhostBlueClass = `inline-flex w-full items-center justify-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-[0.8rem] font-medium text-blue-700 transition-colors hover:bg-blue-100 sm:w-auto ${focusRing} ${noUnderline}`;
 
 /** Outline “Ver todas” (link discreto). */
-export const dashboardLinkMutedNavClass = `inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-[0.8rem] text-blue-600 transition-colors hover:bg-blue-50 sm:w-auto ${focusRing} ${noUnderline}`;
+export const dashboardLinkMutedNavClass = `inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-[0.8rem] text-blue-700 transition-colors hover:bg-blue-50 sm:w-auto ${focusRing} ${noUnderline}`;
 
 /** Igual a Button outline + {@link dashboardCardEditButtonClass} em listagens. */
 export const dashboardLinkCardEditClass = `inline-flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100 sm:w-auto ${focusRing} ${noUnderline}`;

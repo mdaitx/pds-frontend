@@ -3,6 +3,13 @@ import { apiFetch } from '@/lib/api-client';
 /** Alinhado ao enum Prisma `CommissionCalculationMethod` */
 export type CommissionCalculationMethod = 'GROSS_PROFIT' | 'FREIGHT_VALUE';
 
+export type CompanySubscriptionStatus =
+  | 'TRIAL'
+  | 'ACTIVE'
+  | 'PAST_DUE'
+  | 'CANCELED'
+  | 'EXPIRED';
+
 export type Company = {
   id: string;
   name: string;
@@ -13,6 +20,10 @@ export type Company = {
   defaultCommission: number | null;
   timezone: string | null;
   commissionMethod: CommissionCalculationMethod;
+  /** Assinatura (backend task 18). */
+  subscriptionStatus?: CompanySubscriptionStatus;
+  trialEndsAt?: string | null;
+  currentPeriodEnd?: string | null;
   ownerId: string;
   createdAt: string;
   updatedAt: string;

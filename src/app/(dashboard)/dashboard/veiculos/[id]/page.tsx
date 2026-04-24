@@ -22,7 +22,7 @@ import {
   VEHICLE_TYPE_LABELS,
   type UpdateVehiclePayload,
 } from '@/lib';
-import { Card, CardContent, CardHeader } from '@/components/ui';
+import { Card, CardContent, CardHeader, LoadingMessage } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -274,7 +274,7 @@ export default function EditarVeiculoPage() {
   if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-zinc-500">Carregando…</p>
+        <LoadingMessage />
       </div>
     );
   }
@@ -511,9 +511,10 @@ export default function EditarVeiculoPage() {
               <Button
                 type="submit"
                 disabled={saving || uploading}
+                loading={saving}
                 className={dashboardFormSaveButtonClass}
               >
-                <Save className="h-4 w-4 shrink-0" aria-hidden />
+                {!saving && <Save className="h-4 w-4 shrink-0" aria-hidden />}
                 {saving ? 'Salvando…' : 'Salvar'}
               </Button>
               <Button
@@ -521,12 +522,13 @@ export default function EditarVeiculoPage() {
                 variant="outline"
                 onClick={handleDelete}
                 disabled={deleting || saving}
+                loading={deleting}
                 className={dashboardFormDeleteButtonClass}
                 aria-label={deleting ? 'Excluindo…' : 'Excluir veículo'}
                 title="Excluir veículo"
               >
-                <Trash2 className="h-4 w-4 shrink-0" aria-hidden />
-                Excluir veículo
+                {!deleting && <Trash2 className="h-4 w-4 shrink-0" aria-hidden />}
+                {deleting ? 'Excluindo…' : 'Excluir veículo'}
               </Button>
             </div>
           </CardContent>

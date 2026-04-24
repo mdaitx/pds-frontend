@@ -29,6 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { LoadingMessage } from '@/components/ui/loading';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
@@ -184,7 +185,7 @@ export default function NovoMotoristaPage() {
   if (authLoading || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <p className="text-zinc-500">Carregando…</p>
+        <LoadingMessage />
       </div>
     );
   }
@@ -396,9 +397,10 @@ export default function NovoMotoristaPage() {
           <Button
             type="submit"
             disabled={loading}
+            loading={loading}
             className="flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
           >
-            <Save className="h-4 w-4" />
+            {!loading && <Save className="h-4 w-4" />}
             {loading ? 'Salvando...' : 'Salvar'}
           </Button>
         </div>

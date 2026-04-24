@@ -37,6 +37,7 @@ export default function EditarUsuarioPage() {
   const [member, setMember] = useState<CompanyStaffMember | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [name, setName] = useState('');
   const [role, setRole] = useState<'ADMIN' | 'OWNER' | 'DRIVER'>('ADMIN');
   const [iAmPrimaryOwner, setIAmPrimaryOwner] = useState(false);
@@ -112,7 +113,7 @@ export default function EditarUsuarioPage() {
   const handleDelete = async () => {
     if (!member || !canDelete) return;
     if (!window.confirm(`Remover ${member.email} da frota? A conta de login será excluída.`)) return;
-    setSaving(true);
+    setDeleting(true);
     try {
       await deleteCompanyStaffUser(member.id);
       toast.success('Usuário removido.');
@@ -120,7 +121,7 @@ export default function EditarUsuarioPage() {
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao remover');
     } finally {
-      setSaving(false);
+      setDeleting(false);
     }
   };
 
@@ -222,22 +223,24 @@ export default function EditarUsuarioPage() {
         <div className={mobileFormActionsRowClass}>
           <Button
             type="submit"
-            disabled={saving}
+            disabled={saving || deleting}
+            loading={saving}
             className={dashboardFormSaveButtonClass}
           >
-            <Save className="h-4 w-4" />
+            {!saving && <Save className="h-4 w-4" />}
             {saving ? 'Salvando…' : 'Salvar'}
           </Button>
           {canDelete ? (
             <Button
               type="button"
               variant="outline"
-              disabled={saving}
+              disabled={saving || deleting}
+              loading={deleting}
               onClick={handleDelete}
               className={dashboardFormDeleteButtonClass}
             >
-              <Trash2 className="h-4 w-4" />
-              Excluir usuário
+              {!deleting && <Trash2 className="h-4 w-4" />}
+              {deleting ? 'Excluindo…' : 'Excluir usuário'}
             </Button>
           ) : null}
         </div>

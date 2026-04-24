@@ -7,6 +7,7 @@ export * from './vehicle-type';
 export * from './auth';
 export * from './onboarding';
 export * from './company';
+export * from './subscription';
 export * from './expense-categories';
 export * from './vehicles';
 export * from './drivers';

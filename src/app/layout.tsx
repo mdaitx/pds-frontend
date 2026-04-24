@@ -26,10 +26,15 @@ export const metadata: Metadata = {
   description:
     "Gestão financeira e controle de comissões para motoristas e donos de frota",
   applicationName: "Truck Finanças",
+  icons: {
+    icon: "/brand-logo-rounded.png",
+    shortcut: "/brand-logo-rounded.png",
+    apple: "/brand-logo-rounded.png",
+  },
   appleWebApp: {
     capable: true,
     title: "Truck Finanças",
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
   },
   formatDetection: {
     telephone: false,
@@ -39,10 +44,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fafafa" },
-    { media: "(prefers-color-scheme: dark)", color: "#18181b" },
-  ],
+  viewportFit: "cover",
+  themeColor: "#2563eb",
 };
 
 export default function RootLayout({

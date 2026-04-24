@@ -34,10 +34,10 @@ import { cn } from '@/lib/cn';
 import { mobileTableScrollClass } from '@/lib/dashboard-mobile';
 import { Card, CardHeader, CardContent, Skeleton } from '@/components/ui';
 import { DashboardBootSkeleton, RecentTripsTableSkeleton } from '@/components/dashboard/DashboardLoadingSkeleton';
+import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
 import {
   dashboardLinkGhostBlueClass,
   dashboardLinkMutedNavClass,
-  dashboardLinkPrimaryClass,
 } from '@/lib/dashboard-action-buttons';
 import {
   LineChart,
@@ -386,19 +386,29 @@ export default function DashboardPage() {
     }));
 
     return (
-      <div className="mx-auto min-w-0 max-w-[1400px] space-y-6 px-3 py-4 sm:p-4 md:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-          <div className="min-w-0">
-            <h1 className="text-zinc-900 text-xl font-semibold">Dashboard</h1>
-            <p className="text-zinc-500 text-sm">Olá, {appUser.email} · {ROLE_LABEL[appUser.role]}</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/dashboard/viagens/novo" className={dashboardLinkPrimaryClass}>
+      <div className="mx-auto min-w-0 max-w-[1400px] space-y-5 px-3 py-4 sm:space-y-6 sm:p-4 md:p-6">
+        <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 p-4 text-white shadow-lg sm:p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm text-blue-100">{ROLE_LABEL[appUser.role]}</p>
+              <h1 className="mt-1 break-words text-2xl font-semibold tracking-tight">
+                Olá, {appUser.email.split('@')[0]}
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm text-blue-100">
+                Acompanhe viagens, frota, equipe e resultado financeiro em uma visão otimizada para desktop e celular.
+              </p>
+            </div>
+            <Link
+              href="/dashboard/viagens/novo"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-blue-800 shadow-sm transition-all hover:-translate-y-px hover:bg-blue-50 sm:w-auto"
+            >
               <Truck className="h-4 w-4" />
               Nova Viagem
             </Link>
           </div>
         </div>
+
+        <PwaInstallPrompt />
 
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
@@ -413,10 +423,10 @@ export default function DashboardPage() {
               icon: <Route className="w-5 h-5 text-blue-600" />,
               bg: 'bg-blue-50',
             },
-            { title: 'Faturamento', value: formatCurrency(totalFaturamento), icon: <DollarSign className="w-5 h-5 text-green-600" />, bg: 'bg-green-50' },
+            { title: 'Faturamento', value: formatCurrency(totalFaturamento), icon: <DollarSign className="w-5 h-5 text-emerald-700" />, bg: 'bg-emerald-50' },
             { title: 'Despesas (mês)', value: formatCurrency(totalDespesasMes), icon: <Receipt className="w-5 h-5 text-rose-600" />, bg: 'bg-rose-50' },
-            { title: 'Lucro líquido', value: formatCurrency(lucroLiquido), icon: <TrendingUp className="w-5 h-5 text-indigo-600" />, bg: 'bg-indigo-50' },
-            { title: 'Viagens em andamento', value: emAndamento.toString(), icon: <Activity className="w-5 h-5 text-orange-600" />, bg: 'bg-orange-50' },
+            { title: 'Lucro líquido', value: formatCurrency(lucroLiquido), icon: <TrendingUp className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
+            { title: 'Viagens em andamento', value: emAndamento.toString(), icon: <Activity className="w-5 h-5 text-zinc-600" />, bg: 'bg-zinc-100' },
           ].map((m, i) => (
             <Card
               key={i}
@@ -450,13 +460,13 @@ export default function DashboardPage() {
               count: trips.length,
               bg: 'bg-blue-50',
             },
-            { label: 'Veículos', href: '/dashboard/veiculos', icon: <TruckIcon className="w-6 h-6 text-indigo-600" />, count: vehicles.length, bg: 'bg-indigo-50' },
+            { label: 'Veículos', href: '/dashboard/veiculos', icon: <TruckIcon className="w-6 h-6 text-blue-600" />, count: vehicles.length, bg: 'bg-blue-50' },
             {
               label: 'Usuários',
               href: '/dashboard/usuarios',
-              icon: <Users className="w-6 h-6 text-green-600" />,
+              icon: <Users className="w-6 h-6 text-blue-600" />,
               count: staffUsersCount,
-              bg: 'bg-green-50',
+              bg: 'bg-blue-50',
             },
             ...(appUser.role === 'OWNER'
               ? [
@@ -610,7 +620,7 @@ export default function DashboardPage() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <h3 className="text-zinc-800">Últimas Viagens</h3>
-              <Link href="/dashboard/viagens" className="text-blue-600 hover:text-blue-700 flex items-center gap-1 text-[0.85rem]">
+              <Link href="/dashboard/viagens" className="text-blue-700 hover:text-blue-800 flex items-center gap-1 text-[0.85rem]">
                 Ver todas <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -654,7 +664,7 @@ export default function DashboardPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <Link href={`/dashboard/viagens/${trip.id}`} className="text-blue-600 hover:text-blue-700 transition-colors text-[0.8rem]">
+                            <Link href={`/dashboard/viagens/${trip.id}`} className="text-blue-700 hover:text-blue-800 transition-colors text-[0.8rem]">
                               Ver
                             </Link>
                           </td>
@@ -698,48 +708,60 @@ export default function DashboardPage() {
   const monthHistoryLabel = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
   return (
-    <div className="mx-auto min-w-0 max-w-[1400px] space-y-6 px-3 py-4 sm:p-4 md:p-6">
-      <div className="min-w-0">
-        <h1 className="break-words text-xl font-semibold text-zinc-900">Painel Motorista</h1>
-        <p className="text-zinc-500 text-sm">
-          {appUser.email} · {ROLE_LABEL[appUser.role]}
-        </p>
-        <p className="mt-2 text-xs text-zinc-500">
-          Você vê apenas suas viagens e acertos. Cadastro de usuários e frota é exclusivo do dono.
-        </p>
+    <div className="mx-auto min-w-0 max-w-3xl space-y-4 px-3 py-4 sm:space-y-5 sm:p-4 md:max-w-[1100px] md:p-6">
+      <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 p-4 text-white shadow-lg sm:p-5">
+        <div className="flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm text-blue-100">Painel do motorista</p>
+            <h1 className="mt-1 break-words text-2xl font-semibold tracking-tight">
+              Olá, {appUser.email.split('@')[0]}
+            </h1>
+            <p className="mt-2 text-sm text-blue-100">
+              Acompanhe suas viagens, comissões e acertos direto pelo celular.
+            </p>
+          </div>
+          <div className="hidden rounded-xl bg-white/15 px-3 py-2 text-right text-xs text-blue-50 min-[380px]:block">
+            <span className="block font-semibold text-white">{activeTrips.length}</span>
+            ativa{activeTrips.length === 1 ? '' : 's'}
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 min-[420px]:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-stretch">
+      <PwaInstallPrompt />
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         {[
           { title: 'Viagens ativas', value: activeTrips.length.toString(), icon: <Route className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
           {
             title: 'Comissões (mês)',
             value: dataLoading ? '…' : formatCurrency(commissionMonth),
-            icon: <DollarSign className="w-5 h-5 text-emerald-600" />,
+            icon: <DollarSign className="w-5 h-5 text-emerald-700" />,
             bg: 'bg-emerald-50',
           },
           {
             title: 'Concluídas no mês',
             value: completedThisMonth.toString(),
-            icon: <CheckCircle className="w-5 h-5 text-green-600" />,
-            bg: 'bg-green-50',
+            icon: <CheckCircle className="w-5 h-5 text-blue-600" />,
+            bg: 'bg-blue-50',
           },
           {
             title: 'Km rodados (mês)',
             value: dataLoading ? '…' : `${kmMonth.toLocaleString('pt-BR')} km`,
-            icon: <Activity className="w-5 h-5 text-orange-600" />,
-            bg: 'bg-orange-50',
+            icon: <Activity className="w-5 h-5 text-zinc-600" />,
+            bg: 'bg-zinc-100',
           },
         ].map((m, i) => (
-          <Card key={i} className="flex min-h-[104px] flex-col border-zinc-200 shadow-sm">
-            <CardContent className="flex flex-1 flex-col justify-center p-4">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[0.78rem] text-zinc-500">{m.title}</p>
-                  <p className="mt-1 truncate text-[1.05rem] font-bold text-zinc-900">{m.value}</p>
-                </div>
+          <Card key={i} className="flex min-h-[116px] flex-col border-zinc-200 shadow-sm">
+            <CardContent className="flex flex-1 flex-col justify-center p-3.5 sm:p-4">
+              <div className="flex h-full flex-col justify-between gap-3">
                 <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${m.bg}`}>
                   {m.icon}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[0.72rem] leading-tight text-zinc-500 sm:text-[0.78rem]">{m.title}</p>
+                  <p className="mt-1 break-words text-[1.05rem] font-bold leading-tight text-zinc-900 sm:text-[1.15rem]">
+                    {m.value}
+                  </p>
                 </div>
               </div>
             </CardContent>

@@ -4,8 +4,8 @@ import { Truck, type LucideProps } from 'lucide-react';
 import type { VehicleType } from '@/lib';
 
 /**
- * Semi-reboque (carreta): vista lateral — traseira à esquerda (3 rodas juntas), frente à direita (patim).
- * Mesmo traço Lucide que `Truck`: stroke 2, rodas cy 18 / r 2.
+ * Semi-reboque (carreta): vista lateral, seguindo o pictograma enviado como referencia.
+ * Mantem `currentColor` para herdar exatamente a mesma cor usada no fallback do caminhao.
  */
 export function SemiTrailerIcon({ className, size = 24, ...props }: LucideProps) {
   const s = size ?? 24;
@@ -24,12 +24,13 @@ export function SemiTrailerIcon({ className, size = 24, ...props }: LucideProps)
       aria-hidden
       {...props}
     >
-      <path d="M3 8h15v7H3z" />
-      <path d="M2 16h20" />
-      <path d="M18 16v4" />
+      <path d="M3 7h15v8H3z" />
+      <path d="M18 11h3v4h-3" />
+      <path d="M2 15h20" />
+      <path d="M18 15v4" />
+      <path d="M19.5 19h2" />
       <circle cx="5" cy="18" r="2" />
-      <circle cx="7.5" cy="18" r="2" />
-      <circle cx="10" cy="18" r="2" />
+      <circle cx="9" cy="18" r="2" />
     </svg>
   );
 }
