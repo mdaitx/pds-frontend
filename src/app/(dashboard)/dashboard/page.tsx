@@ -24,8 +24,14 @@ import { useAuth } from '@/hooks';
 import {
   getOnboardingStatus,
   getDashboardSummary,
+  getTrips,
+  getVehicles,
+  getCompanyStaff,
+  getExpensesByTrip,
+  getSettlement,
+  getAdvancesByTrip,
 } from '@/lib';
-import type { AuthUser, Trip, Expense, Advance, Settlement, OwnerDashboardSummary } from '@/lib';
+import type { AuthUser, Trip, Vehicle, Expense, Advance, Settlement, OwnerDashboardSummary } from '@/lib';
 import { cn } from '@/lib/cn';
 import { mobileTableScrollClass } from '@/lib/dashboard-mobile';
 import { Card, CardHeader, CardContent, Skeleton } from '@/components/ui';
@@ -236,6 +242,7 @@ export default function DashboardPage() {
     queryFn: getDashboardSummary,
     enabled: Boolean(session && appUser),
     staleTime: 60_000,
+    retry: false,
   });
 
   useEffect(() => {
@@ -262,8 +269,75 @@ export default function DashboardPage() {
       return;
     }
     if (dashboardSummaryQuery.isError) {
-      queueMicrotask(() => setDataLoading(false));
-      return;
+      let cancelled = false;
+      queueMicrotask(() => setDataLoading(true));
+
+      async function loadLegacyDashboardData() {
+        if (appUser?.role === 'OWNER' || appUser?.role === 'ADMIN') {
+          const [t, v, staffRes] = await Promise.all([
+            getTrips(),
+            getVehicles(),
+            getCompanyStaff().catch(() => ({ companyId: '', staff: [] })),
+          ]);
+          const lists = await Promise.all(t.map((trip) => getExpensesByTrip(trip.id).catch(() => [] as Expense[])));
+          if (cancelled) return;
+          setOwnerSummary(null);
+          setTrips(t);
+          setTotalTripsCount(t.length);
+          setVehiclesCount((v as Vehicle[]).length);
+          setStaffUsersCount(staffRes.staff.length);
+          setOwnerExpenses(lists.flat());
+          setDriverSettlementsByTripId({});
+          setDriverRecentAdvances([]);
+          return;
+        }
+
+        if (appUser?.role === 'DRIVER') {
+          const t = await getTrips();
+          const now = new Date();
+          const completedMonth = t.filter(
+            (trip) =>
+              trip.status === 'COMPLETED' &&
+              new Date(trip.startDate).getMonth() === now.getMonth() &&
+              new Date(trip.startDate).getFullYear() === now.getFullYear(),
+          );
+          const settlements = await Promise.all(completedMonth.map((trip) => getSettlement(trip.id).catch(() => null)));
+          const map: Record<string, Settlement> = {};
+          for (const s of settlements) {
+            if (s) map[s.tripId] = s;
+          }
+          const sorted = [...t].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()).slice(0, 15);
+          const advLists = await Promise.all(
+            sorted.map(async (trip) => {
+              const list = await getAdvancesByTrip(trip.id).catch(() => [] as Advance[]);
+              return list.map((a) => ({ ...a, tripCode: trip.code }));
+            }),
+          );
+          if (cancelled) return;
+          setOwnerSummary(null);
+          setOwnerExpenses([]);
+          setTrips(t);
+          setDriverSettlementsByTripId(map);
+          setDriverRecentAdvances(
+            advLists
+              .flat()
+              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+              .slice(0, 8),
+          );
+          setVehiclesCount(0);
+          setTotalTripsCount(0);
+        }
+      }
+
+      void loadLegacyDashboardData()
+        .catch(() => {})
+        .finally(() => {
+          if (!cancelled) setDataLoading(false);
+        });
+
+      return () => {
+        cancelled = true;
+      };
     }
     const summary = dashboardSummaryQuery.data;
     if (!summary) return;
