@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -19,7 +19,6 @@ import {
   BarChart2,
 } from 'lucide-react';
 import { useAuth, useActivityHint } from '@/hooks';
-import { getOnboardingStatus } from '@/lib';
 import { cn } from '@/lib/cn';
 import type { AuthUser } from '@/lib';
 import { BrandLogo } from '@/components/brand-logo';
@@ -222,54 +221,6 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
   const { tripsActivityCount } = useActivityHint();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  /** Só relevante para OWNER: evita mostrar a sidebar em /dashboard antes do redirect para o onboarding. */
-  const [ownerOnboardingComplete, setOwnerOnboardingComplete] = useState<boolean | null>(null);
-  const ownerOnboardingCacheRef = useRef<boolean | null>(null);
-
-  useEffect(() => {
-    if (!appUser) {
-      ownerOnboardingCacheRef.current = null;
-      queueMicrotask(() => setOwnerOnboardingComplete(null));
-      return;
-    }
-    if (appUser.role !== 'OWNER') {
-      ownerOnboardingCacheRef.current = true;
-      queueMicrotask(() => setOwnerOnboardingComplete(true));
-      return;
-    }
-
-    const isDashboardRoot = pathname === '/dashboard';
-    const isOnboardingRouteCheck =
-      pathname === '/dashboard/onboarding' || pathname.startsWith('/dashboard/onboarding/');
-    const mustRefetch =
-      isDashboardRoot ||
-      isOnboardingRouteCheck ||
-      ownerOnboardingCacheRef.current === null;
-
-    if (!mustRefetch) {
-      queueMicrotask(() => setOwnerOnboardingComplete(ownerOnboardingCacheRef.current));
-      return;
-    }
-
-    let cancelled = false;
-    queueMicrotask(() => setOwnerOnboardingComplete(null));
-    getOnboardingStatus()
-      .then((s) => {
-        if (!cancelled) {
-          ownerOnboardingCacheRef.current = s.completed;
-          setOwnerOnboardingComplete(s.completed);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          ownerOnboardingCacheRef.current = true;
-          setOwnerOnboardingComplete(true);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [appUser, pathname]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -294,12 +245,8 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
   const isOnboardingRoute =
     pathname === '/dashboard/onboarding' || pathname.startsWith('/dashboard/onboarding/');
 
-  /** Layout full-width sem sidebar: rota de onboarding ou raiz do dashboard enquanto o OWNER ainda não concluiu o wizard. */
-  const suppressSidebarChrome =
-    isOnboardingRoute ||
-    (appUser?.role === 'OWNER' &&
-      pathname === '/dashboard' &&
-      ownerOnboardingComplete !== true);
+  /** Layout full-width sem sidebar apenas no onboarding, evitando piscar o dashboard sem navegação. */
+  const suppressSidebarChrome = isOnboardingRoute;
 
   const handleLogout = async () => {
     await signOut();
