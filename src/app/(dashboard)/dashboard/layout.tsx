@@ -10,10 +10,10 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <DashboardRouteGuard>
-      <ActivityHintProvider>
-        <DashboardSidebar>{children}</DashboardSidebar>
-      </ActivityHintProvider>
-    </DashboardRouteGuard>
+    <ActivityHintProvider>
+      <DashboardSidebar>
+        <DashboardRouteGuard>{children}</DashboardRouteGuard>
+      </DashboardSidebar>
+    </ActivityHintProvider>
   );
 }
