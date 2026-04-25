@@ -33,6 +33,7 @@ import {
 import { downloadTripsReportPdf, downloadSummaryReportPdf, downloadMotoristaReportPdf } from '@/lib/reports-pdf';
 import { Card, CardHeader, CardContent, LocalizedDateField } from '@/components/ui';
 import { Button } from '@/components/ui/button';
+import { LoadingMessage } from '@/components/ui/loading';
 import { FileDown, Loader2 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { cn } from '@/lib/cn';
@@ -306,7 +307,7 @@ export default function RelatoriosPage() {
   if (authLoading || !appUser) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center p-6">
-        <p className="text-zinc-500">Carregando…</p>
+        <LoadingMessage message="Carregando relatórios…" />
       </div>
     );
   }

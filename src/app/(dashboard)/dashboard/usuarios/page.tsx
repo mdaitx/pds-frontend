@@ -19,6 +19,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { LoadingMessage } from '@/components/ui/loading';
 import { Plus, Search, UserCircle, Shield, Truck as TruckIcon, ArrowLeft, Trash2 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { dashboardCardDeleteButtonClass } from '@/lib/dashboard-action-buttons';
@@ -236,7 +237,7 @@ export default function UsuariosPage() {
   if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <p className="text-sm text-zinc-500">Carregando…</p>
+        <LoadingMessage message="Carregando usuários…" />
       </div>
     );
   }

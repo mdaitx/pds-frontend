@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks';
+import { LoadingMessage } from '@/components/ui/loading';
 
 export default function HomePage() {
   const router = useRouter();
@@ -35,9 +36,7 @@ export default function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-zinc-100 px-6">
-      <div className="h-12 w-12 animate-pulse rounded-2xl bg-zinc-300/80" aria-hidden />
-      <div className="h-4 w-40 animate-pulse rounded bg-zinc-300/80" aria-hidden />
-      <p className="text-sm text-zinc-500">Carregando…</p>
+      <LoadingMessage message="Carregando aplicação…" />
     </div>
   );
 }

@@ -30,6 +30,7 @@ import {
   type SettlementWithTrip,
 } from '@/lib';
 import { Card, CardContent, CardHeader } from '@/components/ui';
+import { LoadingMessage } from '@/components/ui/loading';
 import { DriverTripSummary } from '@/components/viagens/DriverTripSummary';
 import { DriverTripExpenses } from '@/components/viagens/DriverTripExpenses';
 import { TripAdvancesPanel } from '@/components/viagens/TripAdvancesPanel';
@@ -160,7 +161,7 @@ export default function ViagemDetalhePage() {
   if (authLoading) {
     return (
       <div className="settings-font-inter flex min-h-[50vh] items-center justify-center bg-zinc-50 tracking-tight">
-        <p className="text-sm text-zinc-500">Carregando…</p>
+        <LoadingMessage />
       </div>
     );
   }
@@ -172,7 +173,7 @@ export default function ViagemDetalhePage() {
   if (loading) {
     return (
       <div className="settings-font-inter flex min-h-[50vh] items-center justify-center bg-zinc-50 tracking-tight">
-        <p className="text-sm text-zinc-500">Carregando viagem…</p>
+        <LoadingMessage message="Carregando viagem…" />
       </div>
     );
   }

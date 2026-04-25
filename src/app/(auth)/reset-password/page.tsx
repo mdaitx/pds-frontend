@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { BrandLogo } from '@/components/brand-logo';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
+import { LoadingMessage } from '@/components/ui/loading';
 import { ResetPasswordForm } from '@/components/auth';
 
 /**
@@ -25,7 +26,7 @@ export default function ResetPasswordPage() {
           </p>
         </CardHeader>
         <CardContent>
-          <Suspense fallback={<p className="text-center text-sm text-zinc-500">Carregando…</p>}>
+          <Suspense fallback={<LoadingMessage />}>
             <ResetPasswordForm />
           </Suspense>
         </CardContent>

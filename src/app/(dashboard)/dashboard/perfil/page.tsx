@@ -11,7 +11,7 @@ import {
   uploadAuthProfilePhoto,
   type AuthUser,
 } from '@/lib';
-import { Card, CardContent, CardHeader } from '@/components/ui';
+import { Card, CardContent, CardHeader, LoadingMessage } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -128,7 +128,7 @@ export default function PerfilPage() {
           </CardHeader>
           <CardContent>
             {loading || !appUser ? (
-              <p className="text-sm text-zinc-500">Carregando…</p>
+              <LoadingMessage />
             ) : (
               <div className={photoBusy ? 'pointer-events-none opacity-70' : ''}>
                 <ImageUpload
@@ -202,7 +202,7 @@ export default function PerfilPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {loading || !appUser ? (
-              <p className="text-sm text-zinc-500">Carregando…</p>
+              <LoadingMessage />
             ) : (
               <dl className="space-y-3 text-sm">
                 <div>

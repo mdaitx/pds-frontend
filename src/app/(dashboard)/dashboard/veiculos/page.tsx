@@ -18,6 +18,7 @@ import {
 } from '@/lib';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { LoadingMessage } from '@/components/ui/loading';
 import { Input } from '@/components/ui/input';
 import {
   ArrowLeft,
@@ -339,7 +340,7 @@ export default function VeiculosPage() {
   if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <p className="text-sm text-zinc-500">Carregando…</p>
+        <LoadingMessage message="Carregando veículos…" />
       </div>
     );
   }
