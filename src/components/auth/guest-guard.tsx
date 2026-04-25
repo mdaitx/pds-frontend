@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks';
+import { LoadingMessage } from '@/components/ui/loading';
 
 type GuestGuardProps = {
   children: React.ReactNode;
@@ -32,7 +33,7 @@ export function GuestGuard({ children, redirectTo = '/dashboard' }: GuestGuardPr
   if (loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <p className="text-zinc-500">Carregando…</p>
+        <LoadingMessage />
       </div>
     );
   }

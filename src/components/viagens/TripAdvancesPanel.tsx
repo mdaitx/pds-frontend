@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LoadingMessage } from '@/components/ui/loading';
 import { LocalizedDateField } from '@/components/ui/localized-date-field';
 
 const METHOD_OPTIONS: { value: AdvanceMethod; label: string }[] = [
@@ -148,7 +149,7 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
           </h3>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-zinc-500">Carregando adiantamentos…</p>
+          <LoadingMessage message="Carregando adiantamentos…" />
         </CardContent>
       </Card>
     );

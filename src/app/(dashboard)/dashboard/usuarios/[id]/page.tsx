@@ -34,6 +34,7 @@ import {
 } from '@/lib';
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { Button } from '@/components/ui/button';
+import { LoadingMessage } from '@/components/ui/loading';
 import {
   dashboardToolbarDeleteButtonClass,
   dashboardToolbarEditButtonClass,
@@ -187,7 +188,7 @@ export default function DetalheUsuarioPage() {
   if (authLoading || pageLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <p className="text-zinc-500">Carregando…</p>
+        <LoadingMessage message="Carregando usuário…" />
       </div>
     );
   }

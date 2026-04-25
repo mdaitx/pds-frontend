@@ -7,6 +7,7 @@ import { ArrowLeft, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks';
 import { getTrip, getSettlement, type Trip, type SettlementWithTrip } from '@/lib';
 import { Card, CardContent, CardHeader } from '@/components/ui';
+import { LoadingMessage } from '@/components/ui/loading';
 import { DriverTripExpenses } from '@/components/viagens/DriverTripExpenses';
 import { TripAdvancesPanel } from '@/components/viagens/TripAdvancesPanel';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
@@ -68,7 +69,7 @@ export function DriverTripSummary({ tripId }: Props) {
   if (authLoading || loading) {
     return (
       <div className="settings-font-inter flex min-h-[50vh] items-center justify-center bg-zinc-50 tracking-tight">
-        <p className="text-sm text-zinc-500">Carregando viagem…</p>
+        <LoadingMessage message="Carregando viagem…" />
       </div>
     );
   }

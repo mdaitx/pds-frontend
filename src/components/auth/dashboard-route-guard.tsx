@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks';
 import { DASHBOARD_HOME, userHasDashboardPathAccess } from '@/lib/auth-routes';
 import Link from 'next/link';
+import { LoadingMessage } from '@/components/ui/loading';
 
 type DashboardRouteGuardProps = {
   children: React.ReactNode;
@@ -39,7 +40,7 @@ export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-zinc-500">Carregando…</p>
+        <LoadingMessage />
       </div>
     );
   }

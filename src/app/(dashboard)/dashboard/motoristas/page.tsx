@@ -23,6 +23,7 @@ import { getDrivers, getCompanyStaff, deleteDriver, formatPhoneBr } from '@/lib'
 import type { Driver } from '@/lib';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { LoadingMessage } from '@/components/ui/loading';
 import { dashboardCardDeleteButtonClass, dashboardCardEditButtonClass } from '@/lib/dashboard-action-buttons';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
@@ -198,7 +199,7 @@ export default function MotoristasListaPage() {
   if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <p className="text-sm text-zinc-500">Carregando…</p>
+        <LoadingMessage message="Carregando motoristas…" />
       </div>
     );
   }

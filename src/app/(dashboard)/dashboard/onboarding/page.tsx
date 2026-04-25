@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks';
 import { getOnboardingStatus, type OnboardingStatus } from '@/lib';
 import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
+import { LoadingMessage } from '@/components/ui/loading';
 
 function resolveInitialStep(s: OnboardingStatus): 1 | 2 | 3 {
   if (!s.hasCompany) return 1;
@@ -49,7 +50,7 @@ export default function OnboardingPage() {
   if (authLoading || loading || !appUser) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-zinc-100">
-        <p className="text-zinc-500">Carregando…</p>
+        <LoadingMessage message="Carregando onboarding…" />
       </div>
     );
   }
