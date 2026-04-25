@@ -93,6 +93,7 @@ function DashboardSidebarNav({
         <div className="flex w-full shrink-0 items-center border-b border-zinc-200 px-3 py-3 sm:px-4">
           <Link
             href="/dashboard"
+            prefetch={false}
             onClick={onNavClick}
             className="flex min-w-0 flex-1 items-center gap-2 rounded-lg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-500"
             title="Truck Finanças — Início"
@@ -112,6 +113,7 @@ function DashboardSidebarNav({
       ) : (
         <Link
           href="/dashboard"
+          prefetch={false}
           onClick={onNavClick}
           className={cn(
             'flex items-center gap-3 border-b border-zinc-200 px-5 py-5 transition-all duration-300 outline-none hover:bg-zinc-50/90 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset',
@@ -141,6 +143,7 @@ function DashboardSidebarNav({
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               onClick={onNavClick}
               className={cn(
                 'relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group',
