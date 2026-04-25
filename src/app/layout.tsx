@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
-import { AuthProvider } from "@/contexts/auth-context";
+import { AppProviders } from "./app-providers";
 import { AppToaster } from "@/components/app-toaster";
 import { PwaRegister } from "@/components/pwa-register";
 import "./globals.css";
@@ -58,11 +58,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} antialiased`}
       >
-        <AuthProvider>
+        <AppProviders>
           {children}
           <AppToaster />
           <PwaRegister />
-        </AuthProvider>
+        </AppProviders>
       </body>
     </html>
   );

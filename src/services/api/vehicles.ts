@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api-client';
 import { postMultipartJson } from './multipart';
+import { appendPaginationParams, type PaginatedResult, type PaginationOptions } from './pagination';
 import type { VehicleType } from './vehicle-type';
 
 export type VehicleStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
@@ -61,6 +62,13 @@ export type UpdateVehiclePayload = {
 
 export async function getVehicles(): Promise<Vehicle[]> {
   return apiFetch<Vehicle[]>('/vehicles', { method: 'GET' });
+}
+
+export async function getVehiclesPage(pagination: PaginationOptions): Promise<PaginatedResult<Vehicle>> {
+  const params = new URLSearchParams();
+  appendPaginationParams(params, pagination);
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  return apiFetch<PaginatedResult<Vehicle>>(`/vehicles${qs}`, { method: 'GET' });
 }
 
 export async function getVehicle(id: string): Promise<Vehicle> {

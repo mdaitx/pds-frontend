@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/api-client';
+import { appendPaginationParams, type PaginatedResult, type PaginationOptions } from './pagination';
 import type { VehicleType } from './vehicle-type';
 
 export type TripStatus = 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
@@ -70,8 +71,18 @@ export type UpdateTripPayload = {
 };
 
 export async function getTrips(status?: string): Promise<Trip[]> {
-  const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  const qs = params.toString() ? `?${params.toString()}` : '';
   return apiFetch<Trip[]>(`/trips${qs}`, { method: 'GET' });
+}
+
+export async function getTripsPage(status: string | undefined, pagination: PaginationOptions): Promise<PaginatedResult<Trip>> {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  appendPaginationParams(params, pagination);
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  return apiFetch<PaginatedResult<Trip>>(`/trips${qs}`, { method: 'GET' });
 }
 
 export async function getTrip(id: string): Promise<Trip> {

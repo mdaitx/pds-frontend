@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api-client';
 import { postMultipartJson } from './multipart';
+import { appendPaginationParams, type PaginatedResult, type PaginationOptions } from './pagination';
 
 export type ExpenseCategoryRef = {
   id: string;
@@ -55,6 +56,16 @@ export type UpdateExpensePayload = {
 
 export async function getExpensesByTrip(tripId: string): Promise<Expense[]> {
   return apiFetch<Expense[]>(`/expenses/trip/${tripId}`, { method: 'GET' });
+}
+
+export async function getExpensesByTripPage(
+  tripId: string,
+  pagination: PaginationOptions
+): Promise<PaginatedResult<Expense>> {
+  const params = new URLSearchParams();
+  appendPaginationParams(params, pagination);
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  return apiFetch<PaginatedResult<Expense>>(`/expenses/trip/${tripId}${qs}`, { method: 'GET' });
 }
 
 export async function uploadExpenseReceipt(file: File): Promise<{ url: string | null }> {

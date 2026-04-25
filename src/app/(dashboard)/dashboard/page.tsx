@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import {
   Truck,
   Route,
@@ -21,15 +23,9 @@ import {
 import { useAuth } from '@/hooks';
 import {
   getOnboardingStatus,
-  getTrips,
-  getVehicles,
-  getDrivers,
-  getCompanyStaff,
-  getExpensesByTrip,
-  getSettlement,
-  getAdvancesByTrip,
+  getDashboardSummary,
 } from '@/lib';
-import type { AuthUser, Trip, Vehicle, Driver, Expense, Advance, Settlement } from '@/lib';
+import type { AuthUser, Trip, Expense, Advance, Settlement, OwnerDashboardSummary } from '@/lib';
 import { cn } from '@/lib/cn';
 import { mobileTableScrollClass } from '@/lib/dashboard-mobile';
 import { Card, CardHeader, CardContent, Skeleton } from '@/components/ui';
@@ -39,19 +35,36 @@ import {
   dashboardLinkGhostBlueClass,
   dashboardLinkMutedNavClass,
 } from '@/lib/dashboard-action-buttons';
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-  Cell,
-} from 'recharts';
+import type { ChartPeriod, DashboardChartsProps } from './DashboardCharts';
+
+const DashboardCharts = dynamic<DashboardChartsProps>(
+  () => import('./DashboardCharts').then((mod) => mod.DashboardCharts),
+  {
+    ssr: false,
+    loading: () => <ChartsSkeleton />,
+  }
+);
+
+function ChartsSkeleton() {
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Skeleton className="h-4 w-36" />
+        <Skeleton className="h-9 w-56 rounded-lg" />
+      </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <Card key={i} className="border-zinc-200">
+            <CardContent className="p-4">
+              <Skeleton className="mb-3 h-5 w-48" />
+              <Skeleton className="h-[220px] w-full rounded-xl" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const ROLE_LABEL: Record<AuthUser['role'], string> = {
   OWNER: 'Dono da frota',
@@ -80,14 +93,6 @@ function expenseInCalendarMonth(e: Expense, month: number, year: number): boolea
   const d = new Date(e.date);
   return d.getMonth() === month && d.getFullYear() === year;
 }
-
-type ChartPeriod = '1m' | '6m' | '1y';
-
-const CHART_PERIOD_OPTIONS: { id: ChartPeriod; label: string }[] = [
-  { id: '1m', label: 'Mês' },
-  { id: '6m', label: '6 meses' },
-  { id: '1y', label: '1 ano' },
-];
 
 function startOfDay(d: Date): Date {
   const x = new Date(d);
@@ -216,15 +221,22 @@ export default function DashboardPage() {
   const { session, appUser, loading, error, signOut, refreshAppUser } = useAuth();
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const [trips, setTrips] = useState<Trip[]>([]);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [, setDrivers] = useState<Driver[]>([]);
+  const [vehiclesCount, setVehiclesCount] = useState(0);
+  const [totalTripsCount, setTotalTripsCount] = useState(0);
   /** Contas com login (OWNER/ADMIN/DRIVER) — mesma lista que /dashboard/usuarios */
   const [staffUsersCount, setStaffUsersCount] = useState(0);
   const [dataLoading, setDataLoading] = useState(true);
+  const [ownerSummary, setOwnerSummary] = useState<OwnerDashboardSummary | null>(null);
   const [ownerExpenses, setOwnerExpenses] = useState<Expense[]>([]);
   const [driverSettlementsByTripId, setDriverSettlementsByTripId] = useState<Record<string, Settlement>>({});
   const [driverRecentAdvances, setDriverRecentAdvances] = useState<(Advance & { tripCode: string })[]>([]);
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('6m');
+  const dashboardSummaryQuery = useQuery({
+    queryKey: ['dashboard-summary', appUser?.id, appUser?.role],
+    queryFn: getDashboardSummary,
+    enabled: Boolean(session && appUser),
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
     if (loading || !appUser || pathname !== '/dashboard') return;
@@ -245,79 +257,50 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!session || !appUser) return;
+    if (dashboardSummaryQuery.isLoading) {
+      queueMicrotask(() => setDataLoading(true));
+      return;
+    }
+    if (dashboardSummaryQuery.isError) {
+      queueMicrotask(() => setDataLoading(false));
+      return;
+    }
+    const summary = dashboardSummaryQuery.data;
+    if (!summary) return;
+
     if (appUser.role === 'OWNER' || appUser.role === 'ADMIN') {
+      if (summary.role === 'DRIVER') return;
       queueMicrotask(() => {
         setDataLoading(true);
+        setOwnerSummary(summary);
+        setTrips(summary.recentTrips);
+        setTotalTripsCount(summary.totalTripsCount);
+        setVehiclesCount(summary.vehiclesCount);
+        setStaffUsersCount(summary.staffUsersCount);
+        setOwnerExpenses([]);
         setDriverSettlementsByTripId({});
         setDriverRecentAdvances([]);
+        setDataLoading(false);
       });
-      Promise.all([
-        getTrips(),
-        getVehicles(),
-        getDrivers(),
-        getCompanyStaff().catch(() => ({ companyId: '', staff: [] })),
-      ])
-        .then(async ([t, v, d, staffRes]) => {
-          setTrips(t);
-          setVehicles(v);
-          setDrivers(d);
-          setStaffUsersCount(staffRes.staff.length);
-          const lists = await Promise.all(t.map((trip) => getExpensesByTrip(trip.id).catch(() => [] as Expense[])));
-          setOwnerExpenses(lists.flat());
-        })
-        .catch(() => {})
-        .finally(() => setDataLoading(false));
       return;
     }
     if (appUser.role === 'DRIVER') {
+      if (summary.role !== 'DRIVER') return;
       queueMicrotask(() => {
         setDataLoading(true);
+        setOwnerSummary(null);
         setOwnerExpenses([]);
-      });
-      getTrips()
-        .then(async (t) => {
-          setTrips(t);
-          const now = new Date();
-          const completedMonth = t.filter(
-            (trip) =>
-              trip.status === 'COMPLETED' &&
-              new Date(trip.startDate).getMonth() === now.getMonth() &&
-              new Date(trip.startDate).getFullYear() === now.getFullYear()
-          );
-          const settlements = await Promise.all(
-            completedMonth.map((trip) => getSettlement(trip.id).catch(() => null))
-          );
-          const map: Record<string, Settlement> = {};
-          for (const s of settlements) {
-            if (s) map[s.tripId] = s;
-          }
-          setDriverSettlementsByTripId(map);
-
-          const sorted = [...t].sort(
-            (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
-          ).slice(0, 15);
-          const advLists = await Promise.all(
-            sorted.map(async (trip) => {
-              const list = await getAdvancesByTrip(trip.id).catch(() => [] as Advance[]);
-              return list.map((a) => ({ ...a, tripCode: trip.code }));
-            })
-          );
-          const merged = advLists
-            .flat()
-            .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-            .slice(0, 8);
-          setDriverRecentAdvances(merged);
-        })
-        .catch(() => {})
-        .finally(() => setDataLoading(false));
-      queueMicrotask(() => {
-        setVehicles([]);
-        setDrivers([]);
+        setTrips(summary.trips);
+        setDriverSettlementsByTripId(summary.settlementsByTripId);
+        setDriverRecentAdvances(summary.recentAdvances);
+        setVehiclesCount(0);
+        setTotalTripsCount(0);
+        setDataLoading(false);
       });
       return;
     }
     queueMicrotask(() => setDataLoading(false));
-  }, [session, appUser]);
+  }, [session, appUser, dashboardSummaryQuery.data, dashboardSummaryQuery.isError, dashboardSummaryQuery.isLoading]);
 
   useEffect(() => {
     if (!loading && !session) router.replace('/login');
@@ -368,15 +351,23 @@ export default function DashboardPage() {
     const totalDespesasMes = ownerExpenses
       .filter((e) => expenseInCalendarMonth(e, currentMonth, currentYear))
       .reduce((sum, e) => sum + e.amount, 0);
-    const lucroLiquido = totalFaturamento - totalDespesasMes;
-    const emAndamento = trips.filter((t) => t.status === 'IN_PROGRESS').length;
+    const resolvedTotalFaturamento = ownerSummary?.totalFaturamento ?? totalFaturamento;
+    const resolvedTotalDespesasMes = ownerSummary?.totalDespesasMes ?? totalDespesasMes;
+    const lucroLiquido = ownerSummary?.lucroLiquido ?? resolvedTotalFaturamento - resolvedTotalDespesasMes;
+    const emAndamento = ownerSummary?.emAndamento ?? trips.filter((t) => t.status === 'IN_PROGRESS').length;
     const recentTrips = [...trips].sort(
       (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
     ).slice(0, 10);
 
-    const chartData = buildFaturamentoDespesasLineData(chartPeriod, trips, ownerExpenses);
+    const chartData = ownerSummary?.chartDataByPeriod[chartPeriod] ?? buildFaturamentoDespesasLineData(chartPeriod, trips, ownerExpenses);
     const categoryTotals = buildCategoryTotalsForPeriod(chartPeriod, ownerExpenses, currentMonth, currentYear);
-    const pieData = Array.from(categoryTotals.values()).filter((x) => x.value > 0);
+    const pieData = ownerSummary
+      ? ownerSummary.categoryBarsByPeriod[chartPeriod].map((entry) => ({
+          name: entry.categoria,
+          value: entry.valor,
+          color: entry.color,
+        }))
+      : Array.from(categoryTotals.values()).filter((x) => x.value > 0);
     /** Mesmo modelo do Figma Make (OwnerDashboard): barras por categoria, topo arredondado. */
     const barDataDespesasCategoria = pieData.map((entry, i) => ({
       id: `${entry.name}-${i}`,
@@ -419,12 +410,12 @@ export default function DashboardPage() {
           {[
             {
               title: 'Viagens no mês',
-              value: monthTrips.length.toString(),
+              value: (ownerSummary?.monthTripsCount ?? monthTrips.length).toString(),
               icon: <Route className="w-5 h-5 text-blue-600" />,
               bg: 'bg-blue-50',
             },
-            { title: 'Faturamento', value: formatCurrency(totalFaturamento), icon: <DollarSign className="w-5 h-5 text-emerald-700" />, bg: 'bg-emerald-50' },
-            { title: 'Despesas (mês)', value: formatCurrency(totalDespesasMes), icon: <Receipt className="w-5 h-5 text-rose-600" />, bg: 'bg-rose-50' },
+            { title: 'Faturamento', value: formatCurrency(resolvedTotalFaturamento), icon: <DollarSign className="w-5 h-5 text-emerald-700" />, bg: 'bg-emerald-50' },
+            { title: 'Despesas (mês)', value: formatCurrency(resolvedTotalDespesasMes), icon: <Receipt className="w-5 h-5 text-rose-600" />, bg: 'bg-rose-50' },
             { title: 'Lucro líquido', value: formatCurrency(lucroLiquido), icon: <TrendingUp className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
             { title: 'Viagens em andamento', value: emAndamento.toString(), icon: <Activity className="w-5 h-5 text-zinc-600" />, bg: 'bg-zinc-100' },
           ].map((m, i) => (
@@ -457,10 +448,10 @@ export default function DashboardPage() {
               label: 'Viagens',
               href: '/dashboard/viagens',
               icon: <Route className="w-6 h-6 text-blue-600" />,
-              count: trips.length,
+              count: totalTripsCount || trips.length,
               bg: 'bg-blue-50',
             },
-            { label: 'Veículos', href: '/dashboard/veiculos', icon: <TruckIcon className="w-6 h-6 text-blue-600" />, count: vehicles.length, bg: 'bg-blue-50' },
+            { label: 'Veículos', href: '/dashboard/veiculos', icon: <TruckIcon className="w-6 h-6 text-blue-600" />, count: vehiclesCount, bg: 'bg-blue-50' },
             {
               label: 'Usuários',
               href: '/dashboard/usuarios',
@@ -509,111 +500,12 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        {/* Charts */}
-        <div className="space-y-3">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm text-zinc-600">Período dos gráficos</p>
-            <div
-              className="inline-flex rounded-lg border border-zinc-200 bg-zinc-50 p-0.5"
-              role="group"
-              aria-label="Período dos gráficos"
-            >
-              {CHART_PERIOD_OPTIONS.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setChartPeriod(opt.id)}
-                  className={cn(
-                    'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-                    chartPeriod === opt.id
-                      ? 'bg-white text-zinc-900 shadow-sm'
-                      : 'text-zinc-600 hover:text-zinc-900'
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="border-zinc-200">
-            <CardHeader className="pb-2">
-              <h3 className="text-zinc-800">Faturamento vs Despesas</h3>
-              <p className="text-zinc-500 text-xs font-normal mt-1">
-                {chartPeriod === '1m' && 'Mês atual (semanas no gráfico de linhas)'}
-                {chartPeriod === '6m' && 'Últimos 6 meses'}
-                {chartPeriod === '1y' && 'Últimos 12 meses'}
-              </p>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={chartPeriod === '1y' ? 248 : 220}>
-                <LineChart
-                  data={chartData}
-                  margin={{
-                    top: 5,
-                    right: 12,
-                    left: 4,
-                    bottom: chartPeriod === '1y' ? 28 : 5,
-                  }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis
-                    dataKey="mes"
-                    tick={{ fontSize: chartPeriod === '1y' ? 10 : 12 }}
-                    angle={chartPeriod === '1y' ? -22 : 0}
-                    textAnchor={chartPeriod === '1y' ? 'end' : 'middle'}
-                    height={chartPeriod === '1y' ? 48 : 24}
-                  />
-                  <YAxis
-                    width={108}
-                    tick={{ fontSize: 11 }}
-                    tickFormatter={(v) => formatCurrency(Number(v))}
-                  />
-                  <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
-                  <Legend />
-                  <Line type="monotone" dataKey="faturamento" name="Faturamento" stroke="#2563eb" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="despesas" name="Despesas" stroke="#ef4444" strokeWidth={2} dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          <Card className="border-zinc-200">
-            <CardHeader className="pb-2">
-              <h3 className="text-zinc-800">Despesas por Categoria</h3>
-              <p className="text-zinc-500 text-xs font-normal mt-1">
-                {chartPeriod === '1m' && 'Total no mês atual'}
-                {chartPeriod === '6m' && 'Total nos últimos 6 meses'}
-                {chartPeriod === '1y' && 'Total nos últimos 12 meses'}
-              </p>
-            </CardHeader>
-            <CardContent>
-              {barDataDespesasCategoria.length === 0 ? (
-                <p className="text-zinc-500 text-sm py-12 text-center">Nenhuma despesa no período selecionado.</p>
-              ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={barDataDespesasCategoria} margin={{ top: 5, right: 12, left: 4, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                    <XAxis dataKey="categoria" tick={{ fontSize: 12 }} />
-                    <YAxis
-                      width={108}
-                      tick={{ fontSize: 11 }}
-                      tickFormatter={(v) => formatCurrency(Number(v))}
-                    />
-                    <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
-                    <Bar dataKey="valor" name="Valor" radius={[8, 8, 0, 0]}>
-                      {barDataDespesasCategoria.map((row) => (
-                        <Cell key={row.id} fill={row.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-          </div>
-        </div>
+        <DashboardCharts
+          chartPeriod={chartPeriod}
+          onChartPeriodChange={setChartPeriod}
+          chartData={chartData}
+          barDataDespesasCategoria={barDataDespesasCategoria}
+        />
 
         {/* Recent Trips */}
         <Card className="border-zinc-200">
