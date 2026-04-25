@@ -76,6 +76,6 @@ export const config = {
      * Executa em todas as rotas exceto assets estáticos (recomendação Supabase + Next).
      * Assim o refresh de sessão roda nas navegações que importam para auth.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|webmanifest)$).*)',
   ],
 };
