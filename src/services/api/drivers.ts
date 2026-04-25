@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api-client';
 import { postMultipartJson } from './multipart';
+import { appendPaginationParams, type PaginatedResult, type PaginationOptions } from './pagination';
 
 export type DriverStatus = 'ACTIVE' | 'INACTIVE';
 
@@ -80,6 +81,13 @@ export type UpdateDriverPayload = {
 
 export async function getDrivers(): Promise<Driver[]> {
   return apiFetch<Driver[]>('/drivers', { method: 'GET' });
+}
+
+export async function getDriversPage(pagination: PaginationOptions): Promise<PaginatedResult<Driver>> {
+  const params = new URLSearchParams();
+  appendPaginationParams(params, pagination);
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  return apiFetch<PaginatedResult<Driver>>(`/drivers${qs}`, { method: 'GET' });
 }
 
 export async function getDriver(id: string): Promise<Driver> {

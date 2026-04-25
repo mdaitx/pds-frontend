@@ -6,7 +6,7 @@
  * - Centraliza a URL da API (NEXT_PUBLIC_API_URL) e o tratamento de erros.
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '') || 'http://localhost:4000';
 
 /** Erro HTTP da API com status (útil para tratar 401 e renovar sessão). */
 export class ApiError extends Error {

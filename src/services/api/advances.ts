@@ -1,5 +1,6 @@
 import { apiFetch } from '@/lib/api-client';
 import { postMultipartJson } from './multipart';
+import { appendPaginationParams, type PaginatedResult, type PaginationOptions } from './pagination';
 
 export type AdvanceMethod = 'CASH' | 'PIX' | 'TRANSFER';
 
@@ -34,6 +35,16 @@ export type UpdateAdvancePayload = {
 
 export async function getAdvancesByTrip(tripId: string): Promise<Advance[]> {
   return apiFetch<Advance[]>(`/advances/trip/${tripId}`, { method: 'GET' });
+}
+
+export async function getAdvancesByTripPage(
+  tripId: string,
+  pagination: PaginationOptions
+): Promise<PaginatedResult<Advance>> {
+  const params = new URLSearchParams();
+  appendPaginationParams(params, pagination);
+  const qs = params.toString() ? `?${params.toString()}` : '';
+  return apiFetch<PaginatedResult<Advance>>(`/advances/trip/${tripId}${qs}`, { method: 'GET' });
 }
 
 export async function uploadAdvanceReceipt(file: File): Promise<{ url: string | null }> {
