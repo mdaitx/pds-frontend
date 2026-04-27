@@ -5,6 +5,7 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -127,6 +128,7 @@ function StatCard(props: { label: string; value: number; icon: ReactNode; iconWr
 
 export default function MotoristasListaPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { session, appUser, loading: authLoading } = useAuth();
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [staffEmails, setStaffEmails] = useState<Set<string>>(new Set());
@@ -135,6 +137,20 @@ export default function MotoristasListaPage() {
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<Driver | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const fleetStaff = appUser?.role === 'OWNER' || appUser?.role === 'ADMIN';
+  const driversQuery = useQuery({
+    queryKey: ['drivers-list-with-staff'],
+    queryFn: async () => {
+      const [drivers, staff] = await Promise.all([getDrivers(), getCompanyStaff()]);
+      return {
+        drivers,
+        staffEmails: new Set(staff.staff.map((x) => x.email.trim().toLowerCase())),
+      };
+    },
+    enabled: Boolean(session && appUser && fleetStaff),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
 
   useEffect(() => {
     if (!authLoading && !session) router.replace('/login');
@@ -142,23 +158,30 @@ export default function MotoristasListaPage() {
 
   useEffect(() => {
     if (!session || !appUser) return;
-    if (appUser.role !== 'OWNER' && appUser.role !== 'ADMIN') {
+    if (!fleetStaff) {
       router.replace('/dashboard');
+    }
+  }, [session, appUser, fleetStaff, router]);
+
+  useEffect(() => {
+    if (!fleetStaff) return;
+    if (driversQuery.isLoading) {
+      setLoading(true);
       return;
     }
-    setLoading(true);
-    setError(null);
-    Promise.all([getDrivers(), getCompanyStaff()])
-      .then(([d, s]) => {
-        setDrivers(d);
-        setStaffEmails(new Set(s.staff.map((x) => x.email.trim().toLowerCase())));
-      })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Erro ao carregar motoristas');
-        setDrivers([]);
-      })
-      .finally(() => setLoading(false));
-  }, [session, appUser, router]);
+    if (driversQuery.isError) {
+      setError(driversQuery.error instanceof Error ? driversQuery.error.message : 'Erro ao carregar motoristas');
+      setDrivers([]);
+      setLoading(false);
+      return;
+    }
+    if (driversQuery.data) {
+      setDrivers(driversQuery.data.drivers);
+      setStaffEmails(driversQuery.data.staffEmails);
+      setError(null);
+      setLoading(false);
+    }
+  }, [driversQuery.data, driversQuery.error, driversQuery.isError, driversQuery.isLoading, fleetStaff]);
 
   const driverHasAccess = (driver: Driver) => {
     if (driver.userId) return true;
@@ -187,6 +210,17 @@ export default function MotoristasListaPage() {
     try {
       await deleteDriver(deleteTarget.id);
       setDrivers((d) => d.filter((x) => x.id !== deleteTarget.id));
+      queryClient.setQueryData<{
+        drivers: Driver[];
+        staffEmails: Set<string>;
+      }>(['drivers-list-with-staff'], (current) =>
+        current
+          ? {
+              ...current,
+              drivers: current.drivers.filter((x) => x.id !== deleteTarget.id),
+            }
+          : current
+      );
       toast.success(`Motorista ${deleteTarget.name} removido.`);
       setDeleteTarget(null);
     } catch {

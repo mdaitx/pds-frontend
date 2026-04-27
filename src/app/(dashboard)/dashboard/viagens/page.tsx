@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   ArrowLeft,
   Plus,
@@ -14,7 +15,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { useAuth, useActivityHint } from '@/hooks';
-import { getTrips, type Trip, type TripStatus } from '@/lib';
+import { getTripsList, type Trip, type TripStatus } from '@/lib';
 import { Card, CardContent, Input, Skeleton } from '@/components/ui';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { ViagensCardsSkeleton } from '@/components/dashboard/DashboardLoadingSkeleton';
@@ -28,6 +29,7 @@ import {
 } from '@/lib/dashboard-action-buttons';
 
 const PAGE_SIZE = 6;
+const SEARCH_DEBOUNCE_MS = 400;
 
 /** Alinhado ao bundle publicado do Figma Make (iU / nU). */
 const STATUS_LABEL: Record<TripStatus, string> = {
@@ -56,47 +58,54 @@ function formatBRL(n: number) {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-function tripSearchHaystack(t: Trip): string {
-  const v = t.vehicle;
-  const vehicleStr = v ? `${v.plate} ${v.brand} ${v.model}` : '';
-  return [
-    t.code,
-    t.driver?.name ?? '',
-    vehicleStr,
-    t.origin ?? '',
-    t.destination ?? '',
-  ]
-    .join(' ')
-    .toLowerCase();
-}
-
 export default function ViagensPage() {
   const router = useRouter();
   const { session, appUser, loading: authLoading } = useAuth();
   const { clearTripsActivity } = useActivityHint();
-  const [list, setList] = useState<Trip[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'' | TripStatus>('');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [page, setPage] = useState(1);
+  const canViewTrips = Boolean(
+    session && appUser && (appUser.role === 'OWNER' || appUser.role === 'ADMIN' || appUser.role === 'DRIVER'),
+  );
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const tripsQuery = useQuery({
+    queryKey: ['trips-list', appUser?.id, appUser?.role, statusFilter, debouncedSearch, page, PAGE_SIZE],
+    queryFn: () =>
+      getTripsList({
+        page,
+        pageSize: PAGE_SIZE,
+        ...(statusFilter ? { status: statusFilter } : {}),
+        ...(debouncedSearch ? { q: debouncedSearch } : {}),
+      }),
+    enabled: canViewTrips,
+    staleTime: 60_000,
+    retry: false,
+    placeholderData: keepPreviousData,
+  });
 
   useEffect(() => {
     clearTripsActivity();
   }, [clearTripsActivity]);
 
   useEffect(() => {
+    queueMicrotask(() => setPage(1));
+  }, [statusFilter, debouncedSearch]);
+
+  useEffect(() => {
     if (!session || !appUser) return;
     const fleetStaff = appUser.role === 'OWNER' || appUser.role === 'ADMIN';
     if (!fleetStaff && appUser.role !== 'DRIVER') {
       router.replace('/dashboard');
-      return;
     }
-    queueMicrotask(() => setLoading(true));
-    getTrips()
-      .then(setList)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Erro ao carregar'))
-      .finally(() => setLoading(false));
   }, [session, appUser, router]);
 
   useEffect(() => {
@@ -106,34 +115,29 @@ export default function ViagensPage() {
   const isFleetStaff = appUser?.role === 'OWNER' || appUser?.role === 'ADMIN';
   const title = isFleetStaff ? 'Viagens' : 'Minhas viagens';
 
-  const sorted = useMemo(() => {
-    const byStatus = statusFilter === '' ? list : list.filter((t) => t.status === statusFilter);
-    const q = searchQuery.trim().toLowerCase();
-    const filtered =
-      q === '' ? byStatus : byStatus.filter((t) => tripSearchHaystack(t).includes(q));
-    return [...filtered].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
-  }, [list, statusFilter, searchQuery]);
+  const data = tripsQuery.data;
+  const isPlaceholder = tripsQuery.isPlaceholderData;
+  const errorMessage =
+    tripsQuery.isError && tripsQuery.error instanceof Error ? tripsQuery.error.message : null;
 
-  useEffect(() => {
-    queueMicrotask(() => setPage(1));
-  }, [statusFilter, searchQuery]);
-
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
-
+  const totalPages = data ? Math.max(1, data.totalPages) : 1;
   useEffect(() => {
     queueMicrotask(() => setPage((p) => Math.min(p, totalPages)));
   }, [totalPages]);
+
   const safePage = Math.min(page, totalPages);
-  const pageSlice = useMemo(() => {
-    const p = Math.min(page, totalPages);
-    const start = (p - 1) * PAGE_SIZE;
-    return sorted.slice(start, start + PAGE_SIZE);
-  }, [sorted, page, totalPages]);
+  const items: Trip[] = data?.items ?? [];
+  const totalInFilter = data?.total ?? 0;
+  const showEmpty = data != null && data.total === 0 && !isPlaceholder;
+  const showList = (data?.items.length ?? 0) > 0;
 
-  const countFor = (v: '' | TripStatus) =>
-    v === '' ? list.length : list.filter((t) => t.status === v).length;
+  const countFor = (v: '' | TripStatus) => {
+    if (!data) return 0;
+    if (v === '') return data.counts.all;
+    return data.counts.byStatus[v] ?? 0;
+  };
 
-  if (authLoading || loading) {
+  if (authLoading || (tripsQuery.isPending && !data)) {
     return (
       <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="4xl">
         <div className="space-y-2">
@@ -173,17 +177,21 @@ export default function ViagensPage() {
           )}
         </div>
 
-        {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
+        {errorMessage && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {errorMessage}
+          </div>
         )}
 
-        <div className="relative w-full">
+        <div
+          className={cn('relative w-full', tripsQuery.isFetching && 'opacity-80 transition-opacity')}
+        >
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
           <Input
             type="search"
             placeholder="Buscar por código, motorista, veículo ou rota..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="bg-white pl-9"
             style={{ fontSize: '0.875rem' }}
             autoComplete="off"
@@ -223,13 +231,13 @@ export default function ViagensPage() {
           </div>
         </div>
 
-        {sorted.length === 0 ? (
+        {showEmpty ? (
           <Card className="border-zinc-200 shadow-sm">
             <CardContent className="py-16 text-center">
               <Truck className="mx-auto mb-4 h-12 w-12 text-zinc-300" aria-hidden />
               <p className="text-zinc-800 font-medium">Nenhuma viagem encontrada</p>
               <p className="mt-1 text-sm text-zinc-500">
-                {list.length === 0
+                {(data?.counts.all ?? 0) === 0
                   ? 'Cadastre uma viagem para acompanhar fretes e despesas.'
                   : 'Tente outro filtro, status ou termo na busca.'}
               </p>
@@ -244,9 +252,9 @@ export default function ViagensPage() {
               )}
             </CardContent>
           </Card>
-        ) : (
+        ) : showList ? (
           <div className="space-y-3">
-            {pageSlice.map((t) => {
+            {items.map((t) => {
               const st = STATUS_PILL[t.status];
               const lbl = STATUS_LABEL[t.status];
               return (
@@ -345,7 +353,7 @@ export default function ViagensPage() {
               <div className="flex flex-col gap-3 border-t border-zinc-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <button
                   type="button"
-                  disabled={safePage <= 1}
+                  disabled={safePage <= 1 || tripsQuery.isFetching}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-zinc-700 transition-colors hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-40"
                   style={{ fontSize: '0.82rem' }}
@@ -358,12 +366,12 @@ export default function ViagensPage() {
                   <span className="font-medium text-zinc-800">{totalPages}</span>
                   <span className="text-zinc-400">
                     {' '}
-                    · {sorted.length} {sorted.length === 1 ? 'viagem' : 'viagens'}
+                    · {totalInFilter} {totalInFilter === 1 ? 'viagem' : 'viagens'}
                   </span>
                 </p>
                 <button
                   type="button"
-                  disabled={safePage >= totalPages}
+                  disabled={safePage >= totalPages || tripsQuery.isFetching}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   className="inline-flex items-center gap-1 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-zinc-700 transition-colors hover:bg-zinc-50 disabled:pointer-events-none disabled:opacity-40"
                   style={{ fontSize: '0.82rem' }}
@@ -374,7 +382,7 @@ export default function ViagensPage() {
               </div>
             )}
           </div>
-        )}
+        ) : null}
     </DashboardPageShell>
   );
 }

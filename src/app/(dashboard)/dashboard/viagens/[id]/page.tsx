@@ -15,6 +15,7 @@ import {
   Banknote,
   Gauge,
   Package,
+  ImageIcon,
   X,
 } from 'lucide-react';
 import { useAuth, useActivityHint } from '@/hooks';
@@ -250,6 +251,14 @@ export default function ViagemDetalhePage() {
                 Ver acerto
               </Link>
             )}
+            <Link
+              href={`/dashboard/viagens/${trip.id}/comprovantes`}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-700 transition-colors hover:bg-zinc-50 sm:w-auto"
+              style={{ fontSize: '0.875rem', fontWeight: 500 }}
+            >
+              <ImageIcon className="h-4 w-4" />
+              Comprovantes
+            </Link>
             <Link href={`/dashboard/viagens/${trip.id}/editar`} className={dashboardLinkToolbarEditClass}>
               <Pencil className="h-4 w-4" />
               Editar

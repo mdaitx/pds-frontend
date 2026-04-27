@@ -23,6 +23,7 @@ import {
 import { useAuth } from '@/hooks';
 import {
   getOnboardingStatus,
+  getDashboardCharts,
   getDashboardSummary,
 } from '@/lib';
 import type { AuthUser, Trip, Expense, Advance, Settlement, OwnerDashboardSummary } from '@/lib';
@@ -231,11 +232,21 @@ export default function DashboardPage() {
   const [driverSettlementsByTripId, setDriverSettlementsByTripId] = useState<Record<string, Settlement>>({});
   const [driverRecentAdvances, setDriverRecentAdvances] = useState<(Advance & { tripCode: string })[]>([]);
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('6m');
+  const shouldLoadOwnerCharts = Boolean(
+    session && appUser && (appUser.role === 'OWNER' || appUser.role === 'ADMIN')
+  );
   const dashboardSummaryQuery = useQuery({
     queryKey: ['dashboard-summary', appUser?.id, appUser?.role],
     queryFn: getDashboardSummary,
     enabled: Boolean(session && appUser),
     staleTime: 60_000,
+    retry: false,
+  });
+  const dashboardChartsQuery = useQuery({
+    queryKey: ['dashboard-charts', appUser?.id],
+    queryFn: getDashboardCharts,
+    enabled: shouldLoadOwnerCharts && dashboardSummaryQuery.isSuccess,
+    staleTime: 5 * 60_000,
     retry: false,
   });
 
@@ -360,10 +371,10 @@ export default function DashboardPage() {
       (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
     ).slice(0, 10);
 
-    const chartData = ownerSummary?.chartDataByPeriod[chartPeriod] ?? buildFaturamentoDespesasLineData(chartPeriod, trips, ownerExpenses);
+    const chartData = dashboardChartsQuery.data?.chartDataByPeriod[chartPeriod] ?? buildFaturamentoDespesasLineData(chartPeriod, trips, ownerExpenses);
     const categoryTotals = buildCategoryTotalsForPeriod(chartPeriod, ownerExpenses, currentMonth, currentYear);
-    const pieData = ownerSummary
-      ? ownerSummary.categoryBarsByPeriod[chartPeriod].map((entry) => ({
+    const pieData = dashboardChartsQuery.data
+      ? dashboardChartsQuery.data.categoryBarsByPeriod[chartPeriod].map((entry) => ({
           name: entry.categoria,
           value: entry.valor,
           color: entry.color,
@@ -501,12 +512,16 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        <DashboardCharts
-          chartPeriod={chartPeriod}
-          onChartPeriodChange={setChartPeriod}
-          chartData={chartData}
-          barDataDespesasCategoria={barDataDespesasCategoria}
-        />
+        {dashboardChartsQuery.isLoading ? (
+          <ChartsSkeleton />
+        ) : (
+          <DashboardCharts
+            chartPeriod={chartPeriod}
+            onChartPeriodChange={setChartPeriod}
+            chartData={chartData}
+            barDataDespesasCategoria={barDataDespesasCategoria}
+          />
+        )}
 
         {/* Recent Trips */}
         <Card className="border-zinc-200">

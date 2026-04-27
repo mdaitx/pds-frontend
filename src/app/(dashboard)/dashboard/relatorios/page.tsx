@@ -4,17 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks';
 import {
-  getTrips,
+  getTripsReport,
   getVehicles,
   getDrivers,
-  getExpensesByTrip,
-  getAdvancesByTrip,
-  getSettlement,
   type Vehicle,
   type Driver,
   type Expense,
-  type Advance,
-  type Settlement,
   type TripStatus,
 } from '@/lib';
 import {
@@ -144,40 +139,24 @@ export default function RelatoriosPage() {
 
     (async () => {
       try {
-        const [tripList, vList, dList] = await Promise.all([getTrips(), getVehicles(), getDrivers()]);
+        const [report, vList, dList] = await Promise.all([
+          getTripsReport(fromYmd, toYmd),
+          getVehicles(),
+          getDrivers(),
+        ]);
         if (cancelled) return;
 
-        const expensesNested = await Promise.all(
-          tripList.map((t) => getExpensesByTrip(t.id).catch(() => [] as Expense[]))
+        const rows = buildTripReportRows(
+          report.trips,
+          report.expensesByTripId,
+          report.advancesByTripId,
+          report.settlementByTripId
         );
-        const expensesByTripId: Record<string, Expense[]> = {};
-        tripList.forEach((t, i) => {
-          expensesByTripId[t.id] = expensesNested[i];
-        });
-
-        const advancesNested = await Promise.all(
-          tripList.map((t) => getAdvancesByTrip(t.id).catch(() => [] as Advance[]))
-        );
-        const advancesByTripId: Record<string, Advance[]> = {};
-        tripList.forEach((t, i) => {
-          advancesByTripId[t.id] = advancesNested[i];
-        });
-
-        const settlementsRaw = await Promise.all(
-          tripList.map((t) => getSettlement(t.id).catch(() => null))
-        );
-        const settlementByTripId: Record<string, Settlement | null> = {};
-        tripList.forEach((t, i) => {
-          const raw = settlementsRaw[i] as Settlement | null;
-          settlementByTripId[t.id] = raw;
-        });
-
-        const rows = buildTripReportRows(tripList, expensesByTripId, advancesByTripId, settlementByTripId);
         if (!cancelled) {
           setAllRows(rows);
           setVehicles(vList);
           setDrivers(dList);
-          setExpensesByTripId(expensesByTripId);
+          setExpensesByTripId(report.expensesByTripId);
         }
       } catch (e) {
         if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Erro ao carregar dados');
@@ -189,7 +168,7 @@ export default function RelatoriosPage() {
     return () => {
       cancelled = true;
     };
-  }, [session, appUser, router]);
+  }, [session, appUser, router, fromYmd, toYmd]);
 
   useEffect(() => {
     if (vehicles.length && !vehicles.some((v) => v.id === reportVehicleId)) {
@@ -498,7 +477,7 @@ export default function RelatoriosPage() {
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-16 text-zinc-500">
           <Loader2 className="w-5 h-5 animate-spin" />
-          Carregando viagens, despesas e adiantamentos…
+          Carregando relatório do período…
         </div>
       ) : tab === 'viagens' ? (
         <ViagensTab

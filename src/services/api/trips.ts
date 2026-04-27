@@ -70,11 +70,37 @@ export type UpdateTripPayload = {
   status?: TripStatus;
 };
 
+export type TripsListResponse = {
+  items: Trip[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  counts: {
+    all: number;
+    byStatus: Record<TripStatus, number>;
+  };
+};
+
 export async function getTrips(status?: string): Promise<Trip[]> {
   const params = new URLSearchParams();
   if (status) params.set('status', status);
   const qs = params.toString() ? `?${params.toString()}` : '';
   return apiFetch<Trip[]>(`/trips${qs}`, { method: 'GET' });
+}
+
+export async function getTripsList(params: {
+  page: number;
+  pageSize: number;
+  status?: TripStatus;
+  q?: string;
+}): Promise<TripsListResponse> {
+  const search = new URLSearchParams();
+  search.set('page', String(params.page));
+  search.set('limit', String(params.pageSize));
+  if (params.status) search.set('status', params.status);
+  if (params.q?.trim()) search.set('q', params.q.trim());
+  return apiFetch<TripsListResponse>(`/trips?${search.toString()}`, { method: 'GET' });
 }
 
 export async function getTripsPage(status: string | undefined, pagination: PaginationOptions): Promise<PaginatedResult<Trip>> {
