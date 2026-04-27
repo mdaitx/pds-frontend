@@ -30,6 +30,9 @@ export type OwnerDashboardSummary = {
   lucroLiquido: number;
   emAndamento: number;
   recentTrips: Trip[];
+};
+
+export type OwnerDashboardCharts = {
   chartDataByPeriod: Record<DashboardChartPeriod, DashboardChartPoint[]>;
   categoryBarsByPeriod: Record<DashboardChartPeriod, DashboardCategoryBarPoint[]>;
 };
@@ -45,4 +48,8 @@ export type DashboardSummary = OwnerDashboardSummary | DriverDashboardSummary;
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   return apiFetch<DashboardSummary>('/dashboard/summary', { method: 'GET' });
+}
+
+export async function getDashboardCharts(): Promise<OwnerDashboardCharts> {
+  return apiFetch<OwnerDashboardCharts>('/dashboard/charts', { method: 'GET' });
 }

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks';
 import {
@@ -221,6 +222,7 @@ function StatCard(props: { label: string; value: number; icon: ReactNode; iconWr
 
 export default function VeiculosPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { session, appUser, loading: authLoading } = useAuth();
   const [list, setList] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
@@ -234,21 +236,39 @@ export default function VeiculosPage() {
   const [filterSemiReboque, setFilterSemiReboque] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Vehicle | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const fleetStaff = appUser?.role === 'OWNER' || appUser?.role === 'ADMIN';
+  const vehiclesQuery = useQuery({
+    queryKey: ['vehicles-list'],
+    queryFn: getVehicles,
+    enabled: Boolean(session && appUser && fleetStaff),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
 
   useEffect(() => {
     if (!session || !appUser) return;
-    const fleetStaff = appUser.role === 'OWNER' || appUser.role === 'ADMIN';
     if (!fleetStaff) {
       router.replace('/dashboard');
+    }
+  }, [session, appUser, fleetStaff, router]);
+
+  useEffect(() => {
+    if (!fleetStaff) return;
+    if (vehiclesQuery.isLoading) {
+      setLoading(true);
       return;
     }
-    queueMicrotask(() => setLoading(true));
-    setError(null);
-    getVehicles()
-      .then(setList)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Erro ao carregar'))
-      .finally(() => setLoading(false));
-  }, [session, appUser, router]);
+    if (vehiclesQuery.isError) {
+      setError(vehiclesQuery.error instanceof Error ? vehiclesQuery.error.message : 'Erro ao carregar');
+      setLoading(false);
+      return;
+    }
+    if (vehiclesQuery.data) {
+      setList(vehiclesQuery.data);
+      setError(null);
+      setLoading(false);
+    }
+  }, [fleetStaff, vehiclesQuery.data, vehiclesQuery.error, vehiclesQuery.isError, vehiclesQuery.isLoading]);
 
   useEffect(() => {
     if (!authLoading && !session) router.replace('/login');
@@ -328,6 +348,9 @@ export default function VeiculosPage() {
     try {
       await deleteVehicle(deleteTarget.id);
       setList((prev) => prev.filter((v) => v.id !== deleteTarget.id));
+      queryClient.setQueryData<Vehicle[]>(['vehicles-list'], (current) =>
+        current?.filter((v) => v.id !== deleteTarget.id)
+      );
       toast.success(`Veículo ${deleteTarget.plate} removido.`);
       setDeleteTarget(null);
     } catch (err) {

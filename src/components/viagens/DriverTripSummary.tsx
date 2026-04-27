@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, FileText } from 'lucide-react';
+import { ArrowLeft, FileText, ImageIcon } from 'lucide-react';
 import { useAuth } from '@/hooks';
 import { getTrip, getSettlement, type Trip, type SettlementWithTrip } from '@/lib';
 import { Card, CardContent, CardHeader } from '@/components/ui';
@@ -143,6 +143,14 @@ export function DriverTripSummary({ tripId }: Props) {
           <DriverTripExpenses tripId={tripId} tripStatus={trip.status} embed />
           <TripAdvancesPanel tripId={tripId} tripStatus={trip.status} embed />
         </div>
+
+        <Link
+          href={`/dashboard/viagens/${tripId}/comprovantes`}
+          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-3 text-center text-base font-semibold text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+        >
+          <ImageIcon className="h-5 w-5" />
+          Ver comprovantes das despesas
+        </Link>
 
         {settlement && (
           <Link

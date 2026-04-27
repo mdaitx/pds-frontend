@@ -79,7 +79,13 @@ body {
 }
 
 .safe-top {
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+}
+
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  .safe-top {
+    padding-top: calc(max(1rem, env(safe-area-inset-top, 0px)) + 0.75rem);
+  }
 }
 
 .safe-bottom {

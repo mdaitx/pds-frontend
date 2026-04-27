@@ -8,12 +8,14 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks';
 import {
   getCompanyStaff,
   deleteCompanyStaffUser,
   formatPhoneBr,
+  type CompanyStaffResponse,
   type CompanyStaffMember,
 } from '@/lib';
 import { Input } from '@/components/ui/input';
@@ -129,6 +131,7 @@ function UserCardInner({ user }: { user: ListUser }) {
 
 export default function UsuariosPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { session, appUser, loading: authLoading } = useAuth();
   const [staff, setStaff] = useState<CompanyStaffMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -136,24 +139,41 @@ export default function UsuariosPage() {
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<ListUser | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const fleetStaff = appUser?.role === 'OWNER' || appUser?.role === 'ADMIN';
+  const staffQuery = useQuery({
+    queryKey: ['company-staff'],
+    queryFn: getCompanyStaff,
+    enabled: Boolean(session && appUser && fleetStaff),
+    staleTime: 5 * 60_000,
+    retry: false,
+  });
 
   const users = useMemo(() => staffToUsers(staff), [staff]);
 
   useEffect(() => {
     if (!session || !appUser) return;
-    if (appUser.role !== 'OWNER' && appUser.role !== 'ADMIN') {
+    if (!fleetStaff) {
       router.replace('/dashboard');
+    }
+  }, [session, appUser, fleetStaff, router]);
+
+  useEffect(() => {
+    if (!fleetStaff) return;
+    if (staffQuery.isLoading) {
+      setLoading(true);
       return;
     }
-    setLoading(true);
-    getCompanyStaff()
-      .then((s) => {
-        setStaff(s.staff);
-        setError(null);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : 'Erro ao carregar'))
-      .finally(() => setLoading(false));
-  }, [session, appUser, router]);
+    if (staffQuery.isError) {
+      setError(staffQuery.error instanceof Error ? staffQuery.error.message : 'Erro ao carregar');
+      setLoading(false);
+      return;
+    }
+    if (staffQuery.data) {
+      setStaff(staffQuery.data.staff);
+      setError(null);
+      setLoading(false);
+    }
+  }, [fleetStaff, staffQuery.data, staffQuery.error, staffQuery.isError, staffQuery.isLoading]);
 
   useEffect(() => {
     if (!authLoading && !session) router.replace('/login');
@@ -186,6 +206,14 @@ export default function UsuariosPage() {
     try {
       await deleteCompanyStaffUser(deleteTarget.id);
       setStaff((s) => s.filter((x) => x.id !== deleteTarget.id));
+      queryClient.setQueryData<CompanyStaffResponse>(['company-staff'], (current) =>
+        current
+          ? {
+              ...current,
+              staff: current.staff.filter((x) => x.id !== deleteTarget.id),
+            }
+          : current
+      );
       setDeleteTarget(null);
       toast.success('Usuário excluído.');
     } catch (err) {
