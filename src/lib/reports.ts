@@ -1,5 +1,17 @@
 import type { Advance, Expense, Settlement, Trip, TripStatus } from '@/services/api';
 
+/** Categoria sistema "Combustível" (ou ícone fuel) — usada no custo R$/km rodado. */
+export function isFuelCategoryRef(c: { icon: string; name: string } | null | undefined): boolean {
+  if (!c) return false;
+  if (c.icon === 'fuel') return true;
+  const n = c.name.trim().toLowerCase();
+  return n === 'combustível' || n === 'combustivel';
+}
+
+export function isFuelExpense(e: Expense): boolean {
+  return isFuelCategoryRef(e.category);
+}
+
 export type DriverExpenseLine = {
   id: string;
   tripId: string;
@@ -8,6 +20,8 @@ export type DriverExpenseLine = {
   categoryName: string;
   amount: number;
   description: string | null;
+  /** Litros, quando a despesa é de combustível e foi informada. */
+  liters: number | null;
 };
 
 /** Salário mensal proporcional aos dias do recorte em cada mês civil (período inclusivo). */
@@ -65,6 +79,7 @@ export function buildDriverExpenseLines(
         categoryName: e.category?.name ?? '—',
         amount: safeNum(e.amount, 0),
         description: e.description,
+        liters: e.liters != null && Number.isFinite(Number(e.liters)) ? Number(e.liters) : null,
       });
     }
   }
@@ -140,6 +155,8 @@ export const TRIP_STATUS_LABEL: Record<TripStatus, string> = {
  * - Despesas: valor gravado no acerto (`totalExpenses`) quando existe settlement; senão soma das despesas lançadas.
  * - Adiantamentos: `totalAdvances` do acerto ou soma dos vales na viagem.
  * - Km rodados: (km final − km inicial), com km final preferindo o do acerto depois o da viagem.
+ * - Custo R$/km: despesas da categoria combustível / km rodado (não inclui outras despesas).
+ * - Média km/L: km rodado / litros de combustível informados nos lançamentos (por viagem e no agregado).
  * - Margem bruta (`grossProfit`): do acerto ou (frete − despesas) em viagens sem acerto.
  * - Comissão e resultado do proprietário: apenas quando há acerto (snapshot do banco).
  * - Totais agregados: viagens **canceladas** não entram em somas financeiras nem em km (ver `aggregateRows`).
@@ -163,7 +180,13 @@ export type TripReportRow = {
   ownerResult: number | null;
   hasSettlement: boolean;
   km: number;
+  /** Soma dos valores (R$) de despesas de combustível nesta viagem. */
+  fuelExpenses: number;
+  /** Soma dos litros informados nas despesas de combustível. */
+  fuelLiters: number;
   costPerKm: number | null;
+  /** Km ÷ L quando há km e litragem registrada. */
+  kmPerLiter: number | null;
 };
 
 export function buildTripReportRows(
@@ -214,7 +237,16 @@ export function buildTripReportRows(
     const ini = trip.initialKm ?? null;
     if (ini != null && fin != null) km = Math.max(0, fin - ini);
 
-    const costPerKm = km > 0 ? expenses / km : null;
+    const fuelList = expList.filter(isFuelExpense);
+    const fuelExpenses = fuelList.reduce((s, e) => s + safeNum(e.amount, 0), 0);
+    const fuelLiters = fuelList.reduce((s, e) => {
+      const L = e.liters;
+      if (L == null) return s;
+      const n = Number(L);
+      return s + (Number.isFinite(n) && n > 0 ? n : 0);
+    }, 0);
+    const costPerKm = km > 0 && fuelExpenses > 0 ? fuelExpenses / km : null;
+    const kmPerLiter = km > 0 && fuelLiters > 0 ? km / fuelLiters : null;
 
     const vehicleLabel = trip.vehicle
       ? `${trip.vehicle.plate} · ${trip.vehicle.brand} ${trip.vehicle.model}`
@@ -238,7 +270,10 @@ export function buildTripReportRows(
       ownerResult,
       hasSettlement,
       km,
+      fuelExpenses,
+      fuelLiters,
       costPerKm,
+      kmPerLiter,
     };
   });
 }
@@ -282,7 +317,13 @@ export type ReportAggregate = {
   ownerResult: number | null;
   driverCommission: number | null;
   km: number;
+  /** Soma de combustível (R$) nas viagens operacionais. */
+  fuelExpenses: number;
+  /** Soma de litros informados (combustível) nas viagens operacionais. */
+  fuelLiters: number;
   costPerKm: number | null;
+  /** Média global: km totais ÷ litros totais. */
+  kmPerLiter: number | null;
 };
 
 /** Linhas que entram em totais de faturamento / despesas / km (exclui canceladas). */
@@ -299,6 +340,8 @@ export function aggregateRows(rows: TripReportRow[]): ReportAggregate {
   const advances = operational.reduce((s, r) => s + safeNum(r.advances, 0), 0);
   const grossProfit = operational.reduce((s, r) => s + safeNum(r.grossProfit, 0), 0);
   const km = operational.reduce((s, r) => s + safeNum(r.km, 0), 0);
+  const fuelExpenses = operational.reduce((s, r) => s + safeNum(r.fuelExpenses, 0), 0);
+  const fuelLiters = operational.reduce((s, r) => s + safeNum(r.fuelLiters, 0), 0);
 
   const settled = operational.filter((r) => r.hasSettlement && r.ownerResult != null);
   const ownerResult =
@@ -322,6 +365,9 @@ export function aggregateRows(rows: TripReportRow[]): ReportAggregate {
     ownerResult,
     driverCommission,
     km,
-    costPerKm: km > 0 ? expenses / km : null,
+    fuelExpenses,
+    fuelLiters,
+    costPerKm: km > 0 && fuelExpenses > 0 ? fuelExpenses / km : null,
+    kmPerLiter: km > 0 && fuelLiters > 0 ? km / fuelLiters : null,
   };
 }

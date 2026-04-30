@@ -52,7 +52,7 @@ export function ImageUpload({ label, value, onChange, disabled }: ImageUploadPro
             onClick={() => ref.current?.click()}
             className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-800 shadow-sm transition-colors hover:bg-zinc-50 disabled:opacity-50"
           >
-            Escolher imagem
+            {value ? 'Alterar imagem' : 'Escolher imagem'}
           </button>
           {value ? (
             <button

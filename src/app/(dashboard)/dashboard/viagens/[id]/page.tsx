@@ -29,6 +29,7 @@ import {
   type Trip,
   type TripStatus,
   type SettlementWithTrip,
+  ApiError,
 } from '@/lib';
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { LoadingMessage } from '@/components/ui/loading';
@@ -101,12 +102,26 @@ export default function ViagemDetalhePage() {
   const [finalizeError, setFinalizeError] = useState<string | null>(null);
   const [finalizeModalOpen, setFinalizeModalOpen] = useState(false);
 
+  const loadTripWithOptionalSettlement = async (tripId: string) => {
+    const t = await getTrip(tripId);
+    setTrip(t);
+    try {
+      const s = await getSettlement(tripId);
+      setSettlement(s);
+    } catch (e) {
+      // Em alguns cenários (dados antigos/migração), o acerto pode não existir.
+      // Nesses casos, a tela da viagem deve abrir mesmo assim.
+      if (e instanceof ApiError && e.status === 404) {
+        setSettlement(null);
+        return;
+      }
+      throw e;
+    }
+  };
+
   const refreshTripAndSettlement = () => {
     if (!id) return Promise.resolve();
-    return Promise.all([getTrip(id), getSettlement(id)]).then(([t, s]) => {
-      setTrip(t);
-      setSettlement(s);
-    });
+    return loadTripWithOptionalSettlement(id);
   };
 
   useEffect(() => {
@@ -114,11 +129,7 @@ export default function ViagemDetalhePage() {
     const fleetStaff = appUser.role === 'OWNER' || appUser.role === 'ADMIN';
     if (fleetStaff) {
       setLoading(true);
-      Promise.all([getTrip(id), getSettlement(id)])
-        .then(([t, s]) => {
-          setTrip(t);
-          setSettlement(s);
-        })
+      loadTripWithOptionalSettlement(id)
         .catch((e) => setError(e instanceof Error ? e.message : 'Erro ao carregar'))
         .finally(() => setLoading(false));
       return;
@@ -259,10 +270,12 @@ export default function ViagemDetalhePage() {
               <ImageIcon className="h-4 w-4" />
               Comprovantes
             </Link>
-            <Link href={`/dashboard/viagens/${trip.id}/editar`} className={dashboardLinkToolbarEditClass}>
-              <Pencil className="h-4 w-4" />
-              Editar
-            </Link>
+            {trip.status !== 'COMPLETED' && (
+              <Link href={`/dashboard/viagens/${trip.id}/editar`} className={dashboardLinkToolbarEditClass}>
+                <Pencil className="h-4 w-4" />
+                Editar
+              </Link>
+            )}
           </div>
         </div>
 

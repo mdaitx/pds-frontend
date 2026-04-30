@@ -598,6 +598,10 @@ export default function DashboardPage() {
     const d = new Date(t.startDate);
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
+  const activeThisMonthList = activeTrips.filter((t) => {
+    const d = new Date(t.startDate);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  });
   const completedThisMonth = completedThisMonthList.length;
 
   let commissionMonth = 0;
@@ -708,8 +712,11 @@ export default function DashboardPage() {
                   const commission = settlement?.driverCommissionAmt;
                   return (
                     <li key={trip.id}>
-                      <div className="flex flex-col gap-2 rounded-lg border border-zinc-100 bg-zinc-50/80 p-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0 flex-1">
+                      <Link
+                        href={`/dashboard/viagens/${trip.id}`}
+                        className="block rounded-lg border border-zinc-100 bg-zinc-50/80 p-3 transition-colors hover:border-blue-200 hover:bg-blue-50/70 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-sm font-semibold text-zinc-900">{trip.code}</span>
                             <span
@@ -735,13 +742,7 @@ export default function DashboardPage() {
                             )}
                           </p>
                         </div>
-                        <Link
-                          href={`/dashboard/viagens/${trip.id}`}
-                          className={`${dashboardLinkGhostBlueClass} shrink-0`}
-                        >
-                          Ver viagem
-                        </Link>
-                      </div>
+                      </Link>
                     </li>
                   );
                 })}
@@ -756,24 +757,28 @@ export default function DashboardPage() {
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
                 <Route className="h-5 w-5 text-blue-600" aria-hidden />
               </div>
-              <h3 className="text-zinc-800">Minhas Viagens Ativas</h3>
+              <div className="min-w-0">
+                <h3 className="text-zinc-800">Viagens ativas do mês</h3>
+                <p className="text-sm text-zinc-500">Período de {monthHistoryLabel}</p>
+              </div>
             </div>
             <Link href="/dashboard/viagens" className={dashboardLinkMutedNavClass}>
               Ver todas
             </Link>
           </CardHeader>
           <CardContent className="space-y-3">
-            {activeTrips.length === 0 ? (
-              <p className="text-zinc-400 text-center py-6 text-sm">Nenhuma viagem ativa no momento.</p>
+            {activeThisMonthList.length === 0 ? (
+              <p className="text-zinc-400 text-center py-6 text-sm">Nenhuma viagem ativa neste mês.</p>
             ) : (
-              activeTrips.map((trip) => {
+              activeThisMonthList.map((trip) => {
                 const cfg = statusConfig[trip.status] ?? statusConfig.PENDING;
                 return (
-                  <div
+                  <Link
                     key={trip.id}
-                    className="flex flex-col gap-3 rounded-lg border border-zinc-100 bg-zinc-50 p-3 sm:flex-row sm:items-start sm:justify-between"
+                    href={`/dashboard/viagens/${trip.id}`}
+                    className="block rounded-lg border border-zinc-100 bg-zinc-50 p-3 transition-colors hover:border-blue-200 hover:bg-blue-50/70 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-semibold text-zinc-800">{trip.code}</span>
                         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${cfg.className}`}>
@@ -785,12 +790,7 @@ export default function DashboardPage() {
                       </p>
                       <p className="text-[0.78rem] text-zinc-500">{new Date(trip.startDate).toLocaleDateString('pt-BR')}</p>
                     </div>
-                    <div className="flex w-full shrink-0 sm:ml-3 sm:w-auto">
-                      <Link href={`/dashboard/viagens/${trip.id}`} className={dashboardLinkGhostBlueClass}>
-                        Ver
-                      </Link>
-                    </div>
-                  </div>
+                  </Link>
                 );
               })
             )}

@@ -333,7 +333,7 @@ export default function ViagensPage() {
                             Acerto
                           </Link>
                         )}
-                        {isFleetStaff && (
+                        {isFleetStaff && t.status !== 'COMPLETED' && (
                           <Link
                             href={`/dashboard/viagens/${t.id}/editar`}
                             className={dashboardLinkCardEditClass}

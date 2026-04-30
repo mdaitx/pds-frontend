@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ArrowLeft, Save, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks';
@@ -36,6 +37,11 @@ import {
 
 const PLATE_REGEX = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$|^[A-Z]{3}[0-9]{4}$/;
 const CURRENT_YEAR = new Date().getFullYear();
+
+function withCacheBust(url: string, token: string | number): string {
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${encodeURIComponent(String(token))}`;
+}
 
 function normalizePlate(s: string): string {
   const raw = s.replace(/[\s-]/g, '').toUpperCase();
@@ -71,6 +77,7 @@ const emptyForm = (): FormState => ({
 
 export default function EditarVeiculoPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const params = useParams();
   const id = params?.id as string;
   const { session, appUser, loading: authLoading } = useAuth();
@@ -82,6 +89,7 @@ export default function EditarVeiculoPage() {
   const [form, setForm] = useState<FormState>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoRenderToken, setPhotoRenderToken] = useState<number>(Date.now());
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -111,6 +119,7 @@ export default function EditarVeiculoPage() {
           status: v.status,
         });
         setPhotoUrl(v.photoUrl ?? null);
+        setPhotoRenderToken(v.updatedAt ? new Date(v.updatedAt).getTime() : Date.now());
         const vt = v.vehicleType ?? 'CAMINHAO';
         if (vt === 'CAVALO_MECANICO') {
           setLinkedVehicleId(v.trailerVehicle?.id ?? '');
@@ -209,6 +218,7 @@ export default function EditarVeiculoPage() {
       const updated = await updateVehicle(vehicle.id, payload);
       setVehicle(updated);
       setPhotoUrl(updated.photoUrl ?? null);
+      setPhotoRenderToken(updated.updatedAt ? new Date(updated.updatedAt).getTime() : Date.now());
       const uvt = updated.vehicleType ?? 'CAMINHAO';
       if (uvt === 'CAVALO_MECANICO') {
         setLinkedVehicleId(updated.trailerVehicle?.id ?? '');
@@ -218,6 +228,10 @@ export default function EditarVeiculoPage() {
         setLinkedVehicleId('');
       }
       toast.success('Veículo atualizado com sucesso!');
+      queryClient.setQueryData<Vehicle[]>(['vehicles-list'], (current) =>
+        current?.map((item) => (item.id === updated.id ? updated : item))
+      );
+      await queryClient.invalidateQueries({ queryKey: ['vehicles-list'] });
       router.refresh();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erro ao salvar';
@@ -244,6 +258,7 @@ export default function EditarVeiculoPage() {
       const { url } = await uploadVehiclePhoto(file);
       if (url) {
         setPhotoUrl(url);
+        setPhotoRenderToken(Date.now());
         toast.success('Foto carregada. Salve o formulário para aplicar.');
       }
     } catch (err) {
@@ -261,6 +276,10 @@ export default function EditarVeiculoPage() {
     setGlobalError(null);
     try {
       await deleteVehicle(vehicle.id);
+      queryClient.setQueryData<Vehicle[]>(['vehicles-list'], (current) =>
+        current?.filter((item) => item.id !== vehicle.id)
+      );
+      await queryClient.invalidateQueries({ queryKey: ['vehicles-list'] });
       toast.success(`Veículo ${vehicle.plate} removido.`);
       router.push('/dashboard/veiculos');
     } catch (err) {
@@ -480,7 +499,7 @@ export default function EditarVeiculoPage() {
                 {photoUrl ? (
                   <div className="flex flex-col items-center gap-3">
                     <Image
-                      src={photoUrl}
+                      src={withCacheBust(photoUrl, photoRenderToken)}
                       alt={`Veículo ${form.plate}`}
                       width={200}
                       height={120}
