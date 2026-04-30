@@ -44,6 +44,7 @@ type SortCol =
   | 'ownerResult'
   | 'km'
   | 'costPerKm'
+  | 'kmPerLiter'
   | 'status';
 
 function ymdFirstOfMonth(): string {
@@ -64,6 +65,11 @@ function ymdToday(): string {
 function formatBrl(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(Number(n))) return '—';
   return Number(n).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function formatKmPerLiter(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(Number(n))) return '—';
+  return `${Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} km/L`;
 }
 
 function sortTripRows(rows: TripReportRow[], col: SortCol, dir: 'asc' | 'desc'): TripReportRow[] {
@@ -94,6 +100,8 @@ function sortTripRows(rows: TripReportRow[], col: SortCol, dir: 'asc' | 'desc'):
         return (a.km - b.km) * m;
       case 'costPerKm':
         return nullLast(a.costPerKm, b.costPerKm);
+      case 'kmPerLiter':
+        return nullLast(a.kmPerLiter, b.kmPerLiter);
       default:
         return 0;
     }
@@ -276,7 +284,7 @@ export default function RelatoriosPage() {
     else {
       setSortCol(col);
       const ascCols: SortCol[] = ['code', 'status'];
-      const nullLastCols: SortCol[] = ['costPerKm', 'ownerResult'];
+      const nullLastCols: SortCol[] = ['costPerKm', 'kmPerLiter', 'ownerResult'];
       if (ascCols.includes(col)) setSortDir('asc');
       else if (nullLastCols.includes(col)) setSortDir('desc');
       else setSortDir('desc');
@@ -442,6 +450,44 @@ export default function RelatoriosPage() {
                 </dd>
               </div>
             </dl>
+            <div className="mt-4 rounded-2xl border-2 border-emerald-200/90 bg-gradient-to-br from-emerald-50 via-white to-emerald-50/30 p-4 shadow-md sm:p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">Média km/L no período</p>
+                  <p
+                    className="mt-1 break-words text-4xl font-bold leading-none tabular-nums tracking-tight text-emerald-950 sm:text-5xl"
+                    title="Quilometragem total ÷ litros de combustível informados nas despesas"
+                  >
+                    {formatKmPerLiter(periodSummary.kmPerLiter)}
+                  </p>
+                  <p className="mt-3 text-sm leading-snug text-emerald-900/90">
+                    {periodSummary.fuelLiters > 0 ? (
+                      <>
+                        <span className="font-medium">{periodSummary.km.toLocaleString('pt-BR')} km</span> rodados com{' '}
+                        <span className="font-medium">
+                          {periodSummary.fuelLiters.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L
+                        </span>{' '}
+                        registrados em abastecimentos.
+                      </>
+                    ) : periodSummary.km > 0 ? (
+                      <>
+                        Foram rodados {periodSummary.km.toLocaleString('pt-BR')} km, mas não há litragem nas despesas de
+                        combustível — preencha os litros em cada abastecimento para exibir a média.
+                      </>
+                    ) : (
+                      'Registre km inicial/final e litragem nas despesas de combustível para ver a média km/L.'
+                    )}
+                  </p>
+                </div>
+                <div className="shrink-0 rounded-xl border border-emerald-100 bg-white/90 px-4 py-3 shadow-sm lg:text-right">
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-zinc-500">Custo combustível / km</p>
+                  <p className="mt-0.5 text-2xl font-bold tabular-nums text-zinc-900">
+                    {periodSummary.costPerKm != null ? formatBrl(periodSummary.costPerKm) : '—'}
+                    <span className="ml-1 text-sm font-medium text-zinc-500">/ km</span>
+                  </p>
+                </div>
+              </div>
+            </div>
             {periodSummary.tripsCancelled > 0 ? (
               <p className="mt-3 text-xs text-zinc-500">
                 {periodSummary.tripsCancelled} viagem(ns) cancelada(s) no período não entram nos totais acima.
@@ -457,7 +503,7 @@ export default function RelatoriosPage() {
             ['viagens', 'Por viagem'],
             ['veiculo', 'Por veículo'],
             ['motorista', 'Por motorista'],
-            ['custokm', 'Custo / km'],
+            ['custokm', 'Custo comb./km'],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -518,10 +564,11 @@ export default function RelatoriosPage() {
         <CostKmTab
           rows={costKmRows}
           periodLabel={periodLabel}
+          periodAggregate={periodSummary}
           notes={filterNotes()}
           onPdf={() =>
             downloadTripsReportPdf(costKmRows, {
-              title: 'Custo por km',
+              title: 'Custo combustível por km',
               period: periodLabel,
               notes: filterNotes(),
             })
@@ -557,7 +604,7 @@ function ViagensTab(props: {
       </div>
       <Card className="border-zinc-200 overflow-hidden">
         <CardContent className={cn('p-0', mobileTableScrollClass)}>
-          <table className="w-full min-w-[1100px] text-sm">
+          <table className="w-full min-w-[1200px] text-sm">
             <thead>
               <tr className="border-b border-zinc-100 bg-zinc-50">
                 <th className="text-left px-3 py-3 font-semibold text-zinc-600 text-xs">
@@ -604,7 +651,12 @@ function ViagensTab(props: {
                 </th>
                 <th className="text-left px-3 py-3 font-semibold text-zinc-600 text-xs">
                   <button type="button" className="hover:text-blue-600 text-left" onClick={() => onSort('costPerKm')}>
-                    R$/km{mark('costPerKm')}
+                    R$/km (comb.){mark('costPerKm')}
+                  </button>
+                </th>
+                <th className="text-left px-3 py-3 font-semibold text-emerald-800 text-xs">
+                  <button type="button" className="hover:text-emerald-700 text-left" onClick={() => onSort('kmPerLiter')}>
+                    Média km/L{mark('kmPerLiter')}
                   </button>
                 </th>
               </tr>
@@ -612,7 +664,7 @@ function ViagensTab(props: {
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="px-4 py-10 text-center text-zinc-500">
+                  <td colSpan={12} className="px-4 py-10 text-center text-zinc-500">
                     Nenhuma viagem no período com os filtros selecionados.
                   </td>
                 </tr>
@@ -635,6 +687,9 @@ function ViagensTab(props: {
                     <td className="px-3 py-2 text-zinc-800">{r.km > 0 ? r.km.toLocaleString('pt-BR') : '—'}</td>
                     <td className="px-3 py-2 text-zinc-800">
                       {r.costPerKm != null ? formatBrl(r.costPerKm) : '—'}
+                    </td>
+                    <td className="px-3 py-2 font-semibold tabular-nums text-emerald-900">
+                      {formatKmPerLiter(r.kmPerLiter)}
                     </td>
                   </tr>
                 ))
@@ -793,12 +848,22 @@ function MotoristaRelatorioTab(props: {
             <p className="text-xl font-bold text-zinc-900">{agg.km.toLocaleString('pt-BR')}</p>
           </CardContent>
         </Card>
+        <Card className="flex min-h-[100px] flex-col border-2 border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-white">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">Média km/L</p>
+            <p className="mt-1 text-2xl font-bold leading-tight tabular-nums text-emerald-950 sm:text-3xl">
+              {formatKmPerLiter(agg.kmPerLiter)}
+            </p>
+            <p className="mt-1 text-xs text-emerald-900/80">Km ÷ litros (recorte do motorista)</p>
+          </CardContent>
+        </Card>
         <Card className="flex min-h-[92px] flex-col border-zinc-200">
           <CardContent className="flex flex-1 flex-col justify-center p-4">
-            <p className="text-zinc-500 text-xs">Custo / km</p>
+            <p className="text-zinc-500 text-xs">Custo comb. / km</p>
             <p className="text-xl font-bold text-zinc-900">
               {agg.costPerKm != null ? formatBrl(agg.costPerKm) : '—'}
             </p>
+            <p className="mt-1 text-xs text-zinc-500">Despesas de combustível ÷ km rodado</p>
           </CardContent>
         </Card>
       </div>
@@ -820,13 +885,14 @@ function MotoristaRelatorioTab(props: {
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">A pagar mot.</th>
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Res. dono</th>
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Km</th>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">R$/km</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">R$/km (comb.)</th>
+                <th className="text-left px-3 py-2 text-xs font-bold text-emerald-900">Média km/L</th>
               </tr>
             </thead>
             <tbody>
               {sortedDetail.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="px-4 py-10 text-center text-zinc-500">
+                  <td colSpan={11} className="px-4 py-10 text-center text-zinc-500">
                     Nenhuma viagem no período para este recorte.
                   </td>
                 </tr>
@@ -849,6 +915,9 @@ function MotoristaRelatorioTab(props: {
                     <td className="px-3 py-2 text-zinc-800">
                       {r.costPerKm != null ? formatBrl(r.costPerKm) : '—'}
                     </td>
+                    <td className="px-3 py-2 font-semibold tabular-nums text-emerald-900">
+                      {formatKmPerLiter(r.kmPerLiter)}
+                    </td>
                   </tr>
                 ))
               )}
@@ -862,12 +931,13 @@ function MotoristaRelatorioTab(props: {
           <h3 className="break-words text-sm text-zinc-800">Despesas — cada lançamento ({entityLabel})</h3>
         </CardHeader>
         <CardContent className={cn('p-0', mobileTableScrollClass)}>
-          <table className="w-full min-w-[800px] text-sm">
+          <table className="w-full min-w-[880px] text-sm">
             <thead>
               <tr className="border-b border-zinc-100 bg-zinc-50">
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Data</th>
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Viagem</th>
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Categoria</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Litros</th>
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Valor</th>
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Descrição</th>
               </tr>
@@ -875,7 +945,7 @@ function MotoristaRelatorioTab(props: {
             <tbody>
               {expenseLines.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-zinc-500">
+                  <td colSpan={6} className="px-4 py-10 text-center text-zinc-500">
                     Nenhuma despesa nas viagens deste motorista no período.
                   </td>
                 </tr>
@@ -885,6 +955,11 @@ function MotoristaRelatorioTab(props: {
                     <td className="px-3 py-2 text-zinc-600">{new Date(e.date).toLocaleDateString('pt-BR')}</td>
                     <td className="px-3 py-2 font-medium text-zinc-900">{e.tripCode}</td>
                     <td className="px-3 py-2 text-zinc-700">{e.categoryName}</td>
+                    <td className="px-3 py-2 text-zinc-800 tabular-nums">
+                      {e.liters != null
+                        ? `${e.liters.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L`
+                        : '—'}
+                    </td>
                     <td className="px-3 py-2 text-zinc-800">{formatBrl(e.amount)}</td>
                     <td className="px-3 py-2 text-zinc-600 max-w-[280px] truncate" title={e.description ?? undefined}>
                       {e.description?.trim() || '—'}
@@ -990,12 +1065,22 @@ function AggregateTab(props: {
             <p className="text-xl font-bold text-zinc-900">{agg.km.toLocaleString('pt-BR')}</p>
           </CardContent>
         </Card>
+        <Card className="flex min-h-[100px] flex-col border-2 border-emerald-200 bg-gradient-to-b from-emerald-50/80 to-white">
+          <CardContent className="flex flex-1 flex-col justify-center p-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">Média km/L</p>
+            <p className="mt-1 text-2xl font-bold leading-tight tabular-nums text-emerald-950 sm:text-3xl">
+              {formatKmPerLiter(agg.kmPerLiter)}
+            </p>
+            <p className="mt-1 text-xs text-emerald-900/80">Recorte do veículo selecionado</p>
+          </CardContent>
+        </Card>
         <Card className="flex min-h-[92px] flex-col border-zinc-200">
           <CardContent className="flex flex-1 flex-col justify-center p-4">
-            <p className="text-zinc-500 text-xs">Custo / km</p>
+            <p className="text-zinc-500 text-xs">Custo comb. / km</p>
             <p className="text-xl font-bold text-zinc-900">
               {agg.costPerKm != null ? formatBrl(agg.costPerKm) : '—'}
             </p>
+            <p className="mt-1 text-xs text-zinc-500">Despesas de combustível ÷ km rodado</p>
           </CardContent>
         </Card>
       </div>
@@ -1004,7 +1089,7 @@ function AggregateTab(props: {
           <h3 className="break-words text-sm text-zinc-800">Viagens no período ({entityLabel})</h3>
         </CardHeader>
         <CardContent className={cn('p-0', mobileTableScrollClass)}>
-          <table className="w-full min-w-[900px] text-sm">
+          <table className="w-full min-w-[1000px] text-sm">
             <thead>
               <tr className="border-b border-zinc-100 bg-zinc-50">
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Código</th>
@@ -1015,13 +1100,14 @@ function AggregateTab(props: {
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Margem</th>
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Res. dono</th>
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Km</th>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">R$/km</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">R$/km (comb.)</th>
+                <th className="text-left px-3 py-2 text-xs font-bold text-emerald-900">Média km/L</th>
               </tr>
             </thead>
             <tbody>
               {sortedDetail.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-zinc-500">
+                  <td colSpan={10} className="px-4 py-10 text-center text-zinc-500">
                     Nenhuma viagem no período para este recorte.
                   </td>
                 </tr>
@@ -1041,6 +1127,9 @@ function AggregateTab(props: {
                     <td className="px-3 py-2 text-zinc-800">
                       {r.costPerKm != null ? formatBrl(r.costPerKm) : '—'}
                     </td>
+                    <td className="px-3 py-2 font-semibold tabular-nums text-emerald-900">
+                      {formatKmPerLiter(r.kmPerLiter)}
+                    </td>
                   </tr>
                 ))
               )}
@@ -1055,15 +1144,26 @@ function AggregateTab(props: {
 function CostKmTab(props: {
   rows: TripReportRow[];
   periodLabel: string;
+  periodAggregate: ReportAggregate;
   notes?: string;
   onPdf: () => void;
 }) {
-  const { rows, periodLabel, notes, onPdf } = props;
+  const { rows, periodLabel, periodAggregate, notes, onPdf } = props;
   return (
     <>
+      <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-4 sm:p-5">
+        <p className="text-xs font-bold uppercase tracking-widest text-emerald-900/80">Destaque — média km/L (filtros atuais)</p>
+        <p className="mt-2 text-3xl font-bold tabular-nums text-emerald-950 sm:text-4xl">
+          {formatKmPerLiter(periodAggregate.kmPerLiter)}
+        </p>
+        <p className="mt-2 text-sm text-emerald-900/90">
+          Usa a mesma lógica do resumo: km rodados no período ÷ soma dos litros lançados em combustível.
+        </p>
+      </div>
       <p className="text-sm leading-relaxed text-zinc-600">
-        Somente viagens com quilometragem calculada (km inicial e final). Use os filtros de veículo, motorista e status
-        acima.
+        Somente viagens com quilometragem (km final − km inicial). A <strong className="text-emerald-900">média km/L</strong> por
+        viagem exige litragem nos abastecimentos. O R$/km considera só o valor de combustível. Use os filtros de veículo,
+        motorista e status acima.
       </p>
       <div className="flex w-full justify-stretch sm:justify-end">
         <Button
@@ -1080,12 +1180,12 @@ function CostKmTab(props: {
       <Card className="border-zinc-200 overflow-hidden">
         <CardHeader className="pb-2">
           <h3 className="break-words text-sm text-zinc-800">
-            Custo por km — {periodLabel}
+            Custo combustível por km — {periodLabel}
             {notes ? <span className="mt-1 block text-xs font-normal text-zinc-500">{notes}</span> : null}
           </h3>
         </CardHeader>
         <CardContent className={cn('p-0', mobileTableScrollClass)}>
-          <table className="w-full min-w-[800px] text-sm">
+          <table className="w-full min-w-[1040px] text-sm">
             <thead>
               <tr className="border-b border-zinc-100 bg-zinc-50">
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Código</th>
@@ -1093,14 +1193,16 @@ function CostKmTab(props: {
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Veículo</th>
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Motorista</th>
                 <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Km</th>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Despesas</th>
-                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">R$/km</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Combustível (R$)</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">Litros</th>
+                <th className="text-left px-3 py-2 text-xs font-semibold text-zinc-600">R$/km (comb.)</th>
+                <th className="text-left px-3 py-2 text-xs font-bold text-emerald-900">Média km/L</th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-zinc-500">
+                  <td colSpan={9} className="px-4 py-10 text-center text-zinc-500">
                     Nenhuma viagem com km registrado no período.
                   </td>
                 </tr>
@@ -1114,8 +1216,16 @@ function CostKmTab(props: {
                     </td>
                     <td className="px-3 py-2 text-zinc-600 max-w-[160px] truncate">{r.driverName}</td>
                     <td className="px-3 py-2 text-zinc-800">{r.km.toLocaleString('pt-BR')}</td>
-                    <td className="px-3 py-2 text-zinc-800">{formatBrl(r.expenses)}</td>
+                    <td className="px-3 py-2 text-zinc-800">{formatBrl(r.fuelExpenses)}</td>
+                    <td className="px-3 py-2 text-zinc-800 tabular-nums">
+                      {r.fuelLiters > 0
+                        ? `${r.fuelLiters.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} L`
+                        : '—'}
+                    </td>
                     <td className="px-3 py-2 text-zinc-800">{r.costPerKm != null ? formatBrl(r.costPerKm) : '—'}</td>
+                    <td className="px-3 py-2 text-base font-semibold tabular-nums text-emerald-900 sm:text-base">
+                      {formatKmPerLiter(r.kmPerLiter)}
+                    </td>
                   </tr>
                 ))
               )}

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useAuth } from '@/hooks';
@@ -63,6 +64,7 @@ const emptyForm = (): FormState => ({
 
 export default function NovoVeiculoPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { session, appUser, loading: authLoading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -189,7 +191,13 @@ export default function NovoVeiculoPage() {
       if (form.vehicleType === 'SEMI_REBOQUE' && linkedVehicleId.trim()) {
         payload.tractorVehicleId = linkedVehicleId.trim();
       }
-      await createVehicle(payload);
+      const createdVehicle = await createVehicle(payload);
+      queryClient.setQueryData<Vehicle[]>(['vehicles-list'], (current) => {
+        if (!current) return [createdVehicle];
+        const withoutDuplicated = current.filter((vehicle) => vehicle.id !== createdVehicle.id);
+        return [...withoutDuplicated, createdVehicle];
+      });
+      await queryClient.invalidateQueries({ queryKey: ['vehicles-list'] });
       toast.success('Veículo cadastrado com sucesso!');
       router.push('/dashboard/veiculos');
     } catch (err) {

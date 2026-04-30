@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
  */
 export function SignupForm() {
   const router = useRouter();
-  const { configError } = useAuth();
+  const { configError, refreshAppUser } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -63,12 +63,13 @@ export function SignupForm() {
         email: email.trim(),
         password,
         options: {
-          emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/`,
+          emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/dashboard/onboarding`,
         },
       });
       if (err) throw new Error(err.message);
       if (data.session) {
-        router.push('/');
+        await refreshAppUser();
+        router.replace('/dashboard/onboarding');
         router.refresh();
       } else {
         setSuccess(true);
@@ -140,6 +141,7 @@ export function SignupForm() {
             <div className="relative">
               <Input
                 id="signup-password"
+                name="password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
                 value={password}
@@ -165,12 +167,13 @@ export function SignupForm() {
             <div className="relative">
               <Input
                 id="signup-confirm"
+                name="confirmPassword"
                 type={showConfirm ? 'text' : 'password'}
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 disabled={loading}
-                autoComplete="new-password"
+                autoComplete="off"
                 className="pr-10"
               />
               <button

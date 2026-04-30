@@ -5,7 +5,7 @@
  */
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Truck, ChevronRight, Check } from 'lucide-react';
+import { ChevronRight, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   createOnboardingCompany,
@@ -28,6 +28,7 @@ import { Card, CardContent } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { BrandLogo } from '@/components/brand-logo';
 
 const PLATE_REGEX = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$|^[A-Z]{3}[0-9]{4}$/;
 
@@ -205,11 +206,15 @@ export function OnboardingWizard({ initialStep }: Props) {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-zinc-100 p-4">
       <div className="w-full max-w-xl">
         <div className="mb-8 flex flex-col items-center">
-          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-blue-600 shadow-lg">
-            <Truck className="h-8 w-8 text-white" />
+          <div className="mb-4 flex h-36 w-36 items-center justify-center">
+            <BrandLogo size={144} priority />
           </div>
-          <h1 className="text-2xl font-bold text-zinc-900">Configuração inicial</h1>
-          <p className="mt-1 text-[0.9rem] text-zinc-500">Vamos configurar sua conta em 3 passos simples.</p>
+          <h1 className="text-center text-[1.75rem] font-bold text-zinc-900">Truck Finanças</h1>
+          <p className="mt-1 text-center text-zinc-500">Gestão de fretes e comissões</p>
+          <h2 className="mt-6 text-2xl font-bold text-zinc-900">Configuração inicial</h2>
+          <p className="mt-1 text-center text-[0.9rem] text-zinc-500">
+            Vamos configurar sua conta em 3 passos simples.
+          </p>
         </div>
 
         <div className="mb-8 flex flex-wrap items-center justify-center gap-2">

@@ -80,7 +80,7 @@ export function downloadTripsReportPdf(
         'Margem',
         'Res.dono',
         'Km',
-        'R$/km',
+        'R$/km (comb.)',
       ],
     ],
     body: rows.map((r) => [
@@ -136,7 +136,7 @@ export function downloadSummaryReportPdf(opts: {
     ['Comissão (acerto)', a.driverCommission != null ? brl(a.driverCommission) : '—'],
     ['Resultado proprietário', a.ownerResult != null ? brl(a.ownerResult) : '—'],
     ['Km rodados', a.km.toLocaleString('pt-BR')],
-    ['Custo / km', a.costPerKm != null ? brl(a.costPerKm) : '—']
+    ['Custo comb. / km (R$/km rodado)', a.costPerKm != null ? brl(a.costPerKm) : '—']
   );
 
   y = appendKeyValueBlock(doc, y, margin, contentW, summaryRows) + 10;
@@ -146,7 +146,7 @@ export function downloadSummaryReportPdf(opts: {
     y += 3;
     autoTable(doc, {
       startY: y,
-      head: [['Código', 'Data', 'Status', 'Frete', 'Despesas', 'Margem', 'Res.dono', 'Km', 'R$/km']],
+      head: [['Código', 'Data', 'Status', 'Frete', 'Despesas', 'Margem', 'Res.dono', 'Km', 'R$/km (comb.)']],
       body: opts.detailRows.map((r) => [
         r.code,
         new Date(r.startDate).toLocaleDateString('pt-BR'),
@@ -202,7 +202,7 @@ export function downloadMotoristaReportPdf(opts: {
     ['Comissão (acerto)', a.driverCommission != null ? brl(a.driverCommission) : '—'],
     ['Resultado proprietário (só acertos)', a.ownerResult != null ? brl(a.ownerResult) : '—'],
     ['Km rodados', a.km.toLocaleString('pt-BR')],
-    ['Custo / km', a.costPerKm != null ? brl(a.costPerKm) : '—']
+    ['Custo comb. / km (R$/km rodado)', a.costPerKm != null ? brl(a.costPerKm) : '—']
   );
   y = appendKeyValueBlock(doc, y, margin, contentW, opRows) + 10;
 
@@ -246,7 +246,7 @@ export function downloadMotoristaReportPdf(opts: {
           'A pagar mot.',
           'Res.dono',
           'Km',
-          'R$/km',
+          'R$/km (comb.)',
         ],
       ],
       body: opts.detailRows.map((r) => [
@@ -278,11 +278,14 @@ export function downloadMotoristaReportPdf(opts: {
     y += 3;
     autoTable(doc, {
       startY: y,
-      head: [['Data', 'Viagem', 'Categoria', 'Descrição', 'Valor']],
+      head: [['Data', 'Viagem', 'Categoria', 'Litros', 'Descrição', 'Valor']],
       body: opts.expenseLines.map((e) => [
         new Date(e.date).toLocaleDateString('pt-BR'),
         e.tripCode,
         e.categoryName,
+        e.liters != null
+          ? Number(e.liters).toLocaleString('pt-BR', { maximumFractionDigits: 2 })
+          : '—',
         e.description?.slice(0, 60) ?? '—',
         brl(e.amount),
       ]),
@@ -292,9 +295,10 @@ export function downloadMotoristaReportPdf(opts: {
       columnStyles: {
         0: { cellWidth: 24 },
         1: { cellWidth: 22 },
-        2: { cellWidth: 28 },
-        3: { textColor: PDF_Z[600], cellWidth: 'auto' },
-        4: { halign: 'right' as const, fontStyle: 'bold' as const, textColor: PDF_Z[900], cellWidth: 28 },
+        2: { cellWidth: 26 },
+        3: { halign: 'right' as const, cellWidth: 18 },
+        4: { textColor: PDF_Z[600], cellWidth: 'auto' },
+        5: { halign: 'right' as const, fontStyle: 'bold' as const, textColor: PDF_Z[900], cellWidth: 28 },
       },
       margin: { left: margin, right: margin },
     });

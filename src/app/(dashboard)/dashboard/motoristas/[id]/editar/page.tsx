@@ -254,6 +254,13 @@ export default function EditarMotoristaPage() {
               disabled={loading}
             />
             {errors.photo && <p className="text-sm text-red-600">{errors.photo}</p>}
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="submit" disabled={loading} loading={loading} className={dashboardFormSaveButtonClass}>
+                {!loading && <Save className="h-4 w-4" />}
+                {loading ? 'Salvando…' : 'Salvar alterações'}
+              </Button>
+              <p className="text-xs text-zinc-500">Após trocar a foto, clique em salvar para confirmar no perfil.</p>
+            </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="name">Nome completo *</Label>

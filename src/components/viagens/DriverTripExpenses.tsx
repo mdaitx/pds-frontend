@@ -15,6 +15,7 @@ import {
   type ExpenseCategoryItem,
   type TripStatus,
 } from '@/lib';
+import { isFuelCategoryRef, isFuelExpense } from '@/lib/reports';
 import { useActivityHint } from '@/hooks';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,11 +60,15 @@ export function DriverTripExpenses({ tripId, tripStatus, embed = false }: Props)
   const [amountStr, setAmountStr] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
+  const [litersStr, setLitersStr] = useState('');
+  const [gasStation, setGasStation] = useState('');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const canAdd = tripStatus === 'PENDING' || tripStatus === 'IN_PROGRESS';
+  const selectedCategory = categories.find((c) => c.id === categoryId);
+  const isFuel = isFuelCategoryRef(selectedCategory);
   const totalExpenses = list.reduce((s, e) => s + e.amount, 0);
 
   const refreshList = async () => {
@@ -103,6 +108,8 @@ export function DriverTripExpenses({ tripId, tripStatus, embed = false }: Props)
     setAmountStr('');
     setDescription('');
     setLocation('');
+    setLitersStr('');
+    setGasStation('');
     setReceiptFile(null);
     setExpenseOpen(true);
   };
@@ -133,6 +140,16 @@ export function DriverTripExpenses({ tripId, tripStatus, embed = false }: Props)
       return;
     }
 
+    if (isFuel) {
+      const liters = parseBrlInputString(litersStr);
+      if (liters == null || liters <= 0) {
+        const msg = 'Informe a litragem abastecida (litros) com valor maior que zero.';
+        setFormError(msg);
+        toast.error(msg);
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       let receiptUrl: string | undefined;
@@ -140,6 +157,12 @@ export function DriverTripExpenses({ tripId, tripStatus, embed = false }: Props)
         const up = await uploadExpenseReceipt(receiptFile);
         receiptUrl = up.url ?? undefined;
       }
+      const litersParsed = isFuel ? parseBrlInputString(litersStr) : null;
+      const pricePerLiter =
+        isFuel && litersParsed != null && litersParsed > 0
+          ? Math.round((amount / litersParsed) * 10000) / 10000
+          : undefined;
+
       await createExpense({
         tripId,
         categoryId,
@@ -148,6 +171,13 @@ export function DriverTripExpenses({ tripId, tripStatus, embed = false }: Props)
         description: description.trim() || undefined,
         location: location.trim() || undefined,
         receiptUrl,
+        ...(isFuel && litersParsed != null && litersParsed > 0
+          ? {
+              liters: litersParsed,
+              pricePerLiter,
+              gasStation: gasStation.trim() || undefined,
+            }
+          : {}),
       });
       toast.success('Despesa adicionada!');
       setExpenseOpen(false);
@@ -249,6 +279,17 @@ export function DriverTripExpenses({ tripId, tripStatus, embed = false }: Props)
                       {exp.description ? ` · ${exp.description}` : ''}
                       {exp.location ? ` · ${exp.location}` : ''}
                     </p>
+                    {isFuelExpense(exp) && (
+                      <p className="text-zinc-600" style={{ fontSize: '0.78rem' }}>
+                        {exp.liters != null
+                          ? `${Number(exp.liters).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} L abastecidos`
+                          : 'Litragem não informada'}
+                        {exp.gasStation ? ` · ${exp.gasStation}` : ''}
+                        {exp.pricePerLiter != null && exp.liters != null
+                          ? ` · ${formatBrl(exp.pricePerLiter)}/L`
+                          : ''}
+                      </p>
+                    )}
                     {exp.receiptUrl && (
                       <a
                         href={exp.receiptUrl}
@@ -326,7 +367,15 @@ export function DriverTripExpenses({ tripId, tripStatus, embed = false }: Props)
                   <select
                     id="modal-exp-cat"
                     value={categoryId}
-                    onChange={(e) => setCategoryId(e.target.value)}
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      const next = categories.find((c) => c.id === id);
+                      setCategoryId(id);
+                      if (!isFuelCategoryRef(next)) {
+                        setLitersStr('');
+                        setGasStation('');
+                      }
+                    }}
                     className={modalSelectClass}
                   >
                     {categories.map((c) => (
@@ -349,6 +398,33 @@ export function DriverTripExpenses({ tripId, tripStatus, embed = false }: Props)
                   onChange={(e) => setAmountStr(formatBrlCurrencyInput(e.target.value))}
                 />
               </div>
+              {isFuel && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="modal-exp-liters">Litros abastecidos *</Label>
+                    <Input
+                      id="modal-exp-liters"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="ex.: 45,5"
+                      className="h-11 bg-white"
+                      value={litersStr}
+                      onChange={(e) => setLitersStr(e.target.value)}
+                    />
+                    <p className="text-xs text-zinc-500">Quantidade de diesel (ou combustível) colocada neste abastecimento.</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="modal-exp-posto">Posto (opcional)</Label>
+                    <Input
+                      id="modal-exp-posto"
+                      placeholder="Nome do posto"
+                      className="h-11 bg-white"
+                      value={gasStation}
+                      onChange={(e) => setGasStation(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="modal-exp-desc">Descrição</Label>
                 <Input

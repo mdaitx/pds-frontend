@@ -53,6 +53,11 @@ const singleVehicleTypeSealClass: Record<VehicleType, string> = {
   SEMI_REBOQUE: 'bg-violet-100 text-violet-900',
 };
 
+function withCacheBust(url: string, token: string): string {
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${encodeURIComponent(token)}`;
+}
+
 function VehicleCardInner({ vehicle }: { vehicle: Vehicle }) {
   const cfg = statusConfig[vehicle.status];
   const vt = (vehicle.vehicleType ?? 'CAMINHAO') as VehicleType;
@@ -69,7 +74,7 @@ function VehicleCardInner({ vehicle }: { vehicle: Vehicle }) {
       <div className="mb-3 flex h-28 w-full items-center justify-center rounded-lg bg-zinc-100">
         {vehicle.photoUrl ? (
           <Image
-            src={vehicle.photoUrl}
+            src={withCacheBust(vehicle.photoUrl, vehicle.updatedAt)}
             alt={`Foto do veículo ${vehicle.plate}`}
             width={320}
             height={112}
@@ -87,13 +92,15 @@ function VehicleCardInner({ vehicle }: { vehicle: Vehicle }) {
           </h3>
           <span className={`rounded-full px-2 py-0.5 text-xs ${cfg.className}`}>{cfg.label}</span>
         </div>
-        <p className="mt-0.5 truncate text-zinc-700" style={{ fontSize: '0.88rem' }}>
-          {vehicle.brand} {vehicle.model}
-        </p>
-        <p className="truncate text-zinc-500" style={{ fontSize: '0.8rem' }}>
-          {vehicle.year}
-          {vehicle.nickname ? ` · "${vehicle.nickname}"` : ''}
-        </p>
+        <div className="mt-3 space-y-1 border-t border-zinc-100 pt-2 text-[0.82rem]">
+          <p className="truncate text-zinc-700">
+            {vehicle.brand} {vehicle.model}
+          </p>
+          <p className="truncate text-zinc-700">
+            {vehicle.year}
+            {vehicle.nickname ? ` · "${vehicle.nickname}"` : ''}
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -112,7 +119,7 @@ function PairedVehicleCardInner({ tractor, trailer }: { tractor: Vehicle; traile
         <div className="flex h-24 items-center justify-center overflow-hidden rounded-lg bg-zinc-100">
           {tractor.photoUrl ? (
             <Image
-              src={tractor.photoUrl}
+              src={withCacheBust(tractor.photoUrl, tractor.updatedAt)}
               alt={`Cavalo ${tractor.plate}`}
               width={160}
               height={96}
@@ -126,7 +133,7 @@ function PairedVehicleCardInner({ tractor, trailer }: { tractor: Vehicle; traile
         <div className="flex h-24 items-center justify-center overflow-hidden rounded-lg bg-zinc-100">
           {trailer.photoUrl ? (
             <Image
-              src={trailer.photoUrl}
+              src={withCacheBust(trailer.photoUrl, trailer.updatedAt)}
               alt={`Semi-reboque ${trailer.plate}`}
               width={160}
               height={96}
@@ -521,7 +528,7 @@ export default function VeiculosPage() {
           />
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {list.length === 0 ? (
             <div className="col-span-full py-12 text-center">
               <Truck className="mx-auto mb-3 h-12 w-12 text-zinc-300" />
@@ -559,10 +566,12 @@ export default function VeiculosPage() {
                       }
                     }}
                   >
-                    <Card className="h-full border-indigo-200/80 bg-gradient-to-b from-white to-indigo-50/40 p-4 transition-all hover:border-indigo-300 hover:shadow-md">
-                      <PairedVehicleCardInner tractor={unit.tractor} trailer={unit.trailer} />
+                    <Card className="flex h-full min-h-0 flex-col border-zinc-200 bg-gradient-to-b from-white to-indigo-50/40 p-4 transition-all hover:border-blue-300 hover:shadow-md">
+                      <div className="min-h-0 min-w-0 flex-1">
+                        <PairedVehicleCardInner tractor={unit.tractor} trailer={unit.trailer} />
+                      </div>
                       <div
-                        className="mt-3 flex flex-wrap gap-2"
+                        className="mt-auto flex flex-wrap gap-2 border-t border-zinc-100 pt-3"
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
                       >
@@ -600,10 +609,12 @@ export default function VeiculosPage() {
                       }
                     }}
                   >
-                    <Card className="h-full border-zinc-200 p-4 transition-all hover:border-blue-300 hover:shadow-md">
-                      <VehicleCardInner vehicle={unit.vehicle} />
+                    <Card className="flex h-full min-h-0 flex-col border-zinc-200 p-4 transition-all hover:border-blue-300 hover:shadow-md">
+                      <div className="min-h-0 min-w-0 flex-1">
+                        <VehicleCardInner vehicle={unit.vehicle} />
+                      </div>
                       <div
-                        className="mt-3 flex flex-wrap gap-2"
+                        className="mt-auto flex flex-wrap gap-2 border-t border-zinc-100 pt-3"
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
                       >

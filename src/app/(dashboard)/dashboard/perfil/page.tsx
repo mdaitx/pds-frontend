@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import Link from 'next/link';
-import { User } from 'lucide-react';
+import { ArrowLeft, Camera, CircleUserRound, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks';
 import { createClient } from '@/lib/supabase';
@@ -17,8 +17,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
-import { dashboardLinkMutedNavClass } from '@/lib/dashboard-action-buttons';
 import { dashboardFormSaveButtonClass } from '@/lib/dashboard-action-buttons';
+import { cn } from '@/lib/cn';
 
 const ROLE_LABEL: Record<AuthUser['role'], string> = {
   OWNER: 'Dono da frota',
@@ -28,51 +28,127 @@ const ROLE_LABEL: Record<AuthUser['role'], string> = {
 
 const MIN_PASSWORD_LEN = 6;
 
+const labelClass = 'text-sm font-medium leading-none text-zinc-700';
+
+function withCacheBust(url: string, token: number): string {
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}v=${encodeURIComponent(String(token))}`;
+}
+
+/** Mesmo padrão de ficha da tela de viagem (motorista). */
+function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid gap-0.5 border-b border-zinc-100 py-3 last:border-0 sm:grid-cols-[minmax(7rem,11rem)_1fr] sm:gap-4 sm:py-2.5">
+      <dt className="text-[0.8rem] font-medium text-zinc-500">{label}</dt>
+      <dd className="text-[0.88rem] text-zinc-900">{children}</dd>
+    </div>
+  );
+}
+
+/** Mesmo bloco de título dos cards de Configurações (ícone + h3 + subtítulo). */
+function SectionHeader({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="mt-0.5 shrink-0 rounded-lg bg-blue-50 p-2 text-blue-600">
+        <Icon className="h-5 w-5" aria-hidden />
+      </div>
+      <div className="min-w-0">
+        <h3 className="text-zinc-700" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+          {title}
+        </h3>
+        <p className="mt-0.5 leading-snug text-zinc-500" style={{ fontSize: '0.8rem' }}>
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function PerfilPage() {
   const { appUser, loading, refreshAppUser, configError } = useAuth();
   const [photoBusy, setPhotoBusy] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedPhotoFile, setSelectedPhotoFile] = useState<File | null>(null);
+  const [photoMarkedForRemoval, setPhotoMarkedForRemoval] = useState(false);
+  const [committedPhotoUrl, setCommittedPhotoUrl] = useState<string | null | undefined>(undefined);
+  const [photoDirty, setPhotoDirty] = useState(false);
+  const [photoVersion, setPhotoVersion] = useState<number>(Date.now());
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordBusy, setPasswordBusy] = useState(false);
 
-  const displayPhoto = previewUrl ?? appUser?.photoUrl ?? null;
+  const isDriver = appUser?.role === 'DRIVER';
+
+  const canSavePassword =
+    newPassword.length >= MIN_PASSWORD_LEN &&
+    confirmPassword.length >= MIN_PASSWORD_LEN &&
+    newPassword === confirmPassword;
+
+  const persistedPhotoUrl = committedPhotoUrl !== undefined ? committedPhotoUrl : (appUser?.photoUrl ?? null);
+  const displayPhoto = photoMarkedForRemoval
+    ? null
+    : (previewUrl ?? (persistedPhotoUrl ? withCacheBust(persistedPhotoUrl, photoVersion) : null));
 
   const handlePhotoChange = useCallback(
-    async (file: File | null, preview: string | null) => {
-      setPreviewUrl(preview);
+    (file: File | null, preview: string | null) => {
+      setPreviewUrl((current) => {
+        if (current?.startsWith('blob:') && current !== preview) {
+          URL.revokeObjectURL(current);
+        }
+        return preview;
+      });
+      setSelectedPhotoFile(file);
+      setPhotoMarkedForRemoval(!file && !preview);
+      setPhotoDirty(true);
       if (configError) {
         toast.error(configError);
-        return;
-      }
-      if (!file) {
-        setPhotoBusy(true);
-        try {
-          await patchAuthProfile({ photoUrl: null });
-          await refreshAppUser();
-          toast.success('Foto removida');
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : 'Não foi possível remover a foto');
-        } finally {
-          setPhotoBusy(false);
-        }
-        return;
-      }
-      setPhotoBusy(true);
-      try {
-        await uploadAuthProfilePhoto(file);
-        await refreshAppUser();
-        setPreviewUrl(null);
-        toast.success('Foto atualizada');
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : 'Erro ao enviar a foto');
-        setPreviewUrl(null);
-      } finally {
-        setPhotoBusy(false);
       }
     },
-    [configError, refreshAppUser]
+    [configError]
   );
+
+  const handlePhotoSave = useCallback(async () => {
+    if (!photoDirty) return;
+    if (configError) {
+      toast.error(configError);
+      return;
+    }
+    setPhotoBusy(true);
+    try {
+      if (selectedPhotoFile) {
+        const updatedProfile = await uploadAuthProfilePhoto(selectedPhotoFile);
+        setCommittedPhotoUrl(updatedProfile.photoUrl ?? null);
+      } else {
+        await patchAuthProfile({ photoUrl: null });
+        setCommittedPhotoUrl(null);
+      }
+      await refreshAppUser();
+      setPreviewUrl((current) => {
+        if (current?.startsWith('blob:')) URL.revokeObjectURL(current);
+        return null;
+      });
+      setSelectedPhotoFile(null);
+      setPhotoMarkedForRemoval(false);
+      setPhotoDirty(false);
+      setPhotoVersion(Date.now());
+      toast.success(selectedPhotoFile ? 'Foto atualizada' : 'Foto removida');
+    } catch (e) {
+      if (!selectedPhotoFile) {
+        setPhotoMarkedForRemoval(false);
+      }
+      toast.error(e instanceof Error ? e.message : 'Erro ao salvar a foto');
+    } finally {
+      setPhotoBusy(false);
+    }
+  }, [configError, photoDirty, refreshAppUser, selectedPhotoFile]);
 
   async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -107,112 +183,175 @@ export default function PerfilPage() {
   }
 
   return (
-    <DashboardPageShell maxWidth="2xl">
-      <div className="min-w-0 space-y-4">
+    <DashboardPageShell
+      className="settings-font-inter tracking-tight"
+      maxWidth="3xl"
+    >
+      <div className="min-w-0 space-y-5 sm:space-y-6">
         <div>
-          <h1 className="break-words text-xl font-semibold text-zinc-900">Perfil</h1>
-          <p className="text-sm text-zinc-500">Foto da conta, senha e dados básicos.</p>
+          <Link
+            href="/dashboard"
+            className="mb-2 flex items-center gap-1.5 text-[0.85rem] text-zinc-500 transition-colors hover:text-zinc-800"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            {isDriver ? 'Painel' : 'Dashboard'}
+          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="break-words text-zinc-900 antialiased" style={{ fontSize: '1.35rem', fontWeight: 600 }}>
+              Perfil
+            </h1>
+            {appUser && (
+              <span
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 text-[0.72rem] font-semibold',
+                  isDriver ? 'bg-blue-100 text-blue-800' : 'bg-zinc-200 text-zinc-700'
+                )}
+              >
+                {ROLE_LABEL[appUser.role]}
+              </span>
+            )}
+          </div>
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-zinc-600">
+            {isDriver
+              ? 'Foto, senha e dados da sua conta. As alterações valem para o app e para o que a frota enxerga do seu usuário.'
+              : 'Foto da conta, senha e dados básicos do usuário.'}
+          </p>
         </div>
 
-        <Card className="border-zinc-200">
-          <CardHeader className="pb-2">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-zinc-100">
-                <User className="h-5 w-5 text-zinc-600" aria-hidden />
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-base font-semibold text-zinc-900">Foto do perfil</h2>
-                <p className="text-sm text-zinc-500">JPEG, PNG ou WebP. Visível na sua conta.</p>
-              </div>
-            </div>
+        {configError ? (
+          <div
+            className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            role="status"
+          >
+            {configError}
+          </div>
+        ) : null}
+
+        <Card className="!rounded-xl border-zinc-200 !bg-white shadow-sm">
+          <CardHeader className="pb-2 pt-6">
+            <SectionHeader
+              icon={Camera}
+              title="Foto do perfil"
+              description="JPEG, PNG ou WebP. Aparece no menu e nas telas em que o sistema mostra seu usuário."
+            />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pb-6">
             {loading || !appUser ? (
               <LoadingMessage />
             ) : (
-              <div className={photoBusy ? 'pointer-events-none opacity-70' : ''}>
-                <ImageUpload
-                  label=""
-                  value={displayPhoto}
-                  onChange={handlePhotoChange}
-                  disabled={photoBusy}
-                />
+              <div className={cn(photoBusy && 'pointer-events-none opacity-70')}>
+                <div className="[&_.relative]:h-20 [&_.relative]:w-20 sm:[&_.relative]:h-24 sm:[&_.relative]:w-24">
+                  <ImageUpload
+                    label=""
+                    value={displayPhoto}
+                    onChange={handlePhotoChange}
+                    disabled={photoBusy}
+                  />
+                </div>
+                <div className="mt-4 flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm leading-relaxed text-zinc-500 sm:max-w-md">
+                    {photoDirty
+                      ? 'Imagem alterada. Use Salvar para aplicar no servidor.'
+                      : 'Toque na área da foto para trocar ou remover. Depois confirme com Salvar.'}
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={handlePhotoSave}
+                    disabled={photoBusy || !photoDirty || !!configError}
+                    loading={photoBusy}
+                    className={dashboardFormSaveButtonClass}
+                  >
+                    {photoBusy ? 'Salvando…' : 'Salvar imagem'}
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="border-zinc-200">
-          <CardHeader className="pb-2">
-            <h2 className="text-base font-semibold text-zinc-900">Alterar senha</h2>
-            <p className="text-sm text-zinc-500">
-              Informe a nova senha duas vezes. Você continua logado após a troca.
-            </p>
+        <Card className="!rounded-xl border-zinc-200 !bg-white shadow-sm">
+          <CardHeader className="pb-2 pt-6">
+            <SectionHeader
+              icon={KeyRound}
+              title="Alterar senha"
+              description="Digite a nova senha duas vezes. Você permanece logado após a troca."
+            />
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handlePasswordSubmit} className="space-y-4 max-w-md">
-              <div className="space-y-2">
-                <Label htmlFor="perfil-nova-senha">Nova senha</Label>
-                <Input
-                  id="perfil-nova-senha"
-                  type="password"
-                  autoComplete="new-password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  disabled={passwordBusy || !!configError}
-                  minLength={MIN_PASSWORD_LEN}
-                  className="border-zinc-300"
-                />
+          <CardContent className="pb-6 text-sm text-zinc-700">
+            <form
+              onSubmit={handlePasswordSubmit}
+              className={cn(passwordBusy && 'pointer-events-none opacity-70')}
+            >
+              <div className="mx-auto max-w-md space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="perfil-nova-senha" className={labelClass}>
+                    Nova senha
+                  </Label>
+                  <Input
+                    id="perfil-nova-senha"
+                    type="password"
+                    autoComplete="new-password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    disabled={passwordBusy || !!configError}
+                    minLength={MIN_PASSWORD_LEN}
+                    className="h-11 border-zinc-300 bg-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="perfil-confirmar-senha" className={labelClass}>
+                    Confirmar nova senha
+                  </Label>
+                  <Input
+                    id="perfil-confirmar-senha"
+                    type="password"
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    disabled={passwordBusy || !!configError}
+                    minLength={MIN_PASSWORD_LEN}
+                    className="h-11 border-zinc-300 bg-white"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="perfil-confirmar-senha">Confirmar nova senha</Label>
-                <Input
-                  id="perfil-confirmar-senha"
-                  type="password"
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={passwordBusy || !!configError}
-                  minLength={MIN_PASSWORD_LEN}
-                  className="border-zinc-300"
-                />
+              <div className="mt-4 flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm leading-relaxed text-zinc-500 sm:max-w-md">
+                  {canSavePassword
+                    ? 'Pronto para salvar. Você permanece logado após a troca.'
+                    : `Preencha os dois campos com a mesma senha (mín. ${MIN_PASSWORD_LEN} caracteres). O botão libera automaticamente.`}
+                </p>
+                <Button
+                  type="submit"
+                  disabled={passwordBusy || !!configError || !canSavePassword}
+                  loading={passwordBusy}
+                  className={dashboardFormSaveButtonClass}
+                >
+                  {passwordBusy ? 'Salvando…' : 'Salvar senha'}
+                </Button>
               </div>
-              <Button
-                type="submit"
-                disabled={passwordBusy || !!configError}
-                loading={passwordBusy}
-                className={dashboardFormSaveButtonClass}
-              >
-                {passwordBusy ? 'Salvando…' : 'Salvar nova senha'}
-              </Button>
             </form>
-            <p className="mt-4 text-sm text-zinc-500">
-              Perdeu o acesso?{' '}
-              <Link href="/forgot-password" className={dashboardLinkMutedNavClass}>
-                Recuperar por e-mail
-              </Link>
-            </p>
           </CardContent>
         </Card>
 
-        <Card className="border-zinc-200">
-          <CardHeader className="pb-2">
-            <h2 className="text-base font-semibold text-zinc-900">Conta</h2>
-            <p className="text-sm text-zinc-500">Informações do seu usuário</p>
+        <Card className="!rounded-xl border-zinc-200 !bg-white shadow-sm">
+          <CardHeader className="pb-2 pt-6">
+            <SectionHeader
+              icon={CircleUserRound}
+              title="Conta"
+              description="Somente leitura — definições da organização vêm do gestor da frota."
+            />
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="pb-6 text-sm text-zinc-700">
             {loading || !appUser ? (
               <LoadingMessage />
             ) : (
-              <dl className="space-y-3 text-sm">
-                <div>
-                  <dt className="text-zinc-500">E-mail</dt>
-                  <dd className="mt-0.5 font-medium text-zinc-900 break-all">{appUser.email}</dd>
-                </div>
-                <div>
-                  <dt className="text-zinc-500">Papel</dt>
-                  <dd className="mt-0.5 font-medium text-zinc-900">{ROLE_LABEL[appUser.role]}</dd>
-                </div>
+              <dl>
+                <DetailRow label="E-mail">
+                  <span className="break-all font-medium">{appUser.email}</span>
+                </DetailRow>
+                <DetailRow label="Papel">
+                  <span className="font-medium">{ROLE_LABEL[appUser.role]}</span>
+                </DetailRow>
               </dl>
             )}
           </CardContent>

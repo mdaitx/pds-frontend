@@ -91,6 +91,10 @@ export default function EditarViagemPage() {
     }
     Promise.all([getTrip(id), getVehicles(), getDrivers()])
       .then(([t, v, d]) => {
+        if (t.status === 'COMPLETED') {
+          router.replace(`/dashboard/viagens/${id}`);
+          return;
+        }
         setTrip(t);
         setVehicles(v);
         setDrivers(d);
