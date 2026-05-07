@@ -47,8 +47,23 @@ export type SettlementWithTrip = Settlement & {
   };
 };
 
-export async function finalizeTrip(tripId: string, finalKm?: number): Promise<Settlement> {
-  return apiFetch<Settlement>(`/settlements/finalize/${tripId}`, {
+export type FinalizeTripDisplacementResult = { displacementCompleted: true; tripId: string };
+
+export type FinalizeTripResult = Settlement | FinalizeTripDisplacementResult;
+
+export function isDisplacementFinalizeResult(
+  r: FinalizeTripResult,
+): r is FinalizeTripDisplacementResult {
+  return (
+    r != null &&
+    typeof r === 'object' &&
+    'displacementCompleted' in r &&
+    (r as FinalizeTripDisplacementResult).displacementCompleted === true
+  );
+}
+
+export async function finalizeTrip(tripId: string, finalKm?: number): Promise<FinalizeTripResult> {
+  return apiFetch<FinalizeTripResult>(`/settlements/finalize/${tripId}`, {
     method: 'POST',
     body: JSON.stringify({ finalKm }),
   });

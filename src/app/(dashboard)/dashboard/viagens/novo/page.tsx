@@ -58,6 +58,7 @@ export default function NovaViagemPage() {
   const [loadType, setLoadType] = useState('');
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState<TripStatus>('PENDING');
+  const [displacementToLoad, setDisplacementToLoad] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,6 +108,7 @@ export default function NovaViagemPage() {
       if (ik !== null && !Number.isNaN(ik) && ik >= 0) payload.initialKm = ik;
       if (loadType.trim()) payload.loadType = loadType.trim();
       if (notes.trim()) payload.notes = notes.trim();
+      if (displacementToLoad) payload.displacementToLoad = true;
       await createTrip(payload);
       toast.success('Viagem criada com sucesso.');
       router.push('/dashboard/viagens');
@@ -337,6 +339,25 @@ export default function NovaViagemPage() {
                 onChange={(e) => setNotes(e.target.value)}
                 className={`${inputClass} resize-none`}
               />
+            </div>
+
+            <div className="rounded-xl border border-violet-200 bg-violet-50/60 px-4 py-3">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  id="displacementToLoad"
+                  type="checkbox"
+                  checked={displacementToLoad}
+                  onChange={(e) => setDisplacementToLoad(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>
+                  <span className={labelClass}>Viagem de deslocamento até o carregamento</span>
+                  <p className="mt-0.5 text-[0.8rem] font-normal text-zinc-600">
+                    Marque quando a viagem for só o trecho até buscar a carga (sem frete de ida carregado). Aparece
+                    identificada na lista para o motorista e a frota.
+                  </p>
+                </span>
+              </label>
             </div>
           </CardContent>
         </Card>

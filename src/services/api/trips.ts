@@ -33,6 +33,8 @@ export type Trip = {
   finalKm: number | null;
   loadType: string | null;
   notes: string | null;
+  deliveryReceiptUrl?: string | null;
+  displacementToLoad?: boolean;
   status: TripStatus;
   vehicle?: TripVehicle;
   driver?: TripDriver;
@@ -53,6 +55,7 @@ export type CreateTripPayload = {
   loadType?: string;
   notes?: string;
   status?: TripStatus;
+  displacementToLoad?: boolean;
 };
 
 export type UpdateTripPayload = {
@@ -126,6 +129,17 @@ export async function updateTrip(id: string, payload: UpdateTripPayload): Promis
   return apiFetch<Trip>(`/trips/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
+  });
+}
+
+export async function startTrip(id: string): Promise<Trip> {
+  return apiFetch<Trip>(`/trips/${id}/start`, { method: 'POST' });
+}
+
+export async function setTripDeliveryReceipt(id: string, url: string): Promise<Trip> {
+  return apiFetch<Trip>(`/trips/${id}/delivery-receipt`, {
+    method: 'PATCH',
+    body: JSON.stringify({ url }),
   });
 }
 

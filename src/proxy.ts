@@ -1,6 +1,9 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { isMiddlewareGuestSuccessRedirectPath } from '@/lib/auth-routes';
+import {
+  getMiddlewareGuestSuccessRedirectPath,
+  isMiddlewareGuestSuccessRedirectPath,
+} from '@/lib/auth-routes';
 
 /**
  * Copia cookies definidos na resposta “next” (ex.: refresh de sessão) para uma `redirect`.
@@ -62,7 +65,8 @@ export async function proxy(request: NextRequest) {
   }
 
   if (user && isMiddlewareGuestSuccessRedirectPath(pathname)) {
-    const redirect = NextResponse.redirect(new URL('/dashboard', request.url));
+    const destination = getMiddlewareGuestSuccessRedirectPath(pathname);
+    const redirect = NextResponse.redirect(new URL(destination, request.url));
     forwardAuthCookies(supabaseResponse, redirect);
     return redirect;
   }

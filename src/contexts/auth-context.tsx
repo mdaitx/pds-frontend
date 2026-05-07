@@ -25,7 +25,8 @@ type AuthState = {
 
 type AuthContextValue = AuthState & {
   signOut: () => Promise<void>;
-  refreshAppUser: () => Promise<void>;
+  /** Recarrega `/auth/me`. Passe `accessToken` logo após login/signup se o estado React da sessão ainda não atualizou. */
+  refreshAppUser: (accessToken?: string) => Promise<void>;
   /** Sessão Supabase ativa */
   isAuthenticated: boolean;
   /** Perfil `/auth/me` carregado */
@@ -98,7 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshAppUser = useCallback(async (accessToken?: string) => {
     const token = accessToken ?? session?.access_token ?? null;
     if (!token) {
-      setAppUser(null);
+      /* Sem token não limpamos perfil: evita flash de erro quando signup chama refresh antes do `session` no React atualizar. Quem zera é `syncFromSession`/signOut. */
       return;
     }
 
@@ -224,7 +225,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       error,
       configError,
       signOut,
-      refreshAppUser: () => refreshAppUser(session?.access_token),
+      refreshAppUser: (accessToken?: string) =>
+        refreshAppUser(accessToken ?? session?.access_token),
       isAuthenticated: Boolean(session),
       hasAppUser: Boolean(appUser),
       isReady: !loading && !configError,

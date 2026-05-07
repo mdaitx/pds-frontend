@@ -10,6 +10,15 @@ export type CompanySubscriptionStatus =
   | 'CANCELED'
   | 'EXPIRED';
 
+/** Primeiro motorista da frota (onboarding), usado para exibir CPF/contatos do autônomo. */
+export type AutonomousDriverRef = {
+  id: string;
+  name: string;
+  cpf: string | null;
+  phone: string | null;
+  email: string | null;
+};
+
 export type Company = {
   id: string;
   name: string;
@@ -20,6 +29,9 @@ export type Company = {
   defaultCommission: number | null;
   timezone: string | null;
   commissionMethod: CommissionCalculationMethod;
+  /** Sem CNPJ de 14 dígitos o backend trata como perfil autônomo (dados pessoais no motorista principal). */
+  isAutonomous?: boolean;
+  autonomousDriver?: AutonomousDriverRef | null;
   /** Assinatura (backend task 18). */
   subscriptionStatus?: CompanySubscriptionStatus;
   trialEndsAt?: string | null;

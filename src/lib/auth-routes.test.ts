@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  getMiddlewareGuestSuccessRedirectPath,
   getRolesRequiredForDashboardPath,
   isGuestAuthPath,
   isMiddlewareGuestSuccessRedirectPath,
@@ -22,6 +23,19 @@ describe('isMiddlewareGuestSuccessRedirectPath', () => {
   it('exclui reset-password do redirect pós-login', () => {
     expect(isMiddlewareGuestSuccessRedirectPath('/login')).toBe(true);
     expect(isMiddlewareGuestSuccessRedirectPath('/reset-password')).toBe(false);
+  });
+});
+
+describe('getMiddlewareGuestSuccessRedirectPath', () => {
+  it('signup e subrotas vão para onboarding', () => {
+    expect(getMiddlewareGuestSuccessRedirectPath('/signup')).toBe('/dashboard/onboarding');
+    expect(getMiddlewareGuestSuccessRedirectPath('/signup/foo')).toBe('/dashboard/onboarding');
+  });
+
+  it('login e forgot-password vão para o dashboard home', () => {
+    expect(getMiddlewareGuestSuccessRedirectPath('/login')).toBe('/dashboard');
+    expect(getMiddlewareGuestSuccessRedirectPath('/forgot-password')).toBe('/dashboard');
+    expect(getMiddlewareGuestSuccessRedirectPath('/forgot-password/step')).toBe('/dashboard');
   });
 });
 

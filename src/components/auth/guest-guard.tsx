@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks';
 import { LoadingMessage } from '@/components/ui/loading';
 
@@ -17,14 +17,19 @@ type GuestGuardProps = {
  */
 export function GuestGuard({ children, redirectTo = '/dashboard' }: GuestGuardProps) {
   const router = useRouter();
+  const pathname = usePathname() ?? '';
   const { session, appUser, loading, configError } = useAuth();
+  const redirectTarget =
+    pathname === '/signup' || pathname.startsWith('/signup/')
+      ? '/dashboard/onboarding'
+      : redirectTo;
 
   useEffect(() => {
     if (configError || loading) return;
     if (session && appUser) {
-      router.replace(redirectTo);
+      router.replace(redirectTarget);
     }
-  }, [configError, loading, session, appUser, router, redirectTo]);
+  }, [configError, loading, session, appUser, router, redirectTarget]);
 
   if (configError) {
     return <>{children}</>;

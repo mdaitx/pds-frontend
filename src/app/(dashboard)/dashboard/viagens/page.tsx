@@ -260,7 +260,12 @@ export default function ViagensPage() {
               return (
                 <Card
                   key={t.id}
-                  className="border-zinc-200 transition-all hover:border-blue-200 hover:shadow-sm"
+                  className={cn(
+                    'transition-all hover:shadow-sm',
+                    t.displacementToLoad === true
+                      ? 'border-2 border-violet-400 hover:border-violet-500'
+                      : 'border border-zinc-200 hover:border-blue-200',
+                  )}
                 >
                   <CardContent className="p-0">
                     <div
@@ -285,6 +290,11 @@ export default function ViagensPage() {
                           <span className={`rounded-full px-2 py-0.5 text-xs ${st}`} style={{ fontWeight: 600 }}>
                             {lbl}
                           </span>
+                          {t.displacementToLoad === true && (
+                            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-800">
+                              Desloc.
+                            </span>
+                          )}
                         </div>
                         <div
                           className="mt-1 flex items-center gap-2 text-zinc-600"
@@ -324,7 +334,7 @@ export default function ViagensPage() {
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
                       >
-                        {t.status === 'COMPLETED' && (
+                        {t.status === 'COMPLETED' && t.displacementToLoad !== true && (
                           <Link
                             href={`/dashboard/viagens/${t.id}/acerto`}
                             className={dashboardLinkPrimarySmClass}

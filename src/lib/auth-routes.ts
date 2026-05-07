@@ -73,6 +73,17 @@ export function isMiddlewareGuestSuccessRedirectPath(pathname: string): boolean 
 }
 
 /**
+ * Define o destino após acessar uma rota de convidado já autenticado.
+ * Cadastro sempre entra no fluxo de onboarding.
+ */
+export function getMiddlewareGuestSuccessRedirectPath(pathname: string): string {
+  if (pathname === '/signup' || pathname.startsWith('/signup/')) {
+    return '/dashboard/onboarding';
+  }
+  return DASHBOARD_HOME;
+}
+
+/**
  * Papéis exigidos para o caminho sob /dashboard, ou `null` se basta estar logado com perfil.
  */
 export function getRolesRequiredForDashboardPath(pathname: string): UserRole[] | null {
