@@ -17,6 +17,7 @@ import {
   Package,
   ImageIcon,
   X,
+  PlayCircle,
 } from 'lucide-react';
 import { useAuth, useActivityHint } from '@/hooks';
 import { toast } from 'sonner';
@@ -24,8 +25,10 @@ import {
   getTrip,
   finalizeTrip,
   getSettlement,
+  startTrip,
   formatKmInput,
   parseKmInputString,
+  isDisplacementFinalizeResult,
   type Trip,
   type TripStatus,
   type SettlementWithTrip,
@@ -101,6 +104,7 @@ export default function ViagemDetalhePage() {
   const [finalizing, setFinalizing] = useState(false);
   const [finalizeError, setFinalizeError] = useState<string | null>(null);
   const [finalizeModalOpen, setFinalizeModalOpen] = useState(false);
+  const [startingTrip, setStartingTrip] = useState(false);
 
   const loadTripWithOptionalSettlement = async (tripId: string) => {
     const t = await getTrip(tripId);
@@ -157,16 +161,35 @@ export default function ViagemDetalhePage() {
         }
         km = parsed;
       }
-      await finalizeTrip(trip.id, km);
+      const result = await finalizeTrip(trip.id, km);
       await refreshTripAndSettlement();
       setFinalKmFinalize('');
       setFinalizeModalOpen(false);
-      toast.success('Viagem finalizada e acerto gerado. Motorista e frota recebem e-mail se o servidor estiver configurado.');
+      if (isDisplacementFinalizeResult(result)) {
+        toast.success('Deslocamento finalizado. Não há acerto de frete neste trecho.');
+      } else {
+        toast.success('Viagem finalizada e acerto gerado. Motorista e frota recebem e-mail se o servidor estiver configurado.');
+      }
       bumpTripsActivity();
     } catch (err) {
       setFinalizeError(err instanceof Error ? err.message : 'Erro ao finalizar');
     } finally {
       setFinalizing(false);
+    }
+  };
+
+  const handleStartTrip = async () => {
+    if (!trip) return;
+    setStartingTrip(true);
+    try {
+      const t = await startTrip(trip.id);
+      setTrip(t);
+      toast.success('Viagem iniciada.');
+      bumpTripsActivity();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Não foi possível iniciar a viagem.');
+    } finally {
+      setStartingTrip(false);
     }
   };
 
@@ -239,9 +262,29 @@ export default function ViagemDetalhePage() {
               >
                 {STATUS_LABEL[trip.status]}
               </span>
+              {trip.displacementToLoad === true && (
+                <span className="rounded-full bg-violet-100 px-2.5 py-1 text-sm font-semibold text-violet-800">
+                  Deslocamento até carga
+                </span>
+              )}
             </div>
           </div>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+          <div
+            className="flex w-full min-w-0 max-w-full flex-nowrap items-center gap-2 overflow-x-auto overscroll-x-contain py-0.5 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] sm:ml-auto sm:w-auto sm:max-w-none sm:justify-end sm:overflow-visible sm:py-0"
+            role="toolbar"
+            aria-label="Ações da viagem"
+          >
+            {trip.status === 'PENDING' && (
+              <button
+                type="button"
+                onClick={handleStartTrip}
+                disabled={startingTrip}
+                className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-blue-600 px-3 py-2 text-[0.8125rem] font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 sm:gap-2 sm:px-4 sm:text-sm"
+              >
+                <PlayCircle className="h-4 w-4 shrink-0" />
+                {startingTrip ? 'Iniciando…' : 'Iniciar viagem'}
+              </button>
+            )}
             {trip.status !== 'COMPLETED' && trip.status !== 'CANCELLED' && (
               <button
                 type="button"
@@ -249,30 +292,34 @@ export default function ViagemDetalhePage() {
                   setFinalizeError(null);
                   setFinalizeModalOpen(true);
                 }}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700 sm:w-auto"
-                style={{ fontSize: '0.875rem' }}
+                className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-green-600 px-3 py-2 text-[0.8125rem] font-medium text-white transition-colors hover:bg-green-700 sm:gap-2 sm:px-4 sm:text-sm"
               >
-                <CheckCircle className="h-4 w-4" />
+                <CheckCircle className="h-4 w-4 shrink-0" />
                 Finalizar viagem
               </button>
             )}
-            {trip.status === 'COMPLETED' && (
-              <Link href={`/dashboard/viagens/${trip.id}/acerto`} className={dashboardLinkPrimaryToolbarClass}>
-                <FileText className="h-4 w-4" />
+            {trip.status === 'COMPLETED' && !trip.displacementToLoad && (
+              <Link
+                href={`/dashboard/viagens/${trip.id}/acerto`}
+                className={`${dashboardLinkPrimaryToolbarClass} !w-auto shrink-0 whitespace-nowrap px-3 sm:px-4`}
+              >
+                <FileText className="h-4 w-4 shrink-0" />
                 Ver acerto
               </Link>
             )}
             <Link
               href={`/dashboard/viagens/${trip.id}/comprovantes`}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-700 transition-colors hover:bg-zinc-50 sm:w-auto"
-              style={{ fontSize: '0.875rem', fontWeight: 500 }}
+              className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-zinc-300 bg-white px-3 py-2 text-[0.8125rem] font-medium text-zinc-700 no-underline transition-colors hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:gap-2 sm:px-4 sm:text-[0.875rem]"
             >
-              <ImageIcon className="h-4 w-4" />
+              <ImageIcon className="h-4 w-4 shrink-0" />
               Comprovantes
             </Link>
             {trip.status !== 'COMPLETED' && (
-              <Link href={`/dashboard/viagens/${trip.id}/editar`} className={dashboardLinkToolbarEditClass}>
-                <Pencil className="h-4 w-4" />
+              <Link
+                href={`/dashboard/viagens/${trip.id}/editar`}
+                className={`${dashboardLinkToolbarEditClass} !w-auto min-h-0 shrink-0 whitespace-nowrap px-3 sm:px-4`}
+              >
+                <Pencil className="h-4 w-4 shrink-0" />
                 Editar
               </Link>
             )}
@@ -346,7 +393,7 @@ export default function ViagemDetalhePage() {
           <TripAdvancesPanel tripId={trip.id} tripStatus={trip.status} embed />
         </div>
 
-        {trip.status === 'COMPLETED' && settlement && (
+        {trip.status === 'COMPLETED' && settlement && !trip.displacementToLoad && (
           <Card className="border-emerald-200 bg-emerald-50/50 shadow-sm">
             <CardHeader className="pb-2 pt-6">
               <h3 className="text-emerald-900" style={{ fontWeight: 600 }}>
@@ -373,7 +420,7 @@ export default function ViagemDetalhePage() {
           </Card>
         )}
 
-        {trip.status === 'COMPLETED' && !settlement && (
+        {trip.status === 'COMPLETED' && !settlement && !trip.displacementToLoad && (
           <Card className="border-amber-200 bg-amber-50 shadow-sm">
             <CardContent className="py-4 text-sm text-amber-900">
               Esta viagem está concluída sem acerto no sistema (dado antigo ou migrado).
@@ -398,7 +445,9 @@ export default function ViagemDetalhePage() {
                 </button>
               </div>
               <p className="text-sm text-zinc-600">
-                Informe o km final se desejar. Será gerado o acerto e a viagem marcada como concluída.
+                {trip.displacementToLoad
+                  ? 'Confirme o fim do deslocamento. Não será gerado acerto neste trecho. O km final é opcional.'
+                  : 'Informe o km final se desejar. Será gerado o acerto e a viagem marcada como concluída.'}
               </p>
               <label htmlFor="modalFinalKm" className="mt-4 block text-sm font-medium text-zinc-700">
                 Km final (opcional)

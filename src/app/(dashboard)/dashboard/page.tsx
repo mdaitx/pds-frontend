@@ -594,8 +594,10 @@ export default function DashboardPage() {
   const activeTrips = myTrips.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'PENDING');
   const completedTrips = myTrips.filter((t) => t.status === 'COMPLETED');
   const now = new Date();
+  /** Concluídas no mês atual = finalizadas neste mês (`endDate`), alinhado ao backend. */
   const completedThisMonthList = completedTrips.filter((t) => {
-    const d = new Date(t.startDate);
+    if (!t.endDate) return false;
+    const d = new Date(t.endDate);
     return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   });
   const activeThisMonthList = activeTrips.filter((t) => {
@@ -608,34 +610,35 @@ export default function DashboardPage() {
   let kmMonth = 0;
   for (const trip of completedThisMonthList) {
     const s = driverSettlementsByTripId[trip.id];
-    if (s) commissionMonth += s.driverCommissionAmt;
-    const ini = trip.initialKm;
-    const fin = s?.finalKm ?? trip.finalKm ?? null;
-    if (ini != null && fin != null) kmMonth += fin - ini;
+    if (s && s.driverCommissionAmt != null) {
+      const c = Number(s.driverCommissionAmt);
+      if (Number.isFinite(c)) commissionMonth += c;
+    }
+    const ini = trip.initialKm != null ? Number(trip.initialKm) : NaN;
+    const finRaw = s?.finalKm ?? trip.finalKm;
+    const fin = finRaw != null ? Number(finRaw) : NaN;
+    if (Number.isFinite(ini) && Number.isFinite(fin)) {
+      kmMonth += Math.max(0, fin - ini);
+    }
   }
 
   const completedThisMonthSorted = [...completedThisMonthList].sort(
-    (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    (a, b) =>
+      new Date(b.endDate ?? b.startDate).getTime() - new Date(a.endDate ?? a.startDate).getTime()
   );
   const monthHistoryLabel = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
 
   return (
     <div className="mx-auto min-w-0 max-w-3xl space-y-4 px-3 py-4 sm:space-y-5 sm:p-4 md:max-w-[1100px] md:p-6">
       <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 p-4 text-white shadow-lg sm:p-5">
-        <div className="flex min-w-0 items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm text-blue-100">Painel do motorista</p>
-            <h1 className="mt-1 break-words text-2xl font-semibold tracking-tight">
-              Olá, {appUser.email.split('@')[0]}
-            </h1>
-            <p className="mt-2 text-sm text-blue-100">
-              Acompanhe suas viagens, comissões e acertos direto pelo celular.
-            </p>
-          </div>
-          <div className="hidden rounded-xl bg-white/15 px-3 py-2 text-right text-xs text-blue-50 min-[380px]:block">
-            <span className="block font-semibold text-white">{activeTrips.length}</span>
-            ativa{activeTrips.length === 1 ? '' : 's'}
-          </div>
+        <div className="min-w-0">
+          <p className="text-sm text-blue-100">Painel do motorista</p>
+          <h1 className="mt-1 break-words text-2xl font-semibold tracking-tight">
+            Olá, {appUser.email.split('@')[0]}
+          </h1>
+          <p className="mt-2 text-sm text-blue-100">
+            Acompanhe suas viagens, comissões e acertos direto pelo celular.
+          </p>
         </div>
       </div>
 
@@ -690,7 +693,9 @@ export default function DashboardPage() {
               </div>
               <div className="min-w-0">
                 <h2 className="text-base font-semibold text-zinc-900">Histórico do mês</h2>
-                <p className="text-sm text-zinc-500">Viagens concluídas em {monthHistoryLabel}</p>
+                <p className="text-sm text-zinc-500">
+                  Viagens <span className="font-medium text-zinc-600">concluídas</span> em {monthHistoryLabel}
+                </p>
               </div>
             </div>
           </CardHeader>
@@ -709,12 +714,21 @@ export default function DashboardPage() {
               <ul className="space-y-2">
                 {completedThisMonthSorted.map((trip) => {
                   const settlement = driverSettlementsByTripId[trip.id];
-                  const commission = settlement?.driverCommissionAmt;
+                  const commissionRaw = settlement?.driverCommissionAmt;
+                  const commission =
+                    commissionRaw != null && Number.isFinite(Number(commissionRaw))
+                      ? Number(commissionRaw)
+                      : null;
                   return (
                     <li key={trip.id}>
                       <Link
                         href={`/dashboard/viagens/${trip.id}`}
-                        className="block rounded-lg border border-zinc-100 bg-zinc-50/80 p-3 transition-colors hover:border-blue-200 hover:bg-blue-50/70 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className={cn(
+                          'block rounded-lg p-3 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500',
+                          trip.displacementToLoad === true
+                            ? 'border-2 border-violet-400 bg-violet-50/50 hover:border-violet-500 hover:bg-violet-50/80'
+                            : 'border border-zinc-100 bg-zinc-50/80 hover:border-blue-200 hover:bg-blue-50/70',
+                        )}
                       >
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
@@ -729,7 +743,8 @@ export default function DashboardPage() {
                             {(trip.origin ?? '').split(',')[0]} → {(trip.destination ?? '').split(',')[0]}
                           </p>
                           <p className="text-[0.78rem] text-zinc-500">
-                            {new Date(trip.startDate).toLocaleDateString('pt-BR', {
+                            Concluída em{' '}
+                            {new Date(trip.endDate!).toLocaleDateString('pt-BR', {
                               day: '2-digit',
                               month: 'short',
                               year: 'numeric',
@@ -776,7 +791,12 @@ export default function DashboardPage() {
                   <Link
                     key={trip.id}
                     href={`/dashboard/viagens/${trip.id}`}
-                    className="block rounded-lg border border-zinc-100 bg-zinc-50 p-3 transition-colors hover:border-blue-200 hover:bg-blue-50/70 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={cn(
+                      'block rounded-lg p-3 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500',
+                      trip.displacementToLoad === true
+                        ? 'border-2 border-violet-400 bg-violet-50/50 hover:border-violet-500 hover:bg-violet-50/80'
+                        : 'border border-zinc-100 bg-zinc-50 hover:border-blue-200 hover:bg-blue-50/70',
+                    )}
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">

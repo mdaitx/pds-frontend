@@ -20,8 +20,10 @@ import {
   updateExpenseCategory,
   deleteExpenseCategory,
   digitsOnly,
+  formatCpf,
   formatCpfCnpjDocument,
   formatPhoneBr,
+  updateDriver,
   type Company,
   type CommissionCalculationMethod,
   type ExpenseCategoryItem,
@@ -291,35 +293,86 @@ export default function ConfigPage() {
         <Card className="border-zinc-200 shadow-sm">
           <CardHeader className="pb-2 pt-6">
             <h3 className="text-zinc-700" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
-              Dados da Empresa
+              {company.isAutonomous ? 'Seus dados' : 'Dados da Empresa'}
             </h3>
+            {company.isAutonomous && (
+              <p className="mt-1 text-zinc-500" style={{ fontSize: '0.8rem' }}>
+                Cadastro de pessoa física (autônomo). Nome, CPF e contatos vêm do seu cadastro de motorista principal.
+              </p>
+            )}
           </CardHeader>
           <CardContent>
-            <CompanyForm
-              key={`${company.id}-${company.updatedAt}`}
-              company={company}
-              onSave={(payload) => {
-                if (!payload.name?.trim()) {
-                  toast.error('Nome fantasia é obrigatório.');
-                  return;
-                }
-                setCompanySaving(true);
-                setError(null);
-                updateMyCompany(payload)
-                  .then((updated) => {
+            {company.isAutonomous ? (
+              <AutonomousProfileForm
+                key={`${company.id}-${company.updatedAt}-${company.autonomousDriver?.id ?? 'n'}`}
+                company={company}
+                onSave={async (payload) => {
+                  if (!payload.name?.trim()) {
+                    toast.error('Informe seu nome completo.');
+                    return;
+                  }
+                  const cpfDigits = digitsOnly(payload.cpf ?? '', 11);
+                  if (company.autonomousDriver && cpfDigits.length !== 11) {
+                    toast.error('CPF deve ter 11 dígitos.');
+                    return;
+                  }
+                  setCompanySaving(true);
+                  setError(null);
+                  try {
+                    if (company.autonomousDriver) {
+                      await updateDriver(company.autonomousDriver.id, {
+                        name: payload.name.trim(),
+                        cpf: cpfDigits,
+                        phone: digitsOnly(payload.phone ?? '') || undefined,
+                        email: payload.email?.trim() || undefined,
+                      });
+                    }
+                    const updated = await updateMyCompany({
+                      name: payload.name.trim(),
+                      address: payload.address?.trim() || undefined,
+                    });
                     setCompany(updated);
-                    toast.success('Dados da empresa salvos!');
-                  })
-                  .catch((e) => {
+                    toast.success(
+                      company.autonomousDriver ? 'Seus dados foram salvos!' : 'Dados salvos. Cadastre um motorista para informar CPF e contatos.'
+                    );
+                  } catch (e) {
                     const msg = e instanceof Error ? e.message : 'Erro ao salvar';
                     setError(msg);
                     toast.error(msg);
-                  })
-                  .finally(() => setCompanySaving(false));
-              }}
-              saving={companySaving}
-              serverError={error}
-            />
+                  } finally {
+                    setCompanySaving(false);
+                  }
+                }}
+                saving={companySaving}
+                serverError={error}
+              />
+            ) : (
+              <CompanyForm
+                key={`${company.id}-${company.updatedAt}`}
+                company={company}
+                onSave={(payload) => {
+                  if (!payload.name?.trim()) {
+                    toast.error('Nome fantasia é obrigatório.');
+                    return;
+                  }
+                  setCompanySaving(true);
+                  setError(null);
+                  updateMyCompany(payload)
+                    .then((updated) => {
+                      setCompany(updated);
+                      toast.success('Dados da empresa salvos!');
+                    })
+                    .catch((e) => {
+                      const msg = e instanceof Error ? e.message : 'Erro ao salvar';
+                      setError(msg);
+                      toast.error(msg);
+                    })
+                    .finally(() => setCompanySaving(false));
+                }}
+                saving={companySaving}
+                serverError={error}
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -427,8 +480,17 @@ export default function ConfigPage() {
               Preferências de cálculo e fuso horário
             </h3>
             <p className="mt-1 text-zinc-500" style={{ fontSize: '0.8rem' }}>
-              Comissão padrão para motoristas sem percentual próprio; método aplicado ao finalizar viagens; fuso para datas e
-              exibição.
+              {company.isAutonomous ? (
+                <>
+                  Percentual padrão de comissão quando o cadastro do motorista não define um % próprio; método aplicado ao
+                  finalizar viagens; fuso para datas e exibição.
+                </>
+              ) : (
+                <>
+                  Comissão padrão para motoristas sem percentual próprio; método aplicado ao finalizar viagens; fuso para
+                  datas e exibição.
+                </>
+              )}
             </p>
           </CardHeader>
           <CardContent>
@@ -645,6 +707,138 @@ export default function ConfigPage() {
   );
 }
 
+type AutonomousSavePayload = {
+  name: string;
+  cpf: string;
+  phone: string;
+  email: string;
+  address: string;
+};
+
+function AutonomousProfileForm({
+  company,
+  onSave,
+  saving,
+  serverError,
+}: {
+  company: Company;
+  onSave: (p: AutonomousSavePayload) => void | Promise<void>;
+  saving: boolean;
+  serverError: string | null;
+}) {
+  const d = company.autonomousDriver;
+  const [name, setName] = useState(d?.name ?? company.name);
+  const [cpf, setCpf] = useState(formatCpf(d?.cpf ?? ''));
+  const [phone, setPhone] = useState(formatPhoneBr(d?.phone ?? ''));
+  const [email, setEmail] = useState(d?.email ?? '');
+  const [address, setAddress] = useState(company.address ?? '');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void onSave({
+      name: name.trim(),
+      cpf,
+      phone,
+      email,
+      address,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {serverError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">{serverError}</div>
+      )}
+      {!d && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+          Nenhum motorista encontrado nesta conta. Conclua o cadastro inicial ou registre um motorista para poder informar CPF
+          e contatos nesta página.
+        </div>
+      )}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5 sm:col-span-2">
+          <label htmlFor="cfg-auto-name" className={labelClass}>
+            Nome completo *
+          </label>
+          <Input
+            id="cfg-auto-name"
+            placeholder="Seu nome"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="bg-white"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="cfg-auto-cpf" className={labelClass}>
+            CPF{d ? ' *' : ''}
+          </label>
+          <Input
+            id="cfg-auto-cpf"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="000.000.000-00"
+            maxLength={14}
+            disabled={!d}
+            value={cpf}
+            onChange={(e) => setCpf(formatCpf(e.target.value))}
+            className="bg-white"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="cfg-auto-phone" className={labelClass}>
+            Telefone
+          </label>
+          <Input
+            id="cfg-auto-phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="(00) 00000-0000"
+            maxLength={16}
+            disabled={!d}
+            value={phone}
+            onChange={(e) => setPhone(formatPhoneBr(e.target.value))}
+            className="bg-white"
+          />
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor="cfg-auto-email" className={labelClass}>
+          E-mail
+        </label>
+        <Input
+          id="cfg-auto-email"
+          type="email"
+          disabled={!d}
+          placeholder="seu@email.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="bg-white"
+        />
+      </div>
+      <div className="space-y-1.5">
+        <label htmlFor="cfg-auto-address" className={labelClass}>
+          Endereço
+        </label>
+        <Input
+          id="cfg-auto-address"
+          placeholder="Rua, número, bairro, cidade - UF"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          className="bg-white"
+        />
+      </div>
+      <div className={`${mobileFormActionsRowClass} border-t border-zinc-100 pt-4`}>
+        <Button type="submit" disabled={saving} loading={saving} className={dashboardFormSaveButtonClass}>
+          {!saving && <Save className="h-4 w-4" />}
+          {saving ? 'Salvando…' : 'Salvar'}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 function CompanyForm({
   company,
   onSave,
@@ -782,6 +976,7 @@ function CalculationPreferencesForm({
   saving: boolean;
   serverError: string | null;
 }) {
+  const autonomous = !!company.isAutonomous;
   const [defaultCommission, setDefaultCommission] = useState(
     company.defaultCommission != null ? String(company.defaultCommission) : ''
   );
@@ -871,9 +1066,11 @@ function CalculationPreferencesForm({
             </option>
           ))}
         </select>
-        <p className="text-xs text-zinc-500">
-          Define o contexto regional da empresa; útil para relatórios e consistência de datas.
-        </p>
+          <p className="text-xs text-zinc-500">
+            {autonomous
+              ? 'Define o fuso regional usado para datas, relatórios e exibição no app.'
+              : 'Define o contexto regional da empresa; útil para relatórios e consistência de datas.'}
+          </p>
       </div>
       <div className={`${mobileFormActionsRowClass} border-t border-zinc-100 pt-4`}>
         <Button type="submit" disabled={saving} loading={saving} className={dashboardFormSaveButtonClass}>

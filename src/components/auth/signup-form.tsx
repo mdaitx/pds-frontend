@@ -67,8 +67,8 @@ export function SignupForm() {
         },
       });
       if (err) throw new Error(err.message);
-      if (data.session) {
-        await refreshAppUser();
+      if (data.session?.access_token) {
+        await refreshAppUser(data.session.access_token);
         router.replace('/dashboard/onboarding');
         router.refresh();
       } else {

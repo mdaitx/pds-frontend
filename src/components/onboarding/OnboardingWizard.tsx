@@ -5,7 +5,7 @@
  */
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronRight, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   createOnboardingCompany,
@@ -29,6 +29,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { BrandLogo } from '@/components/brand-logo';
+import { useAuth } from '@/hooks';
 
 const PLATE_REGEX = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$|^[A-Z]{3}[0-9]{4}$/;
 
@@ -44,6 +45,7 @@ type Props = {
 
 export function OnboardingWizard({ initialStep }: Props) {
   const router = useRouter();
+  const { signOut } = useAuth();
   const [step, setStep] = useState<WizardStep>(initialStep);
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -195,6 +197,19 @@ export function OnboardingWizard({ initialStep }: Props) {
       setLoading(false);
     }
   };
+
+  function handleBack() {
+    setFormError(null);
+    if (step > 1) {
+      setStep((s) => (s - 1) as WizardStep);
+      return;
+    }
+    /** Passo 1: ir ao login exige sair da sessão; senão o GuestGuard redireciona quem já está logado. */
+    void signOut().then(() => {
+      router.replace('/login');
+      router.refresh();
+    });
+  }
 
   const steps = [
     { num: 1 as const, label: 'Empresa' },
@@ -521,30 +536,37 @@ export function OnboardingWizard({ initialStep }: Props) {
               </>
             )}
 
-            <Button
-              type="button"
-              className="mt-2 flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
-              onClick={handleNext}
-              disabled={loading}
-            >
-              {loading ? 'Processando...' : step === 3 ? 'Concluir configuração' : 'Próximo'}
-              {!loading && step < 3 && <ChevronRight className="h-4 w-4" />}
-              {!loading && step === 3 && <Check className="h-4 w-4" />}
-            </Button>
-
-            {step > 1 && (
-              <button
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:[&>button]:min-h-[3rem]">
+              <Button
                 type="button"
-                onClick={() => {
-                  setFormError(null);
-                  setStep((s) => (s - 1) as WizardStep);
-                }}
-                className="mt-2 w-full text-center text-[0.875rem] text-zinc-500 transition-colors hover:text-zinc-700"
+                variant="outline"
+                size="lg"
+                className="w-full rounded-xl border-zinc-200 bg-white px-5 font-semibold text-zinc-800 shadow-sm ring-1 ring-zinc-900/[0.04] transition-[box-shadow,transform,border-color] hover:border-zinc-300 hover:bg-zinc-50 hover:shadow-sm active:translate-y-px"
+                onClick={handleBack}
                 disabled={loading}
+                icon={<ChevronLeft className="h-[1.125rem] w-[1.125rem]" aria-hidden />}
               >
-                ← Voltar
-              </button>
-            )}
+                Voltar
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="lg"
+                className="w-full rounded-xl px-5 font-semibold shadow-md shadow-blue-900/[0.12] ring-1 ring-blue-700/10 transition-[box-shadow,transform] hover:-translate-y-px hover:shadow-lg hover:shadow-blue-900/[0.18] active:translate-y-0"
+                onClick={handleNext}
+                disabled={loading}
+                icon={
+                  !loading && step < 3 ? (
+                    <ChevronRight className="h-[1.125rem] w-[1.125rem]" aria-hidden />
+                  ) : !loading && step === 3 ? (
+                    <Check className="h-[1.125rem] w-[1.125rem]" aria-hidden />
+                  ) : undefined
+                }
+                iconPosition="right"
+              >
+                {loading ? 'Processando…' : step === 3 ? 'Concluir configuração' : 'Próximo'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

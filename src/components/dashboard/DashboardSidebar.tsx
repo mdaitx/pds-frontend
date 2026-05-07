@@ -89,16 +89,19 @@ function DashboardSidebarNav({
   return (
     <div className="flex h-full min-h-0 flex-col">
       {mobile ? (
-        <div className="safe-top flex w-full shrink-0 items-center border-b border-zinc-200 px-4 py-3 sm:px-5">
+        <div className="safe-top flex w-full shrink-0 items-start border-b border-zinc-200 px-4 py-3 sm:px-5">
           <Link
             href="/dashboard"
             prefetch={false}
             onClick={onNavClick}
-            className="flex min-w-0 flex-1 items-center gap-2 rounded-lg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-500"
+            className="flex min-w-0 flex-1 items-start gap-2 rounded-lg outline-none transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-500"
             title="Truck Finanças — Início"
           >
-            <BrandLogo size={48} className="shrink-0" />
-            <span className="truncate text-base font-bold text-blue-600">Truck Finanças</span>
+            <BrandLogo size={48} className="mt-0.5 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-base font-bold text-blue-600">Truck Finanças</p>
+              <p className="text-[0.65rem] leading-snug text-zinc-500">Gestão de fretes e comissões</p>
+            </div>
           </Link>
           <button
             type="button"
@@ -124,7 +127,7 @@ function DashboardSidebarNav({
           {!collapsed && (
             <div className="min-w-0 overflow-hidden text-left">
               <p className="text-base font-bold leading-tight whitespace-nowrap text-blue-600">Truck Finanças</p>
-              <p className="whitespace-nowrap text-[0.7rem] text-zinc-500">Gestão de frotas</p>
+              <p className="text-[0.7rem] leading-snug text-zinc-500">Gestão de fretes e comissões</p>
             </div>
           )}
         </Link>
