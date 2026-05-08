@@ -107,20 +107,15 @@ export default function ViagemDetalhePage() {
   const [startingTrip, setStartingTrip] = useState(false);
 
   const loadTripWithOptionalSettlement = async (tripId: string) => {
-    const t = await getTrip(tripId);
+    const [t, settlementResult] = await Promise.all([
+      getTrip(tripId),
+      getSettlement(tripId).catch((e) => {
+        if (e instanceof ApiError && e.status === 404) return null;
+        throw e;
+      }),
+    ]);
     setTrip(t);
-    try {
-      const s = await getSettlement(tripId);
-      setSettlement(s);
-    } catch (e) {
-      // Em alguns cenários (dados antigos/migração), o acerto pode não existir.
-      // Nesses casos, a tela da viagem deve abrir mesmo assim.
-      if (e instanceof ApiError && e.status === 404) {
-        setSettlement(null);
-        return;
-      }
-      throw e;
-    }
+    setSettlement(settlementResult);
   };
 
   const refreshTripAndSettlement = () => {
