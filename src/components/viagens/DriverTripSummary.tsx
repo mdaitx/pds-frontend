@@ -68,18 +68,15 @@ export function DriverTripSummary({ tripId }: Props) {
   const [finalizeErr, setFinalizeErr] = useState<string | null>(null);
 
   const refreshData = useCallback(async () => {
-    const t = await getTrip(tripId);
+    const [t, settlementResult] = await Promise.all([
+      getTrip(tripId),
+      getSettlement(tripId).catch((e) => {
+        if (e instanceof ApiError && e.status === 404) return null;
+        throw e;
+      }),
+    ]);
     setTrip(t);
-    try {
-      const s = await getSettlement(tripId);
-      setSettlement(s);
-    } catch (e) {
-      if (e instanceof ApiError && e.status === 404) {
-        setSettlement(null);
-        return;
-      }
-      throw e;
-    }
+    setSettlement(settlementResult);
   }, [tripId]);
 
   useEffect(() => {
