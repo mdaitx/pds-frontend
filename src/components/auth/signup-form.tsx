@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
  */
 export function SignupForm() {
   const router = useRouter();
-  const { configError, refreshAppUser } = useAuth();
+  const { configError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -59,22 +59,20 @@ export function SignupForm() {
     setLoading(true);
     try {
       const supabase = createClient();
+      const normalizedEmail = email.trim();
       const { data, error: err } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: normalizedEmail,
         password,
         options: {
           emailRedirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/dashboard/onboarding`,
         },
       });
       if (err) throw new Error(err.message);
-      if (data.session?.access_token) {
-        await refreshAppUser(data.session.access_token);
-        router.replace('/dashboard/onboarding');
-        router.refresh();
-      } else {
-        setSuccess(true);
-        router.refresh();
+      if (data.session) {
+        await supabase.auth.signOut();
       }
+      router.replace(`/login?signup=1&email=${encodeURIComponent(normalizedEmail)}`);
+      router.refresh();
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Erro ao cadastrar';
       setError(formatAuthError(msg));

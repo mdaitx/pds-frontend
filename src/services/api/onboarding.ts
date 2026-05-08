@@ -11,8 +11,8 @@ export type OnboardingStatus = {
 };
 
 /** GET /onboarding/status - status do wizard (apenas OWNER usa os passos) */
-export async function getOnboardingStatus(): Promise<OnboardingStatus> {
-  return apiFetch<OnboardingStatus>('/onboarding/status', { method: 'GET' });
+export async function getOnboardingStatus(token?: string | null): Promise<OnboardingStatus> {
+  return apiFetch<OnboardingStatus>('/onboarding/status', { method: 'GET', token });
 }
 
 export type CreateOnboardingCompanyPayload = {

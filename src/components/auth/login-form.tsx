@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 import { createClient } from '@/lib/supabase';
 import { useAuth } from '@/hooks';
@@ -17,12 +17,22 @@ import { Label } from '@/components/ui/label';
  */
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { configError } = useAuth();
-  const [email, setEmail] = useState('');
+  const signupEmail = searchParams.get('email')?.trim() ?? '';
+  const cameFromSignup = searchParams.get('signup') === '1';
+  const [email, setEmail] = useState(signupEmail);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const signupNotice = useMemo(
+    () =>
+      cameFromSignup
+        ? 'Conta criada com sucesso. Faça login para continuar para o onboarding.'
+        : null,
+    [cameFromSignup]
+  );
 
   if (configError) {
     return (
@@ -49,7 +59,7 @@ export function LoginForm() {
       if (err) throw new Error(err.message);
       if (data.session) {
         await new Promise((r) => setTimeout(r, 150));
-        window.location.href = '/dashboard';
+        window.location.href = '/session-redirect';
         return;
       }
       router.push('/dashboard');
@@ -75,6 +85,12 @@ export function LoginForm() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {signupNotice && (
+            <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+              {signupNotice}
+            </p>
+          )}
+
           <div className="space-y-1.5">
             <Label htmlFor="email">E-mail *</Label>
             <Input
