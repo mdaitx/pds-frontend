@@ -15,6 +15,16 @@ function forwardAuthCookies(from: NextResponse, to: NextResponse) {
   });
 }
 
+/** Rotas que não devem passar pelo Supabase (PWA, ícones, build). Evita 401/redirect em `manifest.webmanifest`. */
+function isSkippablePublicPath(pathname: string): boolean {
+  if (pathname === '/manifest.webmanifest' || pathname === '/site.webmanifest') return true;
+  if (pathname.endsWith('.webmanifest')) return true;
+  if (pathname === '/sw.js' || pathname === '/favicon.ico') return true;
+  if (pathname.startsWith('/_next/static') || pathname.startsWith('/_next/image')) return true;
+  if (/\.(?:svg|png|jpg|jpeg|gif|webp|ico)$/i.test(pathname)) return true;
+  return false;
+}
+
 /**
  * Proxy “best effort” (Next.js `proxy.ts`):
  * - Atualiza sessão Supabase em cookies (`getUser()` dispara refresh quando necessário).
@@ -27,6 +37,11 @@ function forwardAuthCookies(from: NextResponse, to: NextResponse) {
  * Detalhes: `docs/AUTH-ROTAS.md`
  */
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  if (isSkippablePublicPath(pathname)) {
+    return NextResponse.next();
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -53,8 +68,6 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
-  const pathname = request.nextUrl.pathname;
 
   if (!user && pathname.startsWith('/dashboard')) {
     const login = new URL('/login', request.url);

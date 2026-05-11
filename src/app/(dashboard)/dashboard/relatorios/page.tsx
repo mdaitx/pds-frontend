@@ -969,7 +969,13 @@ export default function RelatoriosPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                       <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
                       <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                      <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                      <Tooltip
+                        formatter={(value) =>
+                          value != null && Number.isFinite(Number(value))
+                            ? formatCurrency(Number(value))
+                            : '—'
+                        }
+                      />
                       <Legend />
                       <Bar dataKey="faturamento" name="Faturamento" fill="#2563eb" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="despesas" name="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} />
@@ -990,7 +996,13 @@ export default function RelatoriosPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                       <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
                       <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                      <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                      <Tooltip
+                        formatter={(value) =>
+                          value != null && Number.isFinite(Number(value))
+                            ? formatCurrency(Number(value))
+                            : '—'
+                        }
+                      />
                       <Line
                         type="monotone"
                         dataKey="lucro"
