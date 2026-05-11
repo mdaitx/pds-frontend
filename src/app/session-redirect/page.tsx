@@ -8,6 +8,32 @@ import { fetchMe, getOnboardingStatus } from '@/lib';
 
 const ONBOARDING_PREFETCH_STORAGE_KEY = 'onboarding-status-prefetch-v1';
 
+type AppRouter = { replace: (href: string) => void };
+
+async function runPostLoginRedirect(accessToken: string, router: AppRouter) {
+  const me = await fetchMe(accessToken);
+  if (me.role !== 'OWNER') {
+    router.replace('/dashboard');
+    return;
+  }
+
+  try {
+    const onboarding = await getOnboardingStatus(accessToken);
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem(
+        ONBOARDING_PREFETCH_STORAGE_KEY,
+        JSON.stringify({
+          status: onboarding,
+          ts: Date.now(),
+        })
+      );
+    }
+    router.replace(onboarding.completed ? '/dashboard' : '/dashboard/onboarding');
+  } catch {
+    router.replace('/dashboard');
+  }
+}
+
 /**
  * Rota de transição pós-login:
  * resolve o destino final antes de renderizar qualquer tela do dashboard,
@@ -26,32 +52,7 @@ export default function SessionRedirectPage() {
     }
 
     const accessToken = session.access_token;
-
-    async function resolveDestination() {
-      const me = await fetchMe(accessToken);
-      if (me.role !== 'OWNER') {
-        router.replace('/dashboard');
-        return;
-      }
-
-      try {
-        const onboarding = await getOnboardingStatus(accessToken);
-        if (typeof window !== 'undefined') {
-          window.sessionStorage.setItem(
-            ONBOARDING_PREFETCH_STORAGE_KEY,
-            JSON.stringify({
-              status: onboarding,
-              ts: Date.now(),
-            })
-          );
-        }
-        router.replace(onboarding.completed ? '/dashboard' : '/dashboard/onboarding');
-      } catch {
-        router.replace('/dashboard');
-      }
-    }
-
-    void resolveDestination();
+    void runPostLoginRedirect(accessToken, router);
   }, [loading, session, router]);
 
   return (
