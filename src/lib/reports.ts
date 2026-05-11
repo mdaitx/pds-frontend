@@ -1,4 +1,4 @@
-import type { Advance, Expense, Settlement, Trip, TripStatus } from '@/services/api';
+import type { Advance, Driver, Expense, Settlement, Trip, TripStatus, Vehicle } from '@/services/api';
 
 /** Categoria sistema "Combustível" (ou ícone fuel) — usada no custo R$/km rodado. */
 export function isFuelCategoryRef(c: { icon: string; name: string } | null | undefined): boolean {
@@ -395,4 +395,66 @@ export function aggregateRows(rows: TripReportRow[]): ReportAggregate {
     costPerKm: km > 0 && fuelExpenses > 0 ? fuelExpenses / km : null,
     kmPerLiter: km > 0 && fuelLiters > 0 ? km / fuelLiters : null,
   };
+}
+
+/**
+ * Listas mínimas de veículos/motoristas a partir do payload do relatório — evita GET /vehicles e /drivers
+ * em paralelo (menos RTT e menos consultas Prisma no backend em planos lentos).
+ */
+export function buildReportPageLookups(trips: Trip[]): { vehicles: Vehicle[]; drivers: Driver[] } {
+  const vehicleMap = new Map<string, Vehicle>();
+  const driverMap = new Map<string, Driver>();
+
+  for (const t of trips) {
+    const tv = t.vehicle;
+    if (tv && !vehicleMap.has(tv.id)) {
+      vehicleMap.set(tv.id, {
+        id: tv.id,
+        plate: tv.plate,
+        model: tv.model,
+        brand: tv.brand,
+        year: 0,
+        nickname: null,
+        vehicleType: tv.vehicleType,
+        status: 'ACTIVE',
+        companyId: t.companyId,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+      });
+    }
+    const td = t.driver;
+    if (td && !driverMap.has(td.id)) {
+      const pct = td.commissionPct;
+      driverMap.set(td.id, {
+        id: td.id,
+        name: td.name,
+        cpf: null,
+        rg: null,
+        cnh: null,
+        phone: null,
+        email: null,
+        commissionPct:
+          pct != null && Number.isFinite(Number(pct)) ? Number(pct) : null,
+        monthlySalary: 0,
+        paymentMethod: null,
+        pixKey: null,
+        bankName: null,
+        bankAgency: null,
+        bankAccount: null,
+        status: 'ACTIVE',
+        preferredVehicleId: null,
+        companyId: t.companyId,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+      });
+    }
+  }
+
+  const vehicles = [...vehicleMap.values()].sort((a, b) =>
+    a.plate.localeCompare(b.plate, 'pt-BR')
+  );
+  const drivers = [...driverMap.values()].sort((a, b) =>
+    a.name.localeCompare(b.name, 'pt-BR')
+  );
+  return { vehicles, drivers };
 }

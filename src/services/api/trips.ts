@@ -15,6 +15,8 @@ export type TripVehicle = {
 export type TripDriver = {
   id: string;
   name: string;
+  /** Presente em respostas agregadas (ex.: relatório de viagens). */
+  commissionPct?: number | null;
 };
 
 export type Trip = {

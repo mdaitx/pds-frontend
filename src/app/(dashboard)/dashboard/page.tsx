@@ -245,7 +245,8 @@ export default function DashboardPage() {
   const dashboardChartsQuery = useQuery({
     queryKey: ['dashboard-charts', appUser?.id],
     queryFn: getDashboardCharts,
-    enabled: shouldLoadOwnerCharts && dashboardSummaryQuery.isSuccess,
+    /** Independe do summary no backend; paralelizar evita esperar duas rodadas de RTT na API (ex.: cold start no Render). */
+    enabled: shouldLoadOwnerCharts,
     staleTime: 5 * 60_000,
     retry: false,
   });
@@ -403,6 +404,7 @@ export default function DashboardPage() {
             </div>
             <Link
               href="/dashboard/viagens/novo"
+              prefetch={false}
               className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-blue-800 shadow-sm transition-all hover:-translate-y-px hover:bg-blue-50 sm:w-auto"
             >
               <Truck className="h-4 w-4" />
@@ -486,6 +488,7 @@ export default function DashboardPage() {
             <Link
               key={i}
               href={item.href}
+              prefetch={false}
               className={cn(
                 'block min-h-0',
                 appUser.role === 'ADMIN' && i === 2 && 'sm:col-span-2 lg:col-span-1'
@@ -528,7 +531,11 @@ export default function DashboardPage() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <h3 className="text-zinc-800">Últimas Viagens</h3>
-              <Link href="/dashboard/viagens" className="text-blue-700 hover:text-blue-800 flex items-center gap-1 text-[0.85rem]">
+              <Link
+                href="/dashboard/viagens"
+                prefetch={false}
+                className="text-blue-700 hover:text-blue-800 flex items-center gap-1 text-[0.85rem]"
+              >
                 Ver todas <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -586,7 +593,11 @@ export default function DashboardPage() {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <Link href={`/dashboard/viagens/${trip.id}`} className="text-blue-700 hover:text-blue-800 transition-colors text-[0.8rem]">
+                            <Link
+                              href={`/dashboard/viagens/${trip.id}`}
+                              prefetch={false}
+                              className="text-blue-700 hover:text-blue-800 transition-colors text-[0.8rem]"
+                            >
                               Ver
                             </Link>
                           </td>
@@ -737,6 +748,7 @@ export default function DashboardPage() {
                     <li key={trip.id}>
                       <Link
                         href={`/dashboard/viagens/${trip.id}`}
+                        prefetch={false}
                         className={cn(
                           'block rounded-lg p-3 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500',
                           trip.displacementToLoad
@@ -796,7 +808,7 @@ export default function DashboardPage() {
                 <p className="text-sm text-zinc-500">Período de {monthHistoryLabel}</p>
               </div>
             </div>
-            <Link href="/dashboard/viagens" className={dashboardLinkMutedNavClass}>
+            <Link href="/dashboard/viagens" prefetch={false} className={dashboardLinkMutedNavClass}>
               Ver todas
             </Link>
           </CardHeader>
@@ -810,6 +822,7 @@ export default function DashboardPage() {
                   <Link
                     key={trip.id}
                     href={`/dashboard/viagens/${trip.id}`}
+                    prefetch={false}
                     className={cn(
                       'block rounded-lg p-3 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500',
                       trip.displacementToLoad

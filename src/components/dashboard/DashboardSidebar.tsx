@@ -332,6 +332,7 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
           {!sidebarOpen && (
             <Link
               href="/dashboard"
+              prefetch={false}
               className="flex min-w-0 flex-1 items-center gap-2 rounded-lg outline-none hover:opacity-90 focus-visible:ring-2 focus-visible:ring-blue-500"
               title="Truck Finanças — Início"
             >
@@ -369,6 +370,7 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
                   <Link
                     key={item.href}
                     href={item.href}
+                    prefetch={false}
                     className={cn(
                       'relative flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[0.72rem] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
                       appUser.role !== 'DRIVER' && 'min-w-[76px]',
