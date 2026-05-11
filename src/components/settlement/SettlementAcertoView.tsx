@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import Link from 'next/link';
 import { FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { downloadSettlementPdf } from '@/lib/settlement-pdf';
 import { mobileTableScrollClass } from '@/lib/dashboard-mobile';
 import { cn } from '@/lib/cn';
+import { computeTripFuelMetrics } from '@/lib/reports';
 import type { SettlementWithTrip } from '@/lib';
 
 const ADVANCE_METHOD_LABEL: Record<string, string> = {
@@ -38,6 +40,7 @@ export function SettlementAcertoView({
 }: Props) {
   const trip = s.trip;
   const finalKmShown = s.finalKm ?? trip.finalKm;
+  const fuelMetrics = useMemo(() => computeTripFuelMetrics(trip, trip.expenses, s), [trip, s]);
 
   return (
     <div className="min-h-screen bg-zinc-50 px-3 py-4 sm:p-4 md:p-6">
@@ -98,7 +101,23 @@ export function SettlementAcertoView({
                 {finalKmShown != null ? finalKmShown.toLocaleString('pt-BR') : '—'}
               </dd>
             </div>
+            <div>
+              <dt className="text-zinc-500">Média km/L</dt>
+              <dd className="font-medium tabular-nums text-zinc-900">
+                {fuelMetrics.kmPerLiter != null
+                  ? `${fuelMetrics.kmPerLiter.toLocaleString('pt-BR', {
+                      maximumFractionDigits: 2,
+                      minimumFractionDigits: 0,
+                    })} km/L`
+                  : '—'}
+              </dd>
+            </div>
           </dl>
+          {fuelMetrics.kmPerLiter == null && (
+            <p className="mt-3 text-xs text-zinc-500">
+              Informe km inicial/final e litragem nas despesas de combustível para calcular a média km/L.
+            </p>
+          )}
         </Card>
 
         <Card className="mt-4 border-emerald-200 bg-emerald-50/40 p-6">

@@ -269,7 +269,7 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
       {/* Desktop Sidebar */}
       <aside
         className={cn(
-          'hidden md:flex flex-col bg-white border-r border-zinc-200 flex-shrink-0 transition-all duration-300 relative',
+          'hidden print:hidden md:flex flex-col bg-white border-r border-zinc-200 flex-shrink-0 transition-all duration-300 relative',
           sidebarCollapsed ? 'w-20' : 'w-64'
         )}
       >
@@ -283,8 +283,9 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
           onLogout={handleLogout}
         />
         <button
+          type="button"
           onClick={toggleSidebar}
-          className="absolute -right-3 top-6 w-6 h-6 bg-white border border-zinc-200 rounded-full flex items-center justify-center text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50 transition-colors shadow-sm z-10"
+          className="absolute -right-3 top-6 z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-zinc-200 bg-white text-zinc-600 shadow-sm transition-colors hover:bg-zinc-50 hover:text-zinc-900 print:hidden md:flex"
           title={sidebarCollapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
         >
           {sidebarCollapsed ? (
@@ -318,7 +319,7 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="safe-top md:hidden sticky top-0 z-40 flex min-h-[52px] shrink-0 items-center gap-3 border-b border-zinc-200 bg-white/95 px-4 py-2.5 shadow-sm backdrop-blur sm:px-5">
+        <header className="safe-top sticky top-0 z-40 flex min-h-[52px] shrink-0 items-center gap-3 border-b border-zinc-200 bg-white/95 px-4 py-2.5 shadow-sm backdrop-blur print:hidden sm:px-5 md:hidden">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
@@ -341,12 +342,12 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
           {sidebarOpen && <span className="min-w-0 flex-1" aria-hidden />}
         </header>
 
-        <main className={cn('flex-1 overflow-y-auto safe-main', appUser && 'pb-24 md:pb-0')}>
+        <main className={cn('flex-1 overflow-y-auto safe-main print:overflow-visible print:bg-white', appUser && 'pb-24 md:pb-0')}>
           {children}
         </main>
         {appUser && (
           <nav
-            className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 px-2 pb-1 pt-1 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur md:hidden"
+            className="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-zinc-200 bg-white/95 px-2 pb-1 pt-1 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur print:hidden md:hidden"
             aria-label="Navegação principal"
           >
             <div

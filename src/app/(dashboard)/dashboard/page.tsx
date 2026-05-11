@@ -557,9 +557,23 @@ export default function DashboardPage() {
                   ) : (
                     recentTrips.map((trip) => {
                       const cfg = statusConfig[trip.status] ?? statusConfig.PENDING;
+                      const isDisplacement = Boolean(trip.displacementToLoad);
                       return (
-                        <tr key={trip.id} className="border-b border-zinc-50 hover:bg-zinc-50 transition-colors">
-                          <td className="px-4 py-3 text-zinc-800 font-semibold">{trip.code}</td>
+                        <tr
+                          key={trip.id}
+                          className={cn(
+                            'border-b border-zinc-50 transition-colors',
+                            isDisplacement ? 'bg-amber-50/90 hover:bg-amber-50' : 'hover:bg-zinc-50'
+                          )}
+                        >
+                          <td className="px-4 py-3">
+                            <span className="font-semibold text-zinc-800">{trip.code}</span>
+                            {isDisplacement ? (
+                              <span className="ml-2 inline-flex rounded-md bg-amber-200/90 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-950">
+                                Deslocamento
+                              </span>
+                            ) : null}
+                          </td>
                           <td className="px-4 py-3 text-zinc-600 hidden sm:table-cell">
                             {(trip.origin ?? '').split(',')[0]} → {(trip.destination ?? '').split(',')[0]}
                           </td>
@@ -725,14 +739,19 @@ export default function DashboardPage() {
                         href={`/dashboard/viagens/${trip.id}`}
                         className={cn(
                           'block rounded-lg p-3 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500',
-                          trip.displacementToLoad === true
-                            ? 'border-2 border-violet-400 bg-violet-50/50 hover:border-violet-500 hover:bg-violet-50/80'
+                          trip.displacementToLoad
+                            ? 'border border-amber-200 bg-amber-50/90 hover:bg-amber-50'
                             : 'border border-zinc-100 bg-zinc-50/80 hover:border-blue-200 hover:bg-blue-50/70',
                         )}
                       >
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-sm font-semibold text-zinc-900">{trip.code}</span>
+                            {trip.displacementToLoad ? (
+                              <span className="inline-flex rounded-md bg-amber-200/90 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-950">
+                                Deslocamento
+                              </span>
+                            ) : null}
                             <span
                               className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusConfig.COMPLETED.className}`}
                             >
@@ -793,14 +812,19 @@ export default function DashboardPage() {
                     href={`/dashboard/viagens/${trip.id}`}
                     className={cn(
                       'block rounded-lg p-3 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500',
-                      trip.displacementToLoad === true
-                        ? 'border-2 border-violet-400 bg-violet-50/50 hover:border-violet-500 hover:bg-violet-50/80'
+                      trip.displacementToLoad
+                        ? 'border border-amber-200 bg-amber-50/90 hover:bg-amber-50'
                         : 'border border-zinc-100 bg-zinc-50 hover:border-blue-200 hover:bg-blue-50/70',
                     )}
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-sm font-semibold text-zinc-800">{trip.code}</span>
+                        {trip.displacementToLoad ? (
+                          <span className="inline-flex rounded-md bg-amber-200/90 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-950">
+                            Deslocamento
+                          </span>
+                        ) : null}
                         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${cfg.className}`}>
                           {cfg.label}
                         </span>

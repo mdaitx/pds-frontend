@@ -189,6 +189,41 @@ export type TripReportRow = {
   kmPerLiter: number | null;
 };
 
+export type TripFuelMetrics = {
+  km: number;
+  fuelLiters: number;
+  fuelExpenses: number;
+  costPerKm: number | null;
+  kmPerLiter: number | null;
+};
+
+/**
+ * Km rodados e métricas de combustível para uma viagem (km final do acerto quando existir;
+ * litros e R$ somados só em despesas da categoria combustível).
+ */
+export function computeTripFuelMetrics(
+  trip: Pick<Trip, 'initialKm' | 'finalKm'>,
+  expenses: Expense[],
+  settlement: Pick<Settlement, 'finalKm'> | null
+): TripFuelMetrics {
+  let km = 0;
+  const fin = settlement?.finalKm ?? trip.finalKm ?? null;
+  const ini = trip.initialKm ?? null;
+  if (ini != null && fin != null) km = Math.max(0, fin - ini);
+
+  const fuelList = expenses.filter(isFuelExpense);
+  const fuelExpenses = fuelList.reduce((s, e) => s + safeNum(e.amount, 0), 0);
+  const fuelLiters = fuelList.reduce((s, e) => {
+    const L = e.liters;
+    if (L == null) return s;
+    const n = Number(L);
+    return s + (Number.isFinite(n) && n > 0 ? n : 0);
+  }, 0);
+  const costPerKm = km > 0 && fuelExpenses > 0 ? fuelExpenses / km : null;
+  const kmPerLiter = km > 0 && fuelLiters > 0 ? km / fuelLiters : null;
+  return { km, fuelLiters, fuelExpenses, costPerKm, kmPerLiter };
+}
+
 export function buildTripReportRows(
   trips: Trip[],
   expensesByTripId: Record<string, Expense[]>,
@@ -232,21 +267,11 @@ export function buildTripReportRows(
       ownerResult = null;
     }
 
-    let km = 0;
-    const fin = settlement?.finalKm ?? trip.finalKm ?? null;
-    const ini = trip.initialKm ?? null;
-    if (ini != null && fin != null) km = Math.max(0, fin - ini);
-
-    const fuelList = expList.filter(isFuelExpense);
-    const fuelExpenses = fuelList.reduce((s, e) => s + safeNum(e.amount, 0), 0);
-    const fuelLiters = fuelList.reduce((s, e) => {
-      const L = e.liters;
-      if (L == null) return s;
-      const n = Number(L);
-      return s + (Number.isFinite(n) && n > 0 ? n : 0);
-    }, 0);
-    const costPerKm = km > 0 && fuelExpenses > 0 ? fuelExpenses / km : null;
-    const kmPerLiter = km > 0 && fuelLiters > 0 ? km / fuelLiters : null;
+    const { km, fuelLiters, fuelExpenses, costPerKm, kmPerLiter } = computeTripFuelMetrics(
+      trip,
+      expList,
+      settlement
+    );
 
     const vehicleLabel = trip.vehicle
       ? `${trip.vehicle.plate} · ${trip.vehicle.brand} ${trip.vehicle.model}`
