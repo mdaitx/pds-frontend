@@ -31,8 +31,6 @@ import {
 import { useAuth } from '@/hooks';
 import {
   getTripsReport,
-  getVehicles,
-  getDrivers,
   type Vehicle,
   type Driver,
   type Trip,
@@ -40,7 +38,7 @@ import {
   type Settlement,
   type TripsReportData,
 } from '@/lib';
-import { aggregateRows, buildTripReportRows } from '@/lib/reports';
+import { aggregateRows, buildReportPageLookups, buildTripReportRows } from '@/lib/reports';
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { LoadingMessage } from '@/components/ui/loading';
@@ -461,16 +459,16 @@ export default function RelatoriosPage() {
 
     (async () => {
       try {
-        const [report, vList, dList] = await Promise.all([
-          getTripsReport(fromYmd, toYmd),
-          getVehicles(),
-          getDrivers(),
-        ]);
+        const report = await getTripsReport(fromYmd, toYmd);
         if (cancelled) return;
+        const { vehicles: vList, drivers: dList } = buildReportPageLookups(report.trips);
         setTrips(buildReportTrips(report.trips, report.expensesByTripId, report.settlementByTripId));
         setTripsReportRaw(report);
         setVehicles(vList);
         setDrivers(dList);
+        setSelectedVehicle((prev) =>
+          prev === 'all' || vList.some((v) => v.id === prev) ? prev : 'all'
+        );
       } catch (e) {
         if (!cancelled) {
           setLoadError(e instanceof Error ? e.message : 'Erro ao carregar dados');
