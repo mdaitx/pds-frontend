@@ -263,7 +263,7 @@ export default function ViagensPage() {
                   className={cn(
                     'transition-all hover:shadow-sm',
                     t.displacementToLoad === true
-                      ? 'border-2 border-violet-400 hover:border-violet-500'
+                      ? 'border border-amber-200 bg-amber-50/50 hover:border-amber-300 hover:bg-amber-50/80'
                       : 'border border-zinc-200 hover:border-blue-200',
                   )}
                 >
@@ -291,8 +291,8 @@ export default function ViagensPage() {
                             {lbl}
                           </span>
                           {t.displacementToLoad === true && (
-                            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-800">
-                              Desloc.
+                            <span className="inline-flex rounded-md bg-amber-200/90 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-950">
+                              Deslocamento
                             </span>
                           )}
                         </div>

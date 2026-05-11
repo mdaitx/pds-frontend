@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { SettlementWithTrip } from '@/lib';
+import { computeTripFuelMetrics } from '@/lib/reports';
 import {
   PDF_E as E,
   PDF_MARGIN,
@@ -69,6 +70,14 @@ export function downloadSettlementPdf(data: SettlementWithTrip, includeOwnerResu
 
   const kmLine = `inicial ${trip.initialKm != null ? trip.initialKm.toLocaleString('pt-BR') : '—'} · final ${finalKmShown != null ? finalKmShown.toLocaleString('pt-BR') : '—'}`;
   const periodLine = `${dt(trip.startDate)}${trip.endDate ? ` — ${dt(trip.endDate)}` : ''}`;
+  const fuel = computeTripFuelMetrics(trip, trip.expenses, data);
+  const kmPerLiterLine =
+    fuel.kmPerLiter != null
+      ? `${fuel.kmPerLiter.toLocaleString('pt-BR', {
+          maximumFractionDigits: 2,
+          minimumFractionDigits: 0,
+        })} km/L`
+      : '—';
 
   const tripRows: string[][] = [
     ['Cliente', trip.clientName || '—'],
@@ -77,6 +86,7 @@ export function downloadSettlementPdf(data: SettlementWithTrip, includeOwnerResu
     ['Frete', brl(trip.freightValue)],
     ['Período', periodLine],
     ['Km', kmLine],
+    ['Média km/L', kmPerLiterLine],
   ];
 
   autoTable(doc, {

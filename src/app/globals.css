@@ -96,3 +96,25 @@ nextjs-portal {
   left: unset;
   top: unset;
 }
+
+/* Impressão / PDF — relatórios e telas que usam window.print() */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 14mm 12mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  /* PDF impresso dos relatórios: mesma hierarquia visual do jsPDF do acerto (Helvetica + zinc/emerald). */
+  .print-relatorio-pds {
+    font-family: Helvetica, 'Helvetica Neue', ui-sans-serif, system-ui, Arial, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

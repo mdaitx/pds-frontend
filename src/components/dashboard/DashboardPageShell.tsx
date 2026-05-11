@@ -10,6 +10,8 @@ const MAX_W = {
   xl: 'max-w-xl',
   lg: 'max-w-lg',
   '1400': 'max-w-[1400px]',
+  /** Área útil ampla (relatórios, visões densas em desktop). */
+  wide: 'max-w-[min(100%,96rem)]',
   none: '',
 } as const;
 
