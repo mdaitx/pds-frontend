@@ -25,15 +25,17 @@ export default function SessionRedirectPage() {
       return;
     }
 
+    const accessToken = session.access_token;
+
     async function resolveDestination() {
-      const me = await fetchMe(session.access_token);
+      const me = await fetchMe(accessToken);
       if (me.role !== 'OWNER') {
         router.replace('/dashboard');
         return;
       }
 
       try {
-        const onboarding = await getOnboardingStatus(session.access_token);
+        const onboarding = await getOnboardingStatus(accessToken);
         if (typeof window !== 'undefined') {
           window.sessionStorage.setItem(
             ONBOARDING_PREFETCH_STORAGE_KEY,
