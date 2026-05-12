@@ -59,22 +59,22 @@ export function PwaInstallPrompt() {
   };
 
   return (
-    <section className="rounded-2xl border border-blue-100 bg-blue-50/80 p-4 text-blue-950 shadow-sm">
+    <section className="rounded-2xl border border-primary/25 bg-primary/8 p-4 text-foreground shadow-sm dark:bg-primary/16 dark:border-primary/35">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
           <Download className="h-5 w-5" aria-hidden />
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-semibold">Use como aplicativo no celular</h2>
-          <p className="mt-1 text-sm text-blue-900/80">
+          <p className="mt-1 text-sm text-muted-foreground">
             Instale o Truck Finanças para abrir direto no painel do motorista, em tela cheia e com navegação otimizada.
           </p>
           {showIosHint && !installEvent ? (
-            <p className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-xs text-blue-900">
+            <p className="mt-3 rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground dark:bg-muted/40">
               No iPhone: toque em Compartilhar e depois em “Adicionar à Tela de Início”.
             </p>
           ) : (
-            <Button type="button" size="sm" className="mt-3" onClick={install}>
+            <Button type="button" variant="primary" size="sm" className="mt-3" onClick={install}>
               Instalar app
             </Button>
           )}
@@ -82,7 +82,7 @@ export function PwaInstallPrompt() {
         <button
           type="button"
           onClick={dismiss}
-          className="rounded-lg p-1 text-blue-700 transition-colors hover:bg-blue-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           aria-label="Dispensar sugestão de instalação"
         >
           <X className="h-4 w-4" aria-hidden />

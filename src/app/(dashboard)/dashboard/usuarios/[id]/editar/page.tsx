@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Key, Loader2, Save, Trash2 } from 'lucide-react';
+import { ArrowLeft, Key, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks';
 import {
@@ -24,10 +24,12 @@ import {
   dashboardFormDeleteButtonClass,
   dashboardFormSaveButtonClass,
 } from '@/lib/dashboard-action-buttons';
+import { LoadingMessage } from '@/components/ui/loading';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { cn } from '@/lib/cn';
+import { dashboardNativeFieldClass } from '@/lib/dashboard-field-classes';
 
-const selectClass =
-  'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
+const selectClass = cn(dashboardNativeFieldClass, 'flex h-auto min-h-10 py-2');
 
 export default function EditarUsuarioPage() {
   const params = useParams();
@@ -127,9 +129,14 @@ export default function EditarUsuarioPage() {
 
   if (authLoading || loading || !appUser) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-zinc-50">
-        <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
-      </div>
+      <DashboardPageShell maxWidth="2xl">
+        <div className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 dark:bg-muted/20">
+          <LoadingMessage
+            message="Carregando dados do usuário…"
+            className="text-muted-foreground"
+          />
+        </div>
+      </DashboardPageShell>
     );
   }
 
@@ -140,19 +147,19 @@ export default function EditarUsuarioPage() {
       <div>
         <Link
           href={`/dashboard/usuarios/${id}`}
-          className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700 text-sm"
+          className="mb-1 flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Voltar aos detalhes
         </Link>
-        <h1 className="text-xl font-semibold text-zinc-900">Editar Usuário</h1>
-        <p className="mt-1 text-sm text-zinc-500">{member.email}</p>
+        <h1 className="text-xl font-semibold text-foreground">Editar Usuário</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{member.email}</p>
       </div>
 
       <form onSubmit={handleSave} className="space-y-4">
-        <Card className="border-zinc-200">
+        <Card className="border-border">
           <CardHeader className="pb-2">
-            <h3 className="font-medium text-zinc-700">Dados do usuário</h3>
+            <h3 className="font-medium text-foreground">Dados do usuário</h3>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
@@ -174,8 +181,9 @@ export default function EditarUsuarioPage() {
                 </select>
               </div>
             ) : (
-              <p className="text-sm text-zinc-600">
-                Perfil: <strong>
+              <p className="text-sm text-muted-foreground">
+                Perfil:{' '}
+                <strong className="text-foreground">
                   {member.role === 'OWNER' ? 'Co-proprietário' : member.role === 'DRIVER' ? 'Motorista' : 'Administrador'}
                 </strong>
                 {targetIsPrimary ? ' (titular)' : ''}
@@ -184,13 +192,13 @@ export default function EditarUsuarioPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-zinc-200">
+        <Card className="border-border">
           <CardHeader className="pb-2">
-            <h3 className="flex items-center gap-2 font-medium text-zinc-700">
-              <Key className="h-4 w-4" />
+            <h3 className="flex items-center gap-2 font-medium text-foreground">
+              <Key className="h-4 w-4 text-muted-foreground" />
               Trocar senha
             </h3>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm text-muted-foreground">
               Deixe em branco para manter a senha atual.
             </p>
           </CardHeader>

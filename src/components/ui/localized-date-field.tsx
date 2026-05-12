@@ -72,10 +72,10 @@ export function LocalizedDateField({
       })
     : 'Selecionar data';
 
-  const lbl = labelClassName ?? 'text-xs text-zinc-600';
+  const lbl = labelClassName ?? 'pds-caption';
   const btn =
     buttonClassName ??
-    'min-w-[200px] rounded-lg border border-zinc-200 bg-white px-3 py-2 text-left text-sm text-zinc-900 hover:bg-zinc-50';
+    'min-w-[200px] rounded-xl border border-border bg-card px-3 py-2 text-left text-sm text-foreground shadow-sm hover:bg-muted/60 dark:bg-muted/50 dark:hover:bg-muted/70';
 
   return (
     <div className={`relative flex flex-col gap-1 ${className ?? ''}`.trim()} ref={ref}>
@@ -94,7 +94,7 @@ export function LocalizedDateField({
       </button>
       {open && (
         <div
-          className="absolute left-0 top-full z-[100] mt-1 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg"
+          className="absolute left-0 top-full z-[100] mt-1 rounded-xl border border-border bg-card p-2 shadow-lg dark:shadow-2xl dark:shadow-black/50"
           role="dialog"
           aria-label={`Calendário: ${label}`}
         >
@@ -110,7 +110,7 @@ export function LocalizedDateField({
             captionLayout="dropdown"
             fromYear={YEAR_START}
             toYear={yearEnd}
-            className="text-zinc-900 [--rdp-accent-color:#2563eb] [--rdp-background-color:#f4f4f5]"
+            className="text-foreground"
           />
         </div>
       )}

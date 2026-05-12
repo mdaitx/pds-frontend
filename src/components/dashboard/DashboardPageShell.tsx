@@ -39,7 +39,7 @@ export function DashboardPageShell({
   const inner = (
     <div
       className={cn(
-        'mx-auto min-w-0 space-y-5 px-3 py-4 sm:space-y-6 sm:p-4 md:p-6',
+        'mx-auto min-w-0 space-y-6 px-3 py-4 sm:space-y-8 sm:p-4 md:p-6',
         MAX_W[maxWidth],
         innerClassName
       )}
@@ -49,11 +49,11 @@ export function DashboardPageShell({
   );
   if (bare) return inner;
   return (
-    <div className={cn(minHeightScreen && 'min-h-screen', background && 'bg-zinc-50', className)}>
+    <div className={cn(minHeightScreen && 'min-h-screen', background && 'bg-background', className)}>
       {inner}
     </div>
   );
 }
 
 export const DASHBOARD_FORM_PADDING =
-  'mx-auto flex w-full min-w-0 flex-1 flex-col space-y-5 px-3 py-4 sm:p-4 md:p-6';
+  'mx-auto flex w-full min-w-0 flex-1 flex-col space-y-6 px-3 py-4 sm:space-y-8 sm:p-4 md:p-6';

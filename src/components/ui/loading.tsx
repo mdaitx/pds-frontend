@@ -22,8 +22,8 @@ type LoadingMessageProps = {
 
 export function LoadingMessage({ message = 'Carregando…', className }: LoadingMessageProps) {
   return (
-    <div className={cn('flex items-center justify-center gap-2 text-sm text-zinc-500', className)}>
-      <Spinner className="text-blue-600" label={message} />
+    <div className={cn('flex items-center justify-center gap-2 text-sm text-muted-foreground', className)}>
+      <Spinner className="text-primary" label={message} />
       <span>{message}</span>
     </div>
   );

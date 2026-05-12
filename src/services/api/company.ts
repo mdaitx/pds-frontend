@@ -42,8 +42,11 @@ export type Company = {
 };
 
 /** GET /companies/me - dados da empresa do dono */
-export async function getMyCompany(): Promise<Company> {
-  return apiFetch<Company>('/companies/me', { method: 'GET' });
+export async function getMyCompany(accessToken?: string): Promise<Company> {
+  return apiFetch<Company>('/companies/me', {
+    method: 'GET',
+    ...(accessToken !== undefined ? { token: accessToken } : {}),
+  });
 }
 
 export type UpdateCompanyPayload = {

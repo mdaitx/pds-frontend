@@ -3,16 +3,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 /** Carregamento inicial antes de saber o papel do usuário (neutro: dono ou motorista). */
 export function DashboardBootSkeleton() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-zinc-50 p-6">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background p-6">
       <div className="w-full max-w-[1400px] space-y-4">
         <Skeleton className="mx-auto h-8 w-48 sm:mx-0" />
         <Skeleton className="mx-auto h-4 w-72 max-w-full sm:mx-0" />
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-xl border border-zinc-100" />
+            <Skeleton key={i} className="h-24 rounded-xl border border-border/65" />
           ))}
         </div>
-        <Skeleton className="h-40 w-full rounded-xl border border-zinc-100" />
+        <Skeleton className="h-40 w-full rounded-xl border border-border/65" />
       </div>
     </div>
   );
@@ -26,7 +26,7 @@ export function ViagensCardsSkeleton({ count = 4 }: { count?: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm"
+          className="rounded-xl border border-border bg-card p-4 shadow-sm"
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="min-w-0 flex-1 space-y-2">
@@ -53,7 +53,7 @@ export function RecentTripsTableSkeleton({ rows = 5 }: { rows?: number }) {
   return (
     <>
       {Array.from({ length: rows }).map((_, i) => (
-        <tr key={i} className="border-b border-zinc-50">
+        <tr key={i} className="border-b border-border/50">
           <td className="px-4 py-3">
             <Skeleton className="h-4 w-20" />
           </td>

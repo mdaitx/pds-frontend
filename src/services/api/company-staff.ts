@@ -15,8 +15,11 @@ export type CompanyStaffResponse = {
   staff: CompanyStaffMember[];
 };
 
-export async function getCompanyStaff(): Promise<CompanyStaffResponse> {
-  return apiFetch<CompanyStaffResponse>('/company-users', { method: 'GET' });
+export async function getCompanyStaff(accessToken?: string): Promise<CompanyStaffResponse> {
+  return apiFetch<CompanyStaffResponse>('/company-users', {
+    method: 'GET',
+    ...(accessToken !== undefined ? { token: accessToken } : {}),
+  });
 }
 
 export type CreateCompanyStaffPayload = {

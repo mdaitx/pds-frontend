@@ -29,7 +29,14 @@ import {
   reportsTripsQueryKey,
   defaultMonthlyReportRange,
 } from '@/lib';
-import type { AuthUser, Trip, Expense, Advance, Settlement, OwnerDashboardSummary } from '@/lib';
+import type {
+  AuthUser,
+  Trip,
+  Expense,
+  Advance,
+  OwnerDashboardSummary,
+  DriverDashboardSummary,
+} from '@/lib';
 import { cn } from '@/lib/cn';
 import { mobileTableScrollClass } from '@/lib/dashboard-mobile';
 import { Card, CardHeader, CardContent, Skeleton } from '@/components/ui';
@@ -55,7 +62,7 @@ function ChartsSkeleton() {
       </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <Card key={i} className="border-zinc-200">
+          <Card key={i} className="border-border">
             <CardContent className="p-4">
               <Skeleton className="mb-3 h-5 w-48" />
               <Skeleton className="h-[220px] w-full rounded-xl" />
@@ -74,10 +81,21 @@ const ROLE_LABEL: Record<AuthUser['role'], string> = {
 };
 
 const statusConfig: Record<string, { label: string; className: string }> = {
-  PENDING: { label: 'Aguardando', className: 'bg-yellow-100 text-yellow-800' },
-  IN_PROGRESS: { label: 'Em Andamento', className: 'bg-blue-100 text-blue-800' },
-  COMPLETED: { label: 'Concluída', className: 'bg-green-100 text-green-800' },
-  CANCELLED: { label: 'Cancelada', className: 'bg-zinc-100 text-zinc-600' },
+  PENDING: {
+    label: 'Aguardando',
+    className:
+      'border border-transparent bg-amber-100 text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/45 dark:text-amber-50',
+  },
+  IN_PROGRESS: {
+    label: 'Em Andamento',
+    className: 'border border-transparent bg-primary/15 text-primary dark:bg-primary/28 dark:text-primary-foreground',
+  },
+  COMPLETED: {
+    label: 'Concluída',
+    className:
+      'border border-transparent bg-emerald-100 text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-50',
+  },
+  CANCELLED: { label: 'Cancelada', className: 'bg-muted text-muted-foreground' },
 };
 
 function formatCurrency(v: number) {
@@ -221,30 +239,20 @@ export default function DashboardPage() {
   const pathname = usePathname();
   const { session, appUser, loading, error, signOut, refreshAppUser } = useAuth();
   const [onboardingChecked, setOnboardingChecked] = useState(false);
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [vehiclesCount, setVehiclesCount] = useState(0);
-  const [totalTripsCount, setTotalTripsCount] = useState(0);
-  /** Contas com login (OWNER/ADMIN/DRIVER) — mesma lista que /dashboard/usuarios */
-  const [staffUsersCount, setStaffUsersCount] = useState(0);
-  const [dataLoading, setDataLoading] = useState(true);
-  const [ownerSummary, setOwnerSummary] = useState<OwnerDashboardSummary | null>(null);
-  const [ownerExpenses, setOwnerExpenses] = useState<Expense[]>([]);
-  const [driverSettlementsByTripId, setDriverSettlementsByTripId] = useState<Record<string, Settlement>>({});
-  const [driverRecentAdvances, setDriverRecentAdvances] = useState<(Advance & { tripCode: string })[]>([]);
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('6m');
   const shouldLoadOwnerCharts = Boolean(
     session && appUser && (appUser.role === 'OWNER' || appUser.role === 'ADMIN')
   );
   const dashboardSummaryQuery = useQuery({
     queryKey: ['dashboard-summary', appUser?.id, appUser?.role],
-    queryFn: getDashboardSummary,
+    queryFn: () => getDashboardSummary(session?.access_token),
     enabled: Boolean(session && appUser),
     staleTime: 60_000,
     retry: false,
   });
   const dashboardChartsQuery = useQuery({
     queryKey: ['dashboard-charts', appUser?.id],
-    queryFn: getDashboardCharts,
+    queryFn: () => getDashboardCharts(session?.access_token),
     /** Independe do summary no backend; paralelizar evita esperar duas rodadas de RTT na API (ex.: cold start no Render). */
     enabled: shouldLoadOwnerCharts,
     staleTime: 5 * 60_000,
@@ -253,12 +261,33 @@ export default function DashboardPage() {
 
   const queryClient = useQueryClient();
 
+  /** Mesmo modelo de /dashboard/relatorios: evita cópia assíncrona em estado via useEffect (menos flashes e menos rerenders). */
+  const dashboardSummary = dashboardSummaryQuery.data;
+  const dataLoading = dashboardSummaryQuery.isPending;
+
+  const ownerSummary: OwnerDashboardSummary | null =
+    dashboardSummary && dashboardSummary.role !== 'DRIVER' ? dashboardSummary : null;
+  const driverSummary: DriverDashboardSummary | null =
+    dashboardSummary?.role === 'DRIVER' ? dashboardSummary : null;
+
+  const trips: Trip[] =
+    appUser?.role === 'DRIVER' ? (driverSummary?.trips ?? []) : (ownerSummary?.recentTrips ?? []);
+
+  const vehiclesCount = ownerSummary?.vehiclesCount ?? 0;
+  const totalTripsCount = ownerSummary?.totalTripsCount ?? 0;
+  const staffUsersCount = ownerSummary?.staffUsersCount ?? 0;
+
+  const driverSettlementsByTripId = driverSummary?.settlementsByTripId ?? {};
+  const driverRecentAdvances = driverSummary?.recentAdvances ?? [];
+  /** Fallback de gráficos quando /dashboard/charts ainda não trouxe série agregada; summary não envia lista de despesas. */
+  const ownerExpenses: Expense[] = [];
+
   useEffect(() => {
     if (!session || !shouldLoadOwnerCharts || !appUser) return;
     const { fromYmd, toYmd } = defaultMonthlyReportRange();
     void queryClient.prefetchQuery({
       queryKey: reportsTripsQueryKey(fromYmd, toYmd),
-      queryFn: () => getTripsReport(fromYmd, toYmd),
+      queryFn: () => getTripsReport(fromYmd, toYmd, session?.access_token),
       staleTime: 60_000,
     });
   }, [session, shouldLoadOwnerCharts, appUser, queryClient]);
@@ -281,53 +310,6 @@ export default function DashboardPage() {
   }, [loading, appUser, router, pathname]);
 
   useEffect(() => {
-    if (!session || !appUser) return;
-    if (dashboardSummaryQuery.isLoading) {
-      queueMicrotask(() => setDataLoading(true));
-      return;
-    }
-    if (dashboardSummaryQuery.isError) {
-      queueMicrotask(() => setDataLoading(false));
-      return;
-    }
-    const summary = dashboardSummaryQuery.data;
-    if (!summary) return;
-
-    if (appUser.role === 'OWNER' || appUser.role === 'ADMIN') {
-      if (summary.role === 'DRIVER') return;
-      queueMicrotask(() => {
-        setDataLoading(true);
-        setOwnerSummary(summary);
-        setTrips(summary.recentTrips);
-        setTotalTripsCount(summary.totalTripsCount);
-        setVehiclesCount(summary.vehiclesCount);
-        setStaffUsersCount(summary.staffUsersCount);
-        setOwnerExpenses([]);
-        setDriverSettlementsByTripId({});
-        setDriverRecentAdvances([]);
-        setDataLoading(false);
-      });
-      return;
-    }
-    if (appUser.role === 'DRIVER') {
-      if (summary.role !== 'DRIVER') return;
-      queueMicrotask(() => {
-        setDataLoading(true);
-        setOwnerSummary(null);
-        setOwnerExpenses([]);
-        setTrips(summary.trips);
-        setDriverSettlementsByTripId(summary.settlementsByTripId);
-        setDriverRecentAdvances(summary.recentAdvances);
-        setVehiclesCount(0);
-        setTotalTripsCount(0);
-        setDataLoading(false);
-      });
-      return;
-    }
-    queueMicrotask(() => setDataLoading(false));
-  }, [session, appUser, dashboardSummaryQuery.data, dashboardSummaryQuery.isError, dashboardSummaryQuery.isLoading]);
-
-  useEffect(() => {
     if (!loading && !session) router.replace('/login');
   }, [loading, session, router]);
 
@@ -337,21 +319,21 @@ export default function DashboardPage() {
     if (profileFailed) {
       return (
         <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6">
-          <p className="text-center text-red-600">
+          <p className="text-center text-destructive">
             {error || 'Não foi possível carregar seu perfil. Verifique se o backend está em execução.'}
           </p>
           <div className="flex gap-3">
             <button
               type="button"
               onClick={() => refreshAppUser()}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+              className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary-hover"
             >
               Tentar novamente
             </button>
             <button
               type="button"
               onClick={() => signOut().then(() => router.replace('/login'))}
-              className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100"
+              className="rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
             >
               Sair
             </button>
@@ -403,21 +385,21 @@ export default function DashboardPage() {
 
     return (
       <div className="mx-auto min-w-0 max-w-[1400px] space-y-5 px-3 py-4 sm:space-y-6 sm:p-4 md:p-6">
-        <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 p-4 text-white shadow-lg sm:p-5">
+        <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 p-4 text-white shadow-lg sm:p-5 dark:from-blue-950 dark:to-slate-950 dark:shadow-black/35">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <p className="text-sm text-blue-100">{ROLE_LABEL[appUser.role]}</p>
+              <p className="text-sm text-blue-100 dark:text-blue-50/95">{ROLE_LABEL[appUser.role]}</p>
               <h1 className="mt-1 break-words text-2xl font-semibold tracking-tight">
                 Olá, {appUser.email.split('@')[0]}
               </h1>
-              <p className="mt-2 max-w-2xl text-sm text-blue-100">
+              <p className="mt-2 max-w-2xl text-sm text-blue-100 dark:text-blue-50/95">
                 Acompanhe viagens, frota, equipe e resultado financeiro em uma visão otimizada para desktop e celular.
               </p>
             </div>
             <Link
               href="/dashboard/viagens/novo"
               prefetch={false}
-              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 py-2 text-sm font-semibold text-blue-800 shadow-sm transition-all hover:-translate-y-px hover:bg-blue-50 sm:w-auto"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-card px-4 py-2 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-px hover:bg-muted sm:w-auto dark:text-primary dark:shadow-black/40"
             >
               <Truck className="h-4 w-4" />
               Nova Viagem
@@ -428,7 +410,7 @@ export default function DashboardPage() {
         <PwaInstallPrompt />
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</div>
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
         )}
 
         {/* Metrics — mobile: 1 coluna (mesmo tamanho); sm: 2 cols; 5º card largura total até lg */}
@@ -437,26 +419,26 @@ export default function DashboardPage() {
             {
               title: 'Viagens no mês',
               value: (ownerSummary?.monthTripsCount ?? monthTrips.length).toString(),
-              icon: <Route className="w-5 h-5 text-blue-600" />,
-              bg: 'bg-blue-50',
+              icon: <Route className="w-5 h-5 text-primary" />,
+              bg: 'bg-primary/12 dark:bg-primary/22',
             },
-            { title: 'Faturamento', value: formatCurrency(resolvedTotalFaturamento), icon: <DollarSign className="w-5 h-5 text-emerald-700" />, bg: 'bg-emerald-50' },
-            { title: 'Despesas (mês)', value: formatCurrency(resolvedTotalDespesasMes), icon: <Receipt className="w-5 h-5 text-rose-600" />, bg: 'bg-rose-50' },
-            { title: 'Lucro líquido', value: formatCurrency(lucroLiquido), icon: <TrendingUp className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
-            { title: 'Viagens em andamento', value: emAndamento.toString(), icon: <Activity className="w-5 h-5 text-zinc-600" />, bg: 'bg-zinc-100' },
+            { title: 'Faturamento', value: formatCurrency(resolvedTotalFaturamento), icon: <DollarSign className="w-5 h-5 text-accent" />, bg: 'bg-accent/12 dark:bg-accent/22' },
+            { title: 'Despesas (mês)', value: formatCurrency(resolvedTotalDespesasMes), icon: <Receipt className="w-5 h-5 text-destructive" />, bg: 'bg-destructive/12 dark:bg-destructive/22' },
+            { title: 'Lucro líquido', value: formatCurrency(lucroLiquido), icon: <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />, bg: 'bg-emerald-500/12 dark:bg-emerald-500/22' },
+            { title: 'Viagens em andamento', value: emAndamento.toString(), icon: <Activity className="w-5 h-5 text-muted-foreground" />, bg: 'bg-muted' },
           ].map((m, i) => (
             <Card
               key={i}
               className={cn(
-                'flex min-h-[104px] flex-col border-zinc-200 shadow-sm',
+                'flex min-h-[104px] flex-col border-border shadow-sm',
                 i === 4 && 'sm:col-span-2 lg:col-span-1'
               )}
             >
               <CardContent className="flex flex-1 flex-col justify-center p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[0.78rem] text-zinc-500">{m.title}</p>
-                    <p className="mt-1 truncate text-[1.1rem] font-bold text-zinc-900">{m.value}</p>
+                    <p className="truncate text-[0.78rem] text-muted-foreground">{m.title}</p>
+                    <p className="mt-1 truncate text-[1.1rem] font-bold text-foreground">{m.value}</p>
                   </div>
                   <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${m.bg}`}>
                     {m.icon}
@@ -473,26 +455,26 @@ export default function DashboardPage() {
             {
               label: 'Viagens',
               href: '/dashboard/viagens',
-              icon: <Route className="w-6 h-6 text-blue-600" />,
+              icon: <Route className="w-6 h-6 text-primary" />,
               count: totalTripsCount || trips.length,
-              bg: 'bg-blue-50',
+              bg: 'bg-primary/12 dark:bg-primary/22',
             },
-            { label: 'Veículos', href: '/dashboard/veiculos', icon: <TruckIcon className="w-6 h-6 text-blue-600" />, count: vehiclesCount, bg: 'bg-blue-50' },
+            { label: 'Veículos', href: '/dashboard/veiculos', icon: <TruckIcon className="w-6 h-6 text-primary" />, count: vehiclesCount, bg: 'bg-primary/12 dark:bg-primary/22' },
             {
               label: 'Usuários',
               href: '/dashboard/usuarios',
-              icon: <Users className="w-6 h-6 text-blue-600" />,
+              icon: <Users className="w-6 h-6 text-primary" />,
               count: staffUsersCount,
-              bg: 'bg-blue-50',
+              bg: 'bg-primary/12 dark:bg-primary/22',
             },
             ...(appUser.role === 'OWNER'
               ? [
                   {
                     label: 'Configurações',
                     href: '/dashboard/config',
-                    icon: <Settings className="w-6 h-6 text-zinc-600" />,
+                    icon: <Settings className="w-6 h-6 text-muted-foreground" />,
                     count: null as number | null,
-                    bg: 'bg-zinc-100',
+                    bg: 'bg-muted',
                   },
                 ]
               : []),
@@ -506,20 +488,20 @@ export default function DashboardPage() {
                 appUser.role === 'ADMIN' && i === 2 && 'sm:col-span-2 lg:col-span-1'
               )}
             >
-              <Card className="flex h-full min-h-[152px] cursor-pointer flex-col border-zinc-200 transition-all hover:border-blue-300 hover:shadow-md">
+              <Card className="flex h-full min-h-[152px] cursor-pointer flex-col border-border transition-all hover:border-primary/40 hover:shadow-md">
                 <CardContent className="flex flex-1 flex-col p-4">
                   <div className={`mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${item.bg}`}>
                     {item.icon}
                   </div>
-                  <p className="font-semibold text-zinc-800">{item.label}</p>
+                  <p className="font-semibold text-foreground">{item.label}</p>
                   {item.count !== null ? (
-                    <p className="mt-1 flex-1 text-[0.8rem] leading-snug text-zinc-500">
+                    <p className="mt-1 flex-1 text-[0.8rem] leading-snug text-muted-foreground">
                       {item.label === 'Usuários'
                         ? `${item.count} ${item.count === 1 ? 'usuário com login' : 'usuários com login'}`
                         : `${item.count} cadastrado${item.count !== 1 ? 's' : ''}`}
                     </p>
                   ) : (
-                    <p className="mt-1 flex-1 text-[0.8rem] text-zinc-500">Empresa e preferências</p>
+                    <p className="mt-1 flex-1 text-[0.8rem] text-muted-foreground">Empresa e preferências</p>
                   )}
                 </CardContent>
               </Card>
@@ -539,14 +521,14 @@ export default function DashboardPage() {
         )}
 
         {/* Recent Trips */}
-        <Card className="border-zinc-200">
+        <Card className="border-border">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <h3 className="text-zinc-800">Últimas Viagens</h3>
+              <h3 className="text-foreground">Últimas Viagens</h3>
               <Link
                 href="/dashboard/viagens"
                 prefetch={false}
-                className="text-blue-700 hover:text-blue-800 flex items-center gap-1 text-[0.85rem]"
+                className="text-primary hover:text-primary-hover flex items-center gap-1 text-[0.85rem]"
               >
                 Ver todas <ArrowRight className="w-3.5 h-3.5" />
               </Link>
@@ -556,12 +538,12 @@ export default function DashboardPage() {
             <div className={cn(mobileTableScrollClass)}>
               <table className="w-full min-w-[520px] text-sm">
                 <thead>
-                  <tr className="border-b border-zinc-100 bg-zinc-50">
-                    <th className="text-left px-4 py-3 text-zinc-500 font-semibold text-[0.78rem]">CÓDIGO</th>
-                    <th className="text-left px-4 py-3 text-zinc-500 hidden sm:table-cell font-semibold text-[0.78rem]">ROTA</th>
-                    <th className="text-left px-4 py-3 text-zinc-500 hidden md:table-cell font-semibold text-[0.78rem]">VALOR</th>
-                    <th className="text-left px-4 py-3 text-zinc-500 font-semibold text-[0.78rem]">STATUS</th>
-                    <th className="text-right px-4 py-3 text-zinc-500 font-semibold text-[0.78rem]">AÇÃO</th>
+                  <tr className="border-b border-border/65 bg-muted/60">
+                    <th className="text-left px-4 py-3 text-muted-foreground font-semibold text-[0.78rem]">CÓDIGO</th>
+                    <th className="text-left px-4 py-3 text-muted-foreground hidden sm:table-cell font-semibold text-[0.78rem]">ROTA</th>
+                    <th className="text-left px-4 py-3 text-muted-foreground hidden md:table-cell font-semibold text-[0.78rem]">VALOR</th>
+                    <th className="text-left px-4 py-3 text-muted-foreground font-semibold text-[0.78rem]">STATUS</th>
+                    <th className="text-right px-4 py-3 text-muted-foreground font-semibold text-[0.78rem]">AÇÃO</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -569,7 +551,7 @@ export default function DashboardPage() {
                     <RecentTripsTableSkeleton rows={5} />
                   ) : recentTrips.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-zinc-500">
+                      <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                         Nenhuma viagem cadastrada.
                       </td>
                     </tr>
@@ -581,22 +563,24 @@ export default function DashboardPage() {
                         <tr
                           key={trip.id}
                           className={cn(
-                            'border-b border-zinc-50 transition-colors',
-                            isDisplacement ? 'bg-amber-50/90 hover:bg-amber-50' : 'hover:bg-zinc-50'
+                            'border-b border-border/45 transition-colors',
+                            isDisplacement
+                              ? 'border border-amber-400/60 bg-amber-100/90 hover:bg-amber-100 dark:border-amber-500/45 dark:bg-amber-950/50 dark:text-amber-50 dark:hover:bg-amber-950/65'
+                              : 'hover:bg-muted/40',
                           )}
                         >
                           <td className="px-4 py-3">
-                            <span className="font-semibold text-zinc-800">{trip.code}</span>
+                            <span className="font-semibold text-foreground">{trip.code}</span>
                             {isDisplacement ? (
-                              <span className="ml-2 inline-flex rounded-md bg-amber-200/90 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-950">
+                              <span className="ml-2 inline-flex rounded-md bg-amber-200/95 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-950 dark:bg-amber-800/85 dark:text-amber-50">
                                 Deslocamento
                               </span>
                             ) : null}
                           </td>
-                          <td className="px-4 py-3 text-zinc-600 hidden sm:table-cell">
+                          <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell">
                             {(trip.origin ?? '').split(',')[0]} → {(trip.destination ?? '').split(',')[0]}
                           </td>
-                          <td className="px-4 py-3 text-zinc-700 hidden md:table-cell">
+                          <td className="px-4 py-3 text-foreground hidden md:table-cell">
                             {trip.freightValue != null ? formatCurrency(trip.freightValue) : '-'}
                           </td>
                           <td className="px-4 py-3">
@@ -608,7 +592,7 @@ export default function DashboardPage() {
                             <Link
                               href={`/dashboard/viagens/${trip.id}`}
                               prefetch={false}
-                              className="text-blue-700 hover:text-blue-800 transition-colors text-[0.8rem]"
+                              className="text-primary hover:text-primary-hover transition-colors text-[0.8rem]"
                             >
                               Ver
                             </Link>
@@ -667,13 +651,13 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto min-w-0 max-w-3xl space-y-4 px-3 py-4 sm:space-y-5 sm:p-4 md:max-w-[1100px] md:p-6">
-      <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 p-4 text-white shadow-lg sm:p-5">
+      <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 p-4 text-white shadow-lg sm:p-5 dark:from-blue-950 dark:to-slate-950 dark:shadow-black/35">
         <div className="min-w-0">
-          <p className="text-sm text-blue-100">Painel do motorista</p>
+          <p className="text-sm text-blue-100 dark:text-blue-50/95">Painel do motorista</p>
           <h1 className="mt-1 break-words text-2xl font-semibold tracking-tight">
             Olá, {appUser.email.split('@')[0]}
           </h1>
-          <p className="mt-2 text-sm text-blue-100">
+          <p className="mt-2 text-sm text-blue-100 dark:text-blue-50/95">
             Acompanhe suas viagens, comissões e acertos direto pelo celular.
           </p>
         </div>
@@ -683,35 +667,35 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
         {[
-          { title: 'Viagens ativas', value: activeTrips.length.toString(), icon: <Route className="w-5 h-5 text-blue-600" />, bg: 'bg-blue-50' },
+          { title: 'Viagens ativas', value: activeTrips.length.toString(), icon: <Route className="w-5 h-5 text-primary" />, bg: 'bg-primary/12 dark:bg-primary/22' },
           {
             title: 'Comissões (mês)',
             value: dataLoading ? '…' : formatCurrency(commissionMonth),
-            icon: <DollarSign className="w-5 h-5 text-emerald-700" />,
-            bg: 'bg-emerald-50',
+            icon: <DollarSign className="w-5 h-5 text-accent" />,
+            bg: 'bg-accent/12 dark:bg-accent/22',
           },
           {
             title: 'Concluídas no mês',
             value: completedThisMonth.toString(),
-            icon: <CheckCircle className="w-5 h-5 text-blue-600" />,
-            bg: 'bg-blue-50',
+            icon: <CheckCircle className="w-5 h-5 text-primary" />,
+            bg: 'bg-primary/12 dark:bg-primary/22',
           },
           {
             title: 'Km rodados (mês)',
             value: dataLoading ? '…' : `${kmMonth.toLocaleString('pt-BR')} km`,
-            icon: <Activity className="w-5 h-5 text-zinc-600" />,
-            bg: 'bg-zinc-100',
+            icon: <Activity className="w-5 h-5 text-muted-foreground" />,
+            bg: 'bg-muted',
           },
         ].map((m, i) => (
-          <Card key={i} className="flex min-h-[116px] flex-col border-zinc-200 shadow-sm">
+          <Card key={i} className="flex min-h-[116px] flex-col border-border shadow-sm">
             <CardContent className="flex flex-1 flex-col justify-center p-3.5 sm:p-4">
               <div className="flex h-full flex-col justify-between gap-3">
                 <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${m.bg}`}>
                   {m.icon}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[0.72rem] leading-tight text-zinc-500 sm:text-[0.78rem]">{m.title}</p>
-                  <p className="mt-1 break-words text-[1.05rem] font-bold leading-tight text-zinc-900 sm:text-[1.15rem]">
+                  <p className="text-[0.72rem] leading-tight text-muted-foreground sm:text-[0.78rem]">{m.title}</p>
+                  <p className="mt-1 break-words text-[1.05rem] font-bold leading-tight text-foreground sm:text-[1.15rem]">
                     {m.value}
                   </p>
                 </div>
@@ -722,16 +706,16 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch lg:gap-6">
-        <Card className="flex h-full flex-col border-zinc-200">
+        <Card className="flex h-full flex-col border-border">
           <CardHeader className="pb-2">
             <div className="flex items-start gap-2">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-100">
-                <History className="h-5 w-5 text-zinc-600" aria-hidden />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                <History className="h-5 w-5 text-muted-foreground" aria-hidden />
               </div>
               <div className="min-w-0">
-                <h2 className="text-base font-semibold text-zinc-900">Histórico do mês</h2>
-                <p className="text-sm text-zinc-500">
-                  Viagens <span className="font-medium text-zinc-600">concluídas</span> em {monthHistoryLabel}
+                <h2 className="text-base font-semibold text-foreground">Histórico do mês</h2>
+                <p className="text-sm text-muted-foreground">
+                  Viagens <span className="font-medium text-muted-foreground">concluídas</span> em {monthHistoryLabel}
                 </p>
               </div>
             </div>
@@ -744,7 +728,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : completedThisMonthSorted.length === 0 ? (
-              <p className="py-4 text-center text-sm text-zinc-500">
+              <p className="py-4 text-center text-sm text-muted-foreground">
                 Nenhuma viagem concluída neste mês até o momento.
               </p>
             ) : (
@@ -762,17 +746,17 @@ export default function DashboardPage() {
                         href={`/dashboard/viagens/${trip.id}`}
                         prefetch={false}
                         className={cn(
-                          'block rounded-lg p-3 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500',
+                          'block rounded-lg p-3 transition-colors focus:outline-none focus:ring-2 focus:ring-focus-ring',
                           trip.displacementToLoad
-                            ? 'border border-amber-200 bg-amber-50/90 hover:bg-amber-50'
-                            : 'border border-zinc-100 bg-zinc-50/80 hover:border-blue-200 hover:bg-blue-50/70',
+                            ? 'border border-amber-300/75 bg-amber-100/90 hover:bg-amber-100 dark:border-amber-600/55 dark:bg-amber-950/45 dark:text-amber-50 dark:hover:bg-amber-950/58'
+                            : 'border border-border/65 bg-muted/50 hover:border-primary/35 hover:bg-primary/8',
                         )}
                       >
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-semibold text-zinc-900">{trip.code}</span>
+                            <span className="text-sm font-semibold text-foreground">{trip.code}</span>
                             {trip.displacementToLoad ? (
-                              <span className="inline-flex rounded-md bg-amber-200/90 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-950">
+                              <span className="inline-flex rounded-md bg-amber-200/95 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-950 dark:bg-amber-800/85 dark:text-amber-50">
                                 Deslocamento
                               </span>
                             ) : null}
@@ -782,10 +766,10 @@ export default function DashboardPage() {
                               {statusConfig.COMPLETED.label}
                             </span>
                           </div>
-                          <p className="mt-0.5 text-[0.83rem] text-zinc-600">
+                          <p className="mt-0.5 text-[0.83rem] text-muted-foreground">
                             {(trip.origin ?? '').split(',')[0]} → {(trip.destination ?? '').split(',')[0]}
                           </p>
-                          <p className="text-[0.78rem] text-zinc-500">
+                          <p className="text-[0.78rem] text-muted-foreground">
                             Concluída em{' '}
                             {new Date(trip.endDate!).toLocaleDateString('pt-BR', {
                               day: '2-digit',
@@ -793,7 +777,7 @@ export default function DashboardPage() {
                               year: 'numeric',
                             })}
                             {commission != null && (
-                              <span className="text-zinc-600">
+                              <span className="text-muted-foreground">
                                 {' '}
                                 · Comissão {formatCurrency(commission)}
                               </span>
@@ -809,15 +793,15 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="flex h-full flex-col border-zinc-200">
+        <Card className="flex h-full flex-col border-border">
           <CardHeader className="flex flex-col gap-2 pb-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-center gap-2">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50">
-                <Route className="h-5 w-5 text-blue-600" aria-hidden />
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/12 dark:bg-primary/22">
+                <Route className="h-5 w-5 text-primary" aria-hidden />
               </div>
               <div className="min-w-0">
-                <h3 className="text-zinc-800">Viagens ativas do mês</h3>
-                <p className="text-sm text-zinc-500">Período de {monthHistoryLabel}</p>
+                <h3 className="text-foreground">Viagens ativas do mês</h3>
+                <p className="text-sm text-muted-foreground">Período de {monthHistoryLabel}</p>
               </div>
             </div>
             <Link href="/dashboard/viagens" prefetch={false} className={dashboardLinkMutedNavClass}>
@@ -826,7 +810,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3">
             {activeThisMonthList.length === 0 ? (
-              <p className="text-zinc-400 text-center py-6 text-sm">Nenhuma viagem ativa neste mês.</p>
+              <p className="text-muted-foreground text-center py-6 text-sm">Nenhuma viagem ativa neste mês.</p>
             ) : (
               activeThisMonthList.map((trip) => {
                 const cfg = statusConfig[trip.status] ?? statusConfig.PENDING;
@@ -836,17 +820,17 @@ export default function DashboardPage() {
                     href={`/dashboard/viagens/${trip.id}`}
                     prefetch={false}
                     className={cn(
-                      'block rounded-lg p-3 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500',
+                      'block rounded-lg p-3 transition-colors focus:outline-none focus:ring-2 focus:ring-focus-ring',
                       trip.displacementToLoad
-                        ? 'border border-amber-200 bg-amber-50/90 hover:bg-amber-50'
-                        : 'border border-zinc-100 bg-zinc-50 hover:border-blue-200 hover:bg-blue-50/70',
+                        ? 'border border-amber-300/75 bg-amber-100/90 hover:bg-amber-100 dark:border-amber-600/55 dark:bg-amber-950/45 dark:text-amber-50 dark:hover:bg-amber-950/58'
+                        : 'border border-border/65 bg-muted/50 hover:border-primary/35 hover:bg-primary/8',
                     )}
                   >
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-semibold text-zinc-800">{trip.code}</span>
+                        <span className="text-sm font-semibold text-foreground">{trip.code}</span>
                         {trip.displacementToLoad ? (
-                          <span className="inline-flex rounded-md bg-amber-200/90 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-950">
+                          <span className="inline-flex rounded-md bg-amber-200/95 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-950 dark:bg-amber-800/85 dark:text-amber-50">
                             Deslocamento
                           </span>
                         ) : null}
@@ -854,10 +838,10 @@ export default function DashboardPage() {
                           {cfg.label}
                         </span>
                       </div>
-                      <p className="mt-0.5 text-[0.83rem] text-zinc-600">
+                      <p className="mt-0.5 text-[0.83rem] text-muted-foreground">
                         {(trip.origin ?? '').split(',')[0]} → {(trip.destination ?? '').split(',')[0]}
                       </p>
-                      <p className="text-[0.78rem] text-zinc-500">{new Date(trip.startDate).toLocaleDateString('pt-BR')}</p>
+                      <p className="text-[0.78rem] text-muted-foreground">{new Date(trip.startDate).toLocaleDateString('pt-BR')}</p>
                     </div>
                   </Link>
                 );
@@ -867,9 +851,9 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <Card className="border-zinc-200">
+      <Card className="border-border">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
-          <h3 className="text-zinc-800 flex items-center gap-2">
+          <h3 className="text-foreground flex items-center gap-2">
             <Wallet className="w-5 h-5 text-amber-600" />
             Últimos adiantamentos
           </h3>
@@ -878,7 +862,7 @@ export default function DashboardPage() {
           {dataLoading ? (
             <div className="space-y-3 py-2">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex flex-col gap-2 rounded-lg border border-zinc-100 bg-zinc-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div key={i} className="flex flex-col gap-2 rounded-lg border border-border/65 bg-muted/60 p-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="space-y-2">
                     <Skeleton className="h-5 w-28" />
                     <Skeleton className="h-4 w-48" />
@@ -889,22 +873,22 @@ export default function DashboardPage() {
               ))}
             </div>
           ) : driverRecentAdvances.length === 0 ? (
-            <p className="text-zinc-400 text-center py-6 text-sm">Nenhum adiantamento registrado nas viagens recentes.</p>
+            <p className="text-muted-foreground text-center py-6 text-sm">Nenhum adiantamento registrado nas viagens recentes.</p>
           ) : (
             driverRecentAdvances.map((a) => (
               <div
                 key={a.id}
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-zinc-50 rounded-lg border border-zinc-100"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 bg-muted/60 rounded-lg border border-border/65"
               >
                 <div className="min-w-0">
-                  <p className="text-zinc-800 font-semibold text-sm">{formatCurrency(a.amount)}</p>
-                  <p className="text-zinc-600 text-[0.83rem]">
+                  <p className="text-foreground font-semibold text-sm">{formatCurrency(a.amount)}</p>
+                  <p className="text-muted-foreground text-[0.83rem]">
                     Viagem {a.tripCode} · {ADVANCE_METHOD_LABEL[a.method]}
                   </p>
-                  <p className="text-zinc-500 text-[0.78rem]">{new Date(a.date).toLocaleDateString('pt-BR')}</p>
+                  <p className="text-muted-foreground text-[0.78rem]">{new Date(a.date).toLocaleDateString('pt-BR')}</p>
                 </div>
                 {a.description ? (
-                  <p className="text-zinc-500 text-[0.78rem] sm:max-w-[40%] sm:text-right truncate" title={a.description}>
+                  <p className="text-muted-foreground text-[0.78rem] sm:max-w-[40%] sm:text-right truncate" title={a.description}>
                     {a.description}
                   </p>
                 ) : null}

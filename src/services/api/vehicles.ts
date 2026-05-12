@@ -60,8 +60,11 @@ export type UpdateVehiclePayload = {
   tractorVehicleId?: string | null;
 };
 
-export async function getVehicles(): Promise<Vehicle[]> {
-  return apiFetch<Vehicle[]>('/vehicles', { method: 'GET' });
+export async function getVehicles(accessToken?: string): Promise<Vehicle[]> {
+  return apiFetch<Vehicle[]>('/vehicles', {
+    method: 'GET',
+    ...(accessToken !== undefined ? { token: accessToken } : {}),
+  });
 }
 
 export async function getVehiclesPage(pagination: PaginationOptions): Promise<PaginatedResult<Vehicle>> {

@@ -83,11 +83,12 @@ export function SignupForm() {
 
   if (configError) {
     return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+      <div className="rounded-xl border border-amber-300/70 bg-amber-100 p-3 text-sm text-amber-950 dark:border-amber-600/60 dark:bg-amber-950/40 dark:text-amber-100">
         <p className="font-medium">Configuração necessária</p>
         <p className="mt-1">{configError}</p>
         <p className="mt-2">
-          Configure <code className="rounded bg-amber-100 px-1">.env.local</code> e reinicie o servidor.
+          Configure <code className="rounded bg-amber-200/80 px-1 dark:bg-amber-900/50">.env.local</code> e reinicie o
+          servidor.
         </p>
       </div>
     );
@@ -95,14 +96,14 @@ export function SignupForm() {
 
   if (success) {
     return (
-      <Card className="border-zinc-200 shadow-xl">
+      <Card className="border-border shadow-xl">
         <CardContent className="pt-6">
-          <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          <div className="rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-foreground">
             Conta criada. Verifique seu e-mail para confirmar (se a confirmação estiver ativada) e depois faça login.
           </div>
           <Link
             href="/login"
-            className="mt-4 block w-full rounded-lg bg-blue-600 px-4 py-2 text-center font-medium text-white hover:bg-blue-700"
+            className="mt-4 block w-full rounded-lg bg-primary px-4 py-2 text-center font-medium text-primary-foreground hover:bg-primary-hover"
           >
             Ir para login
           </Link>
@@ -112,9 +113,9 @@ export function SignupForm() {
   }
 
   return (
-    <Card className="border-zinc-200 shadow-xl">
+    <Card className="border-border shadow-xl">
       <CardHeader className="pb-2">
-        <h2 className="text-center text-xl font-semibold text-zinc-800">Criar conta</h2>
+        <h2 className="text-center text-xl font-semibold text-foreground">Criar conta</h2>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -134,7 +135,7 @@ export function SignupForm() {
           <div className="space-y-1.5">
             <Label htmlFor="signup-password">
               Senha *{' '}
-              <span className="text-[0.8rem] font-normal text-zinc-400">(mínimo 6 caracteres)</span>
+              <span className="text-[0.8rem] font-normal text-muted-foreground">(mínimo 6 caracteres)</span>
             </Label>
             <div className="relative">
               <Input
@@ -151,7 +152,7 @@ export function SignupForm() {
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 tabIndex={-1}
                 aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
               >
@@ -177,7 +178,7 @@ export function SignupForm() {
               <button
                 type="button"
                 onClick={() => setShowConfirm((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 tabIndex={-1}
                 aria-label={showConfirm ? 'Ocultar confirmação' : 'Mostrar confirmação'}
               >
@@ -187,23 +188,18 @@ export function SignupForm() {
           </div>
 
           {error && (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+            <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
           )}
 
-          <Button
-            type="submit"
-            className="w-full bg-blue-600 text-white hover:bg-blue-700"
-            disabled={loading}
-            loading={loading}
-          >
+          <Button type="submit" variant="primary" className="w-full" disabled={loading} loading={loading}>
             {loading ? 'Criando conta...' : 'Cadastrar'}
           </Button>
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-[0.9rem] text-zinc-500">
+          <p className="text-[0.9rem] text-muted-foreground">
             Já tem conta?{' '}
-            <Link href="/login" className="font-semibold text-blue-600 transition-colors hover:text-blue-700">
+            <Link href="/login" className="font-semibold text-primary transition-colors duration-200 hover:text-primary-hover">
               Entrar
             </Link>
           </p>

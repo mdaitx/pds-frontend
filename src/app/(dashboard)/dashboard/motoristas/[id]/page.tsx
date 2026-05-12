@@ -33,13 +33,17 @@ import {
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 
 const statusConfig: Record<DriverStatus, { label: string; className: string }> = {
-  ACTIVE: { label: 'Ativo', className: 'bg-green-100 text-green-800' },
-  INACTIVE: { label: 'Inativo', className: 'bg-zinc-100 text-zinc-600' },
+  ACTIVE: {
+    label: 'Ativo',
+    className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/22 dark:text-emerald-50',
+  },
+  INACTIVE: { label: 'Inativo', className: 'bg-muted text-muted-foreground' },
 };
 
 const roleConfig = {
   label: 'Motorista',
-  className: 'bg-green-100 text-green-800',
+  className:
+    'bg-emerald-100 text-emerald-900 dark:bg-emerald-500/22 dark:text-emerald-50',
   description: 'Acesso limitado às próprias viagens, despesas e acertos.',
 };
 
@@ -73,8 +77,8 @@ function InfoRow({
         <Icon className={`w-4 h-4 ${iconColor}`} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-zinc-500 text-xs">{label}</p>
-        <p className="text-zinc-800 text-sm font-medium truncate">{value}</p>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="truncate text-sm font-medium text-foreground">{value}</p>
       </div>
     </div>
   );
@@ -83,8 +87,10 @@ function InfoRow({
 function PermissionItem({ label, granted }: { label: string; granted: boolean }) {
   return (
     <div className="flex items-center gap-2 py-1">
-      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${granted ? 'bg-green-500' : 'bg-zinc-300'}`} />
-      <span className={`text-sm ${granted ? 'text-zinc-700' : 'text-zinc-400'}`}>{label}</span>
+      <div
+        className={`h-2 w-2 shrink-0 rounded-full ${granted ? 'bg-emerald-500' : 'bg-muted-foreground/35'}`}
+      />
+      <span className={`text-sm ${granted ? 'text-foreground' : 'text-muted-foreground'}`}>{label}</span>
     </div>
   );
 }
@@ -147,22 +153,28 @@ export default function DetalheMotoristaPage() {
 
   if (authLoading || pageLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <LoadingMessage message="Carregando motorista…" />
-      </div>
+      <DashboardPageShell maxWidth="3xl">
+        <div className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 dark:bg-muted/20">
+          <LoadingMessage message="Carregando motorista…" className="text-muted-foreground" />
+        </div>
+      </DashboardPageShell>
     );
   }
 
   if (!driver) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-zinc-500">{loadError || 'Motorista não encontrado.'}</p>
-        <Link href="/dashboard/motoristas">
-          <Button variant="outline" className="mt-4">
-            Voltar aos motoristas
-          </Button>
-        </Link>
-      </div>
+      <DashboardPageShell maxWidth="3xl">
+        <Card className="border-border shadow-sm">
+          <CardContent className="py-16 text-center">
+            <p className="text-muted-foreground">{loadError || 'Motorista não encontrado.'}</p>
+            <Link href="/dashboard/motoristas">
+              <Button variant="outline" className="mt-4">
+                Voltar aos motoristas
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </DashboardPageShell>
     );
   }
 
@@ -176,57 +188,57 @@ export default function DetalheMotoristaPage() {
       <div>
           <Link
             href="/dashboard/motoristas"
-            className="flex items-center gap-1 text-zinc-500 hover:text-zinc-700 transition-colors mb-1 text-sm"
+            className="mb-1 flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
+            <ArrowLeft className="h-3.5 w-3.5" />
             Voltar aos motoristas
           </Link>
-          <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-zinc-900 text-xl font-semibold">{driver.name}</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-xl font-semibold text-foreground">{driver.name}</h1>
             <span className={`px-2.5 py-1 rounded-full text-sm font-semibold ${cfg.className}`}>{cfg.label}</span>
           </div>
         </div>
 
       {/* Profile Card */}
-      <Card className="border-zinc-200">
+      <Card className="border-border shadow-sm">
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
             {driver.photoUrl ? (
-              <div className="w-24 h-24 rounded-full overflow-hidden flex-shrink-0 border-2 border-zinc-200">
+              <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full border-2 border-border">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={driver.photoUrl} alt={driver.name} className="w-full h-full object-cover" />
+                <img src={driver.photoUrl} alt={driver.name} className="h-full w-full object-cover" />
               </div>
             ) : (
-              <div className="w-24 h-24 rounded-full bg-zinc-100 flex items-center justify-center flex-shrink-0">
-                <UserCircle className="w-16 h-16 text-zinc-400" />
+              <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-muted">
+                <UserCircle className="h-16 w-16 text-muted-foreground/80" />
               </div>
             )}
             <div className="flex-1 text-center sm:text-left">
-              <h2 className="text-zinc-900 text-xl font-bold">{driver.name}</h2>
+              <h2 className="text-xl font-bold text-foreground">{driver.name}</h2>
               <div className="flex items-center justify-center sm:justify-start gap-2 mt-2">
                 <span className={`px-3 py-1 rounded-full text-sm flex items-center gap-1.5 ${roleConfig.className}`}>
                   <Shield className="w-3.5 h-3.5" />
                   {roleConfig.label}
                 </span>
               </div>
-              <p className="text-zinc-500 mt-2 text-sm">{roleConfig.description}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{roleConfig.description}</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Contact Info */}
-      <Card className="border-zinc-200">
+      <Card className="border-border shadow-sm">
         <CardHeader className="pb-2">
-          <h3 className="text-zinc-700 font-medium">Informações de Contato</h3>
+          <h3 className="font-medium text-foreground">Informações de Contato</h3>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             {driver.email && (
               <InfoRow
                 icon={Mail}
-                iconBg="bg-blue-50"
-                iconColor="text-blue-600"
+                iconBg="bg-blue-500/12 ring-1 ring-inset ring-blue-600/15 dark:bg-blue-500/22 dark:ring-blue-400/25"
+                iconColor="text-blue-700 dark:text-blue-300"
                 label="E-mail"
                 value={driver.email}
               />
@@ -234,8 +246,8 @@ export default function DetalheMotoristaPage() {
             {driver.phone && (
               <InfoRow
                 icon={Phone}
-                iconBg="bg-green-50"
-                iconColor="text-green-600"
+                iconBg="bg-emerald-500/12 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/22 dark:ring-emerald-400/25"
+                iconColor="text-emerald-700 dark:text-emerald-300"
                 label="Telefone"
                 value={formatPhoneBr(driver.phone)}
               />
@@ -243,8 +255,8 @@ export default function DetalheMotoristaPage() {
             {driver.cpf && (
               <InfoRow
                 icon={FileText}
-                iconBg="bg-zinc-50"
-                iconColor="text-zinc-600"
+                iconBg="bg-muted"
+                iconColor="text-muted-foreground"
                 label="CPF"
                 value={formatCpf(driver.cpf)}
               />
@@ -252,16 +264,16 @@ export default function DetalheMotoristaPage() {
             {driver.cnh && (
               <InfoRow
                 icon={FileText}
-                iconBg="bg-zinc-50"
-                iconColor="text-zinc-600"
+                iconBg="bg-muted"
+                iconColor="text-muted-foreground"
                 label="CNH"
                 value={driver.cnh}
               />
             )}
             <InfoRow
               icon={Calendar}
-              iconBg="bg-purple-50"
-              iconColor="text-purple-600"
+              iconBg="bg-purple-500/12 ring-1 ring-inset ring-purple-600/15 dark:bg-purple-500/22 dark:ring-purple-400/25"
+              iconColor="text-purple-700 dark:text-purple-300"
               label="Cadastrado em"
               value={new Date(driver.createdAt).toLocaleDateString('pt-BR', {
                 day: '2-digit',
@@ -274,38 +286,38 @@ export default function DetalheMotoristaPage() {
       </Card>
 
       {/* Financial Info */}
-      <Card className="border-zinc-200">
+      <Card className="border-border shadow-sm">
         <CardHeader className="pb-2">
-          <h3 className="text-zinc-700 font-medium">Dados Financeiros</h3>
+          <h3 className="font-medium text-foreground">Dados Financeiros</h3>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
             <InfoRow
               icon={DollarSign}
-              iconBg="bg-blue-50"
-              iconColor="text-blue-600"
+              iconBg="bg-blue-500/12 ring-1 ring-inset ring-blue-600/15 dark:bg-blue-500/22 dark:ring-blue-400/25"
+              iconColor="text-blue-700 dark:text-blue-300"
               label="Comissão"
               value={`${driver.commissionPct ?? '-'}%`}
             />
             <InfoRow
               icon={DollarSign}
-              iconBg="bg-amber-50"
-              iconColor="text-amber-700"
+              iconBg="bg-amber-500/15 ring-1 ring-inset ring-amber-600/20 dark:bg-amber-950/35 dark:ring-amber-500/35"
+              iconColor="text-amber-900 dark:text-amber-400"
               label="Salário mensal"
               value={formatCurrency(driver.monthlySalary ?? 0)}
             />
             <InfoRow
               icon={CreditCard}
-              iconBg="bg-green-50"
-              iconColor="text-green-600"
+              iconBg="bg-emerald-500/12 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/22 dark:ring-emerald-400/25"
+              iconColor="text-emerald-700 dark:text-emerald-300"
               label="Forma de pagamento"
               value={driver.paymentMethod ? PAYMENT_LABELS[driver.paymentMethod] ?? driver.paymentMethod : '-'}
             />
             {driver.pixKey && (
               <InfoRow
                 icon={CreditCard}
-                iconBg="bg-zinc-50"
-                iconColor="text-zinc-600"
+                iconBg="bg-muted"
+                iconColor="text-muted-foreground"
                 label="Chave PIX"
                 value={driver.pixKey}
               />
@@ -313,8 +325,8 @@ export default function DetalheMotoristaPage() {
             {driver.preferredVehicle && (
               <InfoRow
                 icon={Activity}
-                iconBg="bg-purple-50"
-                iconColor="text-purple-600"
+                iconBg="bg-purple-500/12 ring-1 ring-inset ring-purple-600/15 dark:bg-purple-500/22 dark:ring-purple-400/25"
+                iconColor="text-purple-700 dark:text-purple-300"
                 label="Veículo preferencial"
                 value={`${driver.preferredVehicle.plate} · ${driver.preferredVehicle.model}`}
               />
@@ -325,38 +337,38 @@ export default function DetalheMotoristaPage() {
 
       {/* Stats & Permissions */}
       <div className="grid sm:grid-cols-2 gap-5">
-        <Card className="border-zinc-200">
+        <Card className="border-border shadow-sm">
           <CardHeader className="pb-2">
-            <h3 className="text-zinc-700 font-medium">Resumo</h3>
+            <h3 className="font-medium text-foreground">Resumo</h3>
           </CardHeader>
           <CardContent className="space-y-3">
             <InfoRow
               icon={Activity}
-              iconBg="bg-blue-50"
-              iconColor="text-blue-600"
+              iconBg="bg-blue-500/12 ring-1 ring-inset ring-blue-600/15 dark:bg-blue-500/22 dark:ring-blue-400/25"
+              iconColor="text-blue-700 dark:text-blue-300"
               label="Total de viagens"
               value={String(trips.length)}
             />
             <InfoRow
               icon={Activity}
-              iconBg="bg-green-50"
-              iconColor="text-green-600"
+              iconBg="bg-emerald-500/12 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/22 dark:ring-emerald-400/25"
+              iconColor="text-emerald-700 dark:text-emerald-300"
               label="Viagens concluídas"
               value={String(completedTrips.length)}
             />
             <InfoRow
               icon={DollarSign}
-              iconBg="bg-purple-50"
-              iconColor="text-purple-600"
+              iconBg="bg-purple-500/12 ring-1 ring-inset ring-purple-600/15 dark:bg-purple-500/22 dark:ring-purple-400/25"
+              iconColor="text-purple-700 dark:text-purple-300"
               label="Faturamento total"
               value={formatCurrency(totalRevenue)}
             />
           </CardContent>
         </Card>
 
-        <Card className="border-zinc-200">
+        <Card className="border-border shadow-sm">
           <CardHeader className="pb-2">
-            <h3 className="text-zinc-700 font-medium">Permissões</h3>
+            <h3 className="font-medium text-foreground">Permissões</h3>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -372,37 +384,41 @@ export default function DetalheMotoristaPage() {
       </div>
 
       {/* Recent Trips */}
-      <Card className="border-zinc-200">
+      <Card className="border-border shadow-sm">
         <CardHeader className="pb-2">
-          <h3 className="text-zinc-700 font-medium">Viagens Recentes</h3>
+          <h3 className="font-medium text-foreground">Viagens Recentes</h3>
         </CardHeader>
         <CardContent>
           {trips.length === 0 ? (
-            <p className="text-zinc-500 py-8 text-center text-sm">Nenhuma viagem registrada para este motorista.</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              Nenhuma viagem registrada para este motorista.
+            </p>
           ) : (
             <div className="space-y-3">
               {trips.slice(0, 5).map((trip) => (
                 <Link key={trip.id} href={`/dashboard/viagens/${trip.id}`}>
-                  <div className="flex items-center justify-between p-3 rounded-lg border border-zinc-200 hover:border-blue-300 hover:bg-blue-50 transition-all cursor-pointer">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-zinc-900 font-semibold text-sm">
+                  <div className="flex cursor-pointer items-center justify-between rounded-lg border border-border p-3 transition-colors hover:border-primary/35 hover:bg-muted/40 dark:hover:bg-muted/25">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground">
                         {(trip.origin ?? '').split(',')[0]} → {(trip.destination ?? '').split(',')[0]}
                       </p>
-                      <p className="text-zinc-500 text-xs">{new Date(trip.startDate).toLocaleDateString('pt-BR')}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(trip.startDate).toLocaleDateString('pt-BR')}
+                      </p>
                     </div>
                     <div className="text-right">
-                      <p className="text-zinc-900 font-semibold">
+                      <p className="font-semibold text-foreground">
                         {trip.freightValue != null ? formatCurrency(trip.freightValue) : '-'}
                       </p>
                       <p
                         className={`text-xs ${
                           trip.status === 'COMPLETED'
-                            ? 'text-green-600'
+                            ? 'text-emerald-700 dark:text-emerald-400'
                             : trip.status === 'IN_PROGRESS'
-                              ? 'text-blue-600'
+                              ? 'text-blue-700 dark:text-blue-400'
                               : trip.status === 'PENDING'
-                                ? 'text-yellow-600'
-                                : 'text-zinc-500'
+                                ? 'text-amber-700 dark:text-amber-400'
+                                : 'text-muted-foreground'
                         }`}
                       >
                         {trip.status === 'COMPLETED'
@@ -450,20 +466,16 @@ export default function DetalheMotoristaPage() {
       {/* Delete Dialog */}
       {deleteOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white rounded-xl shadow-xl max-w-sm w-full mx-4 p-6">
-            <h3 className="text-zinc-900 font-semibold mb-2">Confirmar Exclusão</h3>
-            <p className="text-zinc-600 text-sm py-2">
-              Tem certeza que deseja excluir o motorista <strong>{driver.name}</strong>? Esta ação não pode ser desfeita.
+          <div className="mx-4 w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-xl">
+            <h3 className="mb-2 font-semibold text-foreground">Confirmar Exclusão</h3>
+            <p className="py-2 text-sm text-muted-foreground">
+              Tem certeza que deseja excluir o motorista <strong className="text-foreground">{driver.name}</strong>? Esta ação não pode ser desfeita.
             </p>
-            <div className="flex gap-2 justify-end mt-4">
+            <div className="mt-4 flex justify-end gap-2">
               <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>
                 Cancelar
               </Button>
-              <Button
-                className="bg-red-600 hover:bg-red-700 text-white"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
+              <Button variant="danger" onClick={handleDelete} disabled={deleting}>
                 {deleting ? 'Excluindo...' : 'Excluir'}
               </Button>
             </div>

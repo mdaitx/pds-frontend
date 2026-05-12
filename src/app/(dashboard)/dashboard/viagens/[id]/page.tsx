@@ -42,9 +42,12 @@ import { TripAdvancesPanel } from '@/components/viagens/TripAdvancesPanel';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { VehicleTruckOrTrailerIcon } from '@/components/vehicles/VehicleTruckOrTrailerIcon';
 import {
+  dashboardFormCancelLinkClass,
   dashboardLinkPrimaryToolbarClass,
   dashboardLinkToolbarEditClass,
 } from '@/lib/dashboard-action-buttons';
+import { cn } from '@/lib/cn';
+import { dashboardNativeFieldClass } from '@/lib/dashboard-field-classes';
 
 /** Figma Make (HE / zV): pills e rótulos. */
 const STATUS_LABEL: Record<TripStatus, string> = {
@@ -55,10 +58,13 @@ const STATUS_LABEL: Record<TripStatus, string> = {
 };
 
 const STATUS_PILL: Record<TripStatus, string> = {
-  PENDING: 'bg-yellow-100 text-yellow-800',
-  IN_PROGRESS: 'bg-blue-100 text-blue-800',
-  COMPLETED: 'bg-green-100 text-green-800',
-  CANCELLED: 'bg-zinc-100 text-zinc-600',
+  PENDING:
+    'bg-amber-100 text-amber-900 dark:bg-amber-500/18 dark:text-amber-100',
+  IN_PROGRESS:
+    'bg-blue-100 text-blue-900 dark:bg-blue-500/22 dark:text-blue-50',
+  COMPLETED:
+    'bg-emerald-100 text-emerald-900 dark:bg-emerald-500/22 dark:text-emerald-50',
+  CANCELLED: 'bg-muted text-muted-foreground',
 };
 
 function formatBRL(n: number): string {
@@ -79,10 +85,10 @@ function TripInfoTile({
     <div className="flex items-start gap-2">
       <div className="mt-0.5 flex-shrink-0">{icon}</div>
       <div className="min-w-0">
-        <p className="text-zinc-500" style={{ fontSize: '0.75rem' }}>
+        <p className="text-muted-foreground" style={{ fontSize: '0.75rem' }}>
           {label}
         </p>
-        <p className="break-words text-zinc-800" style={{ fontSize: '0.875rem', fontWeight: 500 }}>
+        <p className="break-words text-foreground" style={{ fontSize: '0.875rem', fontWeight: 500 }}>
           {value}
         </p>
       </div>
@@ -190,9 +196,11 @@ export default function ViagemDetalhePage() {
 
   if (authLoading) {
     return (
-      <div className="settings-font-inter flex min-h-[50vh] items-center justify-center bg-zinc-50 tracking-tight">
-        <LoadingMessage />
-      </div>
+      <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="4xl">
+        <div className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 dark:bg-muted/20">
+          <LoadingMessage className="text-muted-foreground" />
+        </div>
+      </DashboardPageShell>
     );
   }
 
@@ -202,9 +210,11 @@ export default function ViagemDetalhePage() {
 
   if (loading) {
     return (
-      <div className="settings-font-inter flex min-h-[50vh] items-center justify-center bg-zinc-50 tracking-tight">
-        <LoadingMessage message="Carregando viagem…" />
-      </div>
+      <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="4xl">
+        <div className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 dark:bg-muted/20">
+          <LoadingMessage message="Carregando viagem…" className="text-muted-foreground" />
+        </div>
+      </DashboardPageShell>
     );
   }
 
@@ -212,10 +222,10 @@ export default function ViagemDetalhePage() {
     return (
       <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="xl">
         <div className="text-center">
-          <p className="text-zinc-500">{error || 'Viagem não encontrada.'}</p>
+          <p className="text-muted-foreground">{error || 'Viagem não encontrada.'}</p>
           <Link
             href="/dashboard/viagens"
-            className="mt-4 inline-block rounded-lg border border-zinc-300 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+            className={cn(dashboardFormCancelLinkClass, 'mt-4 inline-flex')}
           >
             Voltar
           </Link>
@@ -241,14 +251,14 @@ export default function ViagemDetalhePage() {
           <div className="min-w-0">
             <Link
               href="/dashboard/viagens"
-              className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
+              className="mb-1 flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
               style={{ fontSize: '0.85rem' }}
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               Voltar às viagens
             </Link>
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="break-words text-zinc-900" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
+              <h1 className="break-words text-foreground" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
                 {trip.code}
               </h1>
               <span
@@ -258,7 +268,7 @@ export default function ViagemDetalhePage() {
                 {STATUS_LABEL[trip.status]}
               </span>
               {trip.displacementToLoad === true && (
-                <span className="rounded-full bg-violet-100 px-2.5 py-1 text-sm font-semibold text-violet-800">
+                <span className="rounded-full bg-violet-100 px-2.5 py-1 text-sm font-semibold text-violet-900 dark:bg-violet-500/20 dark:text-violet-100">
                   Deslocamento até carga
                 </span>
               )}
@@ -274,7 +284,7 @@ export default function ViagemDetalhePage() {
                 type="button"
                 onClick={handleStartTrip}
                 disabled={startingTrip}
-                className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-blue-600 px-3 py-2 text-[0.8125rem] font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50 sm:gap-2 sm:px-4 sm:text-sm"
+                className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-primary px-3 py-2 text-[0.8125rem] font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:opacity-50 sm:gap-2 sm:px-4 sm:text-sm"
               >
                 <PlayCircle className="h-4 w-4 shrink-0" />
                 {startingTrip ? 'Iniciando…' : 'Iniciar viagem'}
@@ -287,7 +297,7 @@ export default function ViagemDetalhePage() {
                   setFinalizeError(null);
                   setFinalizeModalOpen(true);
                 }}
-                className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg bg-green-600 px-3 py-2 text-[0.8125rem] font-medium text-white transition-colors hover:bg-green-700 sm:gap-2 sm:px-4 sm:text-sm"
+                className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-xl bg-emerald-600 px-3 py-2 text-[0.8125rem] font-medium text-white transition-colors hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 sm:gap-2 sm:px-4 sm:text-sm"
               >
                 <CheckCircle className="h-4 w-4 shrink-0" />
                 Finalizar viagem
@@ -304,7 +314,10 @@ export default function ViagemDetalhePage() {
             )}
             <Link
               href={`/dashboard/viagens/${trip.id}/comprovantes`}
-              className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-zinc-300 bg-white px-3 py-2 text-[0.8125rem] font-medium text-zinc-700 no-underline transition-colors hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:gap-2 sm:px-4 sm:text-[0.875rem]"
+              className={cn(
+                dashboardFormCancelLinkClass,
+                'inline-flex shrink-0 !w-auto min-h-10 items-center justify-center gap-1.5 whitespace-nowrap px-3 no-underline sm:gap-2 sm:px-4 sm:text-[0.875rem]'
+              )}
             >
               <ImageIcon className="h-4 w-4 shrink-0" />
               Comprovantes
@@ -312,7 +325,11 @@ export default function ViagemDetalhePage() {
             {trip.status !== 'COMPLETED' && (
               <Link
                 href={`/dashboard/viagens/${trip.id}/editar`}
-                className={`${dashboardLinkToolbarEditClass} !w-auto min-h-0 shrink-0 whitespace-nowrap px-3 sm:px-4`}
+                className={cn(
+                  dashboardLinkToolbarEditClass,
+                  '!w-auto min-h-0 shrink-0 whitespace-nowrap px-3 sm:px-4',
+                  'dark:border-primary/40 dark:bg-primary/16 dark:text-primary dark:hover:bg-primary/26'
+                )}
               >
                 <Pencil className="h-4 w-4 shrink-0" />
                 Editar
@@ -321,9 +338,9 @@ export default function ViagemDetalhePage() {
           </div>
         </div>
 
-        <Card className="border-zinc-200 shadow-sm">
+        <Card className="border-border shadow-sm">
           <CardHeader className="pb-2 pt-6">
-            <h3 className="text-zinc-700" style={{ fontWeight: 600, fontSize: '1.05rem' }}>
+            <h3 className="text-foreground" style={{ fontWeight: 600, fontSize: '1.05rem' }}>
               Dados da Viagem
             </h3>
           </CardHeader>
@@ -333,7 +350,7 @@ export default function ViagemDetalhePage() {
                 icon={
                   <VehicleTruckOrTrailerIcon
                     vehicleType={trip.vehicle?.vehicleType}
-                    className="h-4 w-4 text-blue-500"
+                    className="h-4 w-4 text-blue-600 dark:text-blue-400"
                   />
                 }
                 label="Veículo"
@@ -342,39 +359,43 @@ export default function ViagemDetalhePage() {
                 }
               />
               <TripInfoTile
-                icon={<User className="h-4 w-4 text-green-500" />}
+                icon={<User className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
                 label="Motorista"
                 value={trip.driver?.name || '—'}
               />
               <TripInfoTile
-                icon={<Building2 className="h-4 w-4 text-orange-500" />}
+                icon={<Building2 className="h-4 w-4 text-orange-600 dark:text-orange-400" />}
                 label="Cliente"
                 value={trip.clientName || '—'}
               />
               <TripInfoTile
-                icon={<Route className="h-4 w-4 text-purple-500" />}
+                icon={<Route className="h-4 w-4 text-purple-600 dark:text-purple-400" />}
                 label="Rota"
                 value={`${trip.origin || '—'} → ${trip.destination || '—'}`}
               />
               <TripInfoTile
-                icon={<CalendarDays className="h-4 w-4 text-zinc-500" />}
+                icon={<CalendarDays className="h-4 w-4 text-muted-foreground" />}
                 label="Período"
                 value={periodLine}
               />
               <TripInfoTile
-                icon={<Banknote className="h-4 w-4 text-green-500" />}
+                icon={<Banknote className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />}
                 label="Valor do frete"
                 value={trip.freightValue != null ? formatBRL(trip.freightValue) : '—'}
               />
-              <TripInfoTile icon={<Gauge className="h-4 w-4 text-zinc-500" />} label="Km" value={kmLine} />
               <TripInfoTile
-                icon={<Package className="h-4 w-4 text-zinc-500" />}
+                icon={<Gauge className="h-4 w-4 text-muted-foreground" />}
+                label="Km"
+                value={kmLine}
+              />
+              <TripInfoTile
+                icon={<Package className="h-4 w-4 text-muted-foreground" />}
                 label="Tipo de carga"
                 value={trip.loadType || '—'}
               />
               {trip.notes?.trim() ? (
                 <TripInfoTile
-                  icon={<FileText className="h-4 w-4 text-zinc-500" />}
+                  icon={<FileText className="h-4 w-4 text-muted-foreground" />}
                   label="Observações"
                   value={trip.notes}
                 />
@@ -389,16 +410,18 @@ export default function ViagemDetalhePage() {
         </div>
 
         {trip.status === 'COMPLETED' && settlement && !trip.displacementToLoad && (
-          <Card className="border-emerald-200 bg-emerald-50/50 shadow-sm">
+          <Card className="border-emerald-500/35 bg-emerald-500/10 shadow-sm dark:bg-emerald-950/35">
             <CardHeader className="pb-2 pt-6">
-              <h3 className="text-emerald-900" style={{ fontWeight: 600 }}>
+              <h3 className="text-emerald-950 dark:text-emerald-50" style={{ fontWeight: 600 }}>
                 Acerto gerado
               </h3>
-              <p className="mt-1 text-sm text-emerald-800">
+              <p className="mt-1 text-sm text-emerald-900 dark:text-emerald-100/95">
                 A pagar ao motorista:{' '}
-                <strong className="text-lg text-emerald-950">{formatBRL(settlement.amountToPayDriver)}</strong>
+                <strong className="text-lg text-emerald-950 dark:text-emerald-50">
+                  {formatBRL(settlement.amountToPayDriver)}
+                </strong>
                 {settlement.paid && (
-                  <span className="ml-2 rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-medium text-white">
+                  <span className="ml-2 rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-medium text-emerald-50">
                     Pago
                   </span>
                 )}
@@ -407,7 +430,7 @@ export default function ViagemDetalhePage() {
             <CardContent>
               <Link
                 href={`/dashboard/viagens/${trip.id}/acerto`}
-                className="inline-flex rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800"
+                className="inline-flex rounded-xl bg-emerald-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500"
               >
                 Abrir acerto completo e PDF
               </Link>
@@ -416,8 +439,8 @@ export default function ViagemDetalhePage() {
         )}
 
         {trip.status === 'COMPLETED' && !settlement && !trip.displacementToLoad && (
-          <Card className="border-amber-200 bg-amber-50 shadow-sm">
-            <CardContent className="py-4 text-sm text-amber-900">
+          <Card className="border-amber-200 bg-amber-50 shadow-sm dark:border-amber-500/35 dark:bg-amber-950/35">
+            <CardContent className="py-4 text-sm text-amber-950 dark:text-amber-50">
               Esta viagem está concluída sem acerto no sistema (dado antigo ou migrado).
             </CardContent>
           </Card>
@@ -425,26 +448,26 @@ export default function ViagemDetalhePage() {
 
         {finalizeModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-5 shadow-lg">
+            <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-lg">
               <div className="mb-4 flex items-start justify-between gap-2">
-                <h3 className="text-zinc-900" style={{ fontWeight: 600 }}>
+                <h3 className="text-foreground" style={{ fontWeight: 600 }}>
                   Finalizar viagem
                 </h3>
                 <button
                   type="button"
                   onClick={() => setFinalizeModalOpen(false)}
-                  className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+                  className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   aria-label="Fechar"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <p className="text-sm text-zinc-600">
+              <p className="text-sm text-muted-foreground">
                 {trip.displacementToLoad
                   ? 'Confirme o fim do deslocamento. Não será gerado acerto neste trecho. O km final é opcional.'
                   : 'Informe o km final se desejar. Será gerado o acerto e a viagem marcada como concluída.'}
               </p>
-              <label htmlFor="modalFinalKm" className="mt-4 block text-sm font-medium text-zinc-700">
+              <label htmlFor="modalFinalKm" className="mt-4 block text-sm font-medium text-foreground">
                 Km final (opcional)
               </label>
               <input
@@ -454,19 +477,24 @@ export default function ViagemDetalhePage() {
                 autoComplete="off"
                 value={finalKmFinalize}
                 onChange={(e) => setFinalKmFinalize(formatKmInput(e.target.value))}
-                className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={cn(dashboardNativeFieldClass, 'mt-1')}
                 placeholder={
                   trip.initialKm != null
                     ? `ex.: ${(trip.initialKm + 100).toLocaleString('pt-BR')}`
                     : ''
                 }
               />
-              {finalizeError && <p className="mt-2 text-sm text-red-600">{finalizeError}</p>}
+              {finalizeError && (
+                <p className="mt-2 text-sm text-destructive">{finalizeError}</p>
+              )}
               <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={() => setFinalizeModalOpen(false)}
-                  className="w-full rounded-lg border border-zinc-300 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 sm:w-auto"
+                  className={cn(
+                    dashboardFormCancelLinkClass,
+                    'w-full justify-center px-4 py-2 sm:w-auto'
+                  )}
                 >
                   Cancelar
                 </button>
@@ -474,7 +502,7 @@ export default function ViagemDetalhePage() {
                   type="button"
                   onClick={handleFinalize}
                   disabled={finalizing}
-                  className="w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 sm:w-auto"
+                  className="w-full rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500 sm:w-auto"
                 >
                   {finalizing ? 'Finalizando…' : 'Confirmar'}
                 </button>

@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Edição de motorista — layout do protótipo Figma Make (tema claro).
+ * Edição de motorista.
  */
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
@@ -33,14 +33,16 @@ import { LoadingMessage } from '@/components/ui/loading';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
+import { cn } from '@/lib/cn';
+import { dashboardNativeFieldClass } from '@/lib/dashboard-field-classes';
 import {
   dashboardFormCancelButtonClass,
+  dashboardFormCancelLinkClass,
   dashboardFormDeleteButtonClass,
   dashboardFormSaveButtonClass,
 } from '@/lib/dashboard-action-buttons';
 
-const selectClass =
-  'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
+const selectClass = cn(dashboardNativeFieldClass, 'flex h-auto min-h-10 py-2');
 
 const PAYMENT_METHODS = ['PIX', 'Transferência', 'Dinheiro', 'Outro'];
 
@@ -205,19 +207,27 @@ export default function EditarMotoristaPage() {
 
   if (authLoading || pageLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <LoadingMessage />
-      </div>
+      <DashboardPageShell maxWidth="2xl">
+        <div className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 dark:bg-muted/20">
+          <LoadingMessage
+            message="Carregando dados do motorista…"
+            className="text-muted-foreground"
+          />
+        </div>
+      </DashboardPageShell>
     );
   }
 
   if (!driver) {
     return (
       <DashboardPageShell maxWidth="2xl">
-        <Link href="/dashboard/motoristas" className="text-sm text-blue-600 hover:underline">
+        <Link
+          href="/dashboard/motoristas"
+          className={cn(dashboardFormCancelLinkClass, 'inline-flex text-sm')}
+        >
           ← Voltar aos motoristas
         </Link>
-        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+        <div className="mt-4 rounded-lg border border-destructive/25 bg-destructive/10 p-4 text-sm text-destructive dark:border-destructive/35 dark:bg-destructive/15 dark:text-destructive">
           {loadError || 'Motorista não encontrado.'}
         </div>
       </DashboardPageShell>
@@ -229,22 +239,24 @@ export default function EditarMotoristaPage() {
       <div>
         <Link
           href={`/dashboard/motoristas/${id}`}
-          className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700 text-sm"
+          className="mb-1 flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Voltar aos detalhes
         </Link>
-        <h1 className="text-xl font-semibold text-zinc-900">Editar Motorista</h1>
+        <h1 className="text-xl font-semibold text-foreground">Editar Motorista</h1>
       </div>
 
       {errors.form && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{errors.form}</div>
+        <div className="rounded-lg border border-destructive/25 bg-destructive/10 p-3 text-sm text-destructive dark:border-destructive/35 dark:bg-destructive/15 dark:text-destructive">
+          {errors.form}
+        </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Card className="border-zinc-200">
+        <Card className="border-border">
           <CardHeader className="pb-2">
-            <h3 className="font-medium text-zinc-700">Dados Pessoais</h3>
+            <h3 className="font-medium text-foreground">Dados Pessoais</h3>
           </CardHeader>
           <CardContent className="space-y-4">
             <ImageUpload
@@ -253,19 +265,21 @@ export default function EditarMotoristaPage() {
               onChange={handlePhotoChange}
               disabled={loading}
             />
-            {errors.photo && <p className="text-sm text-red-600">{errors.photo}</p>}
+            {errors.photo && <p className="text-sm text-destructive">{errors.photo}</p>}
             <div className="flex flex-wrap items-center gap-2">
               <Button type="submit" disabled={loading} loading={loading} className={dashboardFormSaveButtonClass}>
                 {!loading && <Save className="h-4 w-4" />}
                 {loading ? 'Salvando…' : 'Salvar alterações'}
               </Button>
-              <p className="text-xs text-zinc-500">Após trocar a foto, clique em salvar para confirmar no perfil.</p>
+              <p className="text-xs text-muted-foreground">
+                Após trocar a foto, clique em salvar para confirmar no perfil.
+              </p>
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="name">Nome completo *</Label>
               <Input id="name" placeholder="Nome do motorista" value={form.name} onChange={(e) => setField('name', e.target.value)} />
-              {errors.name && <p className="text-sm text-red-600">{errors.name}</p>}
+              {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="driverEmail">E-mail</Label>
@@ -294,7 +308,7 @@ export default function EditarMotoristaPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="cpf">CPF</Label>
                 <Input id="cpf" maxLength={14} value={form.cpf} onChange={(e) => setField('cpf', formatCpf(e.target.value))} />
-                {errors.cpf && <p className="text-sm text-red-600">{errors.cpf}</p>}
+                {errors.cpf && <p className="text-sm text-destructive">{errors.cpf}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="rg">RG</Label>
@@ -308,9 +322,9 @@ export default function EditarMotoristaPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-zinc-200">
+        <Card className="border-border">
           <CardHeader className="pb-2">
-            <h3 className="font-medium text-zinc-700">Dados Financeiros</h3>
+            <h3 className="font-medium text-foreground">Dados Financeiros</h3>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
@@ -337,8 +351,10 @@ export default function EditarMotoristaPage() {
                 value={form.monthlySalary}
                 onChange={(e) => setField('monthlySalary', formatBrlCurrencyInput(e.target.value))}
               />
-              {errors.monthlySalary && <p className="text-sm text-red-600">{errors.monthlySalary}</p>}
-              <p className="text-xs text-zinc-500">
+              {errors.monthlySalary && (
+                <p className="text-sm text-destructive">{errors.monthlySalary}</p>
+              )}
+              <p className="text-xs text-muted-foreground">
                 Valor em reais (pt-BR). Usado no relatório por motorista (proporcional ao período).
               </p>
             </div>
@@ -395,9 +411,9 @@ export default function EditarMotoristaPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-zinc-200">
+        <Card className="border-border">
           <CardHeader className="pb-2">
-            <h3 className="font-medium text-zinc-700">Status</h3>
+            <h3 className="font-medium text-foreground">Status</h3>
           </CardHeader>
           <CardContent>
             <div className="space-y-1.5">
@@ -412,7 +428,9 @@ export default function EditarMotoristaPage() {
                 <option value="ACTIVE">Ativo</option>
                 <option value="INACTIVE">Inativo</option>
               </select>
-              <p className="mt-1 text-xs text-zinc-500">Motoristas inativos não poderão ser vinculados a novas viagens.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Motoristas inativos não poderão ser vinculados a novas viagens.
+              </p>
             </div>
           </CardContent>
         </Card>

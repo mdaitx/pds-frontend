@@ -28,8 +28,8 @@ export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
 
   if (configError) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-100 p-6">
-        <div className="max-w-md rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
+        <div className="max-w-md rounded-xl border border-amber-300/70 bg-amber-100 p-4 text-amber-950 dark:border-amber-600/60 dark:bg-amber-950/40 dark:text-amber-100">
           <p className="font-medium">Configuração necessária</p>
           <p className="mt-2 text-sm">{configError}</p>
         </div>
@@ -39,7 +39,7 @@ export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <LoadingMessage />
       </div>
     );
@@ -51,11 +51,11 @@ export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
 
   if (!appUser) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-zinc-100 p-6">
-        <p className="text-center text-zinc-700">Não foi possível carregar seu perfil. Faça login novamente.</p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6">
+        <p className="text-center text-foreground">Não foi possível carregar seu perfil. Faça login novamente.</p>
         <Link
           href="/login"
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="inline-flex min-h-10 items-center justify-center rounded-xl border border-transparent bg-primary px-6 py-2 text-sm font-medium text-primary-foreground shadow-sm outline-none transition-all duration-200 ease-out hover:-translate-y-px hover:bg-primary-hover hover:shadow-md focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 active:translate-y-0"
         >
           Ir para o login
         </Link>
@@ -65,14 +65,12 @@ export function DashboardRouteGuard({ children }: DashboardRouteGuardProps) {
 
   if (!userHasDashboardPathAccess(appUser, pathname)) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-zinc-100 p-6">
-        <p className="text-center text-zinc-800 font-medium">Você não tem permissão para esta página.</p>
-        <p className="text-center text-sm text-zinc-600">
-          Se precisar de acesso, fale com o dono da frota.
-        </p>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6">
+        <p className="text-center font-medium text-foreground">Você não tem permissão para esta página.</p>
+        <p className="text-center text-sm text-muted-foreground">Se precisar de acesso, fale com o dono da frota.</p>
         <Link
           href={DASHBOARD_HOME}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="inline-flex min-h-10 items-center justify-center rounded-xl border border-transparent bg-primary px-6 py-2 text-sm font-medium text-primary-foreground shadow-sm outline-none transition-all duration-200 ease-out hover:-translate-y-px hover:bg-primary-hover hover:shadow-md focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 active:translate-y-0"
         >
           Voltar ao painel
         </Link>

@@ -46,10 +46,16 @@ export type DriverDashboardSummary = {
 
 export type DashboardSummary = OwnerDashboardSummary | DriverDashboardSummary;
 
-export async function getDashboardSummary(): Promise<DashboardSummary> {
-  return apiFetch<DashboardSummary>('/dashboard/summary', { method: 'GET' });
+export async function getDashboardSummary(accessToken?: string): Promise<DashboardSummary> {
+  return apiFetch<DashboardSummary>('/dashboard/summary', {
+    method: 'GET',
+    ...(accessToken !== undefined ? { token: accessToken } : {}),
+  });
 }
 
-export async function getDashboardCharts(): Promise<OwnerDashboardCharts> {
-  return apiFetch<OwnerDashboardCharts>('/dashboard/charts', { method: 'GET' });
+export async function getDashboardCharts(accessToken?: string): Promise<OwnerDashboardCharts> {
+  return apiFetch<OwnerDashboardCharts>('/dashboard/charts', {
+    method: 'GET',
+    ...(accessToken !== undefined ? { token: accessToken } : {}),
+  });
 }

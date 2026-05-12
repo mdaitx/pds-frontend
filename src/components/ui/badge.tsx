@@ -9,10 +9,10 @@ type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
 export function Badge({ children, className, variant = 'default', ...props }: BadgeProps) {
   const variants = {
     default: 'bg-primary/10 text-primary',
-    success: 'bg-emerald-100 text-emerald-800',
-    warning: 'bg-amber-100 text-amber-800',
-    info: 'bg-blue-100 text-blue-800',
-    danger: 'bg-red-100 text-red-800',
+    success: 'bg-accent/10 text-accent',
+    warning: 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200',
+    info: 'bg-primary/10 text-primary',
+    danger: 'bg-destructive/10 text-destructive',
     muted: 'bg-muted text-muted-foreground',
   };
 

@@ -6,6 +6,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks';
@@ -38,9 +39,12 @@ import { ArrowLeft, Plus, Pencil, Trash2, Save, CreditCard, ExternalLink } from 
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
 import {
+  dashboardDeleteIconTriggerClass,
   dashboardFormCancelButtonClass,
   dashboardFormSaveButtonClass,
 } from '@/lib/dashboard-action-buttons';
+import { cn } from '@/lib/cn';
+import { dashboardNativeFieldClass } from '@/lib/dashboard-field-classes';
 
 /** Paleta de cores do protótipo (modal Nova / Editar categoria). */
 const CATEGORY_COLOR_PRESETS = [
@@ -55,10 +59,7 @@ const CATEGORY_COLOR_PRESETS = [
   '#dc2626',
 ] as const;
 
-const labelClass = 'block text-sm font-medium text-zinc-700';
-
-const selectClass =
-  'block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
+const labelClass = 'block text-sm font-medium text-foreground';
 
 /** Fusos comuns + lista completa do runtime quando `Intl.supportedValuesOf` existir. */
 function listTimezoneOptions(existing: string | null | undefined): string[] {
@@ -113,7 +114,7 @@ function CategoryColorDot({ color, size = 'sm' }: { color: string; size?: 'sm' |
   const cls = size === 'sm' ? 'h-3 w-3' : 'h-4 w-4';
   return (
     <div
-      className={`${cls} shrink-0 rounded-full ring-1 ring-black/5`}
+      className={`${cls} shrink-0 rounded-full ring-1 ring-black/5 dark:ring-white/15`}
       style={{ backgroundColor: color }}
       aria-hidden
     />
@@ -122,12 +123,12 @@ function CategoryColorDot({ color, size = 'sm' }: { color: string; size?: 'sm' |
 
 export default function ConfigPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { session, appUser, loading: authLoading } = useAuth();
   const [company, setCompany] = useState<Company | null>(null);
   const [categories, setCategories] = useState<ExpenseCategoriesResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [prefsError, setPrefsError] = useState<string | null>(null);
+  const [companySaveError, setCompanySaveError] = useState<string | null>(null);
   const [companySaving, setCompanySaving] = useState(false);
   const [prefsSaving, setPrefsSaving] = useState(false);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
@@ -137,26 +138,43 @@ export default function ConfigPage() {
   const [sub, setSub] = useState<SubscriptionStatusResponse | null>(null);
   const [subBusy, setSubBusy] = useState(false);
 
+  const ownerConfigQuery = useQuery({
+    queryKey: ['owner-config-bundle', appUser?.id],
+    queryFn: async () => {
+      const t = session?.access_token;
+      const [company, categories, sub] = await Promise.all([
+        getMyCompany(t),
+        getExpenseCategories(t),
+        getSubscriptionStatus(t).catch(() => null),
+      ]);
+      return { company, categories, sub };
+    },
+    enabled: Boolean(session && appUser?.role === 'OWNER'),
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const loadError =
+    ownerConfigQuery.isError && ownerConfigQuery.error instanceof Error
+      ? ownerConfigQuery.error.message
+      : ownerConfigQuery.isError
+        ? 'Erro ao carregar'
+        : null;
+
+  useEffect(() => {
+    const bundle = ownerConfigQuery.data;
+    if (!bundle) return;
+    setCompany(bundle.company);
+    setCategories(bundle.categories);
+    setSub(bundle.sub);
+    setCompanySaveError(null);
+  }, [ownerConfigQuery.data]);
+
   useEffect(() => {
     if (!session || !appUser) return;
     if (appUser.role !== 'OWNER') {
       router.replace('/dashboard');
-      return;
     }
-    Promise.all([
-      getMyCompany(),
-      getExpenseCategories(),
-      getSubscriptionStatus().catch(() => null),
-    ])
-      .then(([c, cat, s]) => {
-        setCompany(c);
-        setCategories(cat);
-        setSub(s);
-      })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : 'Erro ao carregar');
-      })
-      .finally(() => setLoading(false));
   }, [session, appUser, router]);
 
   useEffect(() => {
@@ -190,7 +208,7 @@ export default function ConfigPage() {
   }, [categoryDialogOpen]);
 
   const refetchCategories = () => {
-    getExpenseCategories().then(setCategories).catch(() => {});
+    void queryClient.invalidateQueries({ queryKey: ['owner-config-bundle', appUser?.id] });
   };
 
   const openNewCategory = () => {
@@ -247,11 +265,15 @@ export default function ConfigPage() {
     }
   };
 
-  if (authLoading || loading || appUser?.role !== 'OWNER') {
+  const error = loadError;
+
+  if (authLoading || appUser?.role !== 'OWNER' || ownerConfigQuery.isPending) {
     return (
-      <div className="settings-font-inter flex min-h-[50vh] items-center justify-center bg-zinc-50">
-        <LoadingMessage message="Carregando configurações…" />
-      </div>
+      <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="3xl">
+        <div className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 dark:bg-muted/20">
+          <LoadingMessage message="Carregando configurações…" className="text-muted-foreground" />
+        </div>
+      </DashboardPageShell>
     );
   }
 
@@ -260,12 +282,13 @@ export default function ConfigPage() {
       <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="3xl">
         <Link
           href="/dashboard"
-          className="flex items-center gap-1 text-[0.85rem] text-zinc-500 transition-colors hover:text-zinc-700"
+          prefetch={false}
+          className="flex items-center gap-1 text-[0.85rem] text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Voltar ao dashboard
         </Link>
-        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/35 dark:text-amber-50">
           {error || 'Empresa não encontrada. Conclua o onboarding primeiro.'}
         </div>
       </DashboardPageShell>
@@ -280,23 +303,24 @@ export default function ConfigPage() {
         <div>
           <Link
             href="/dashboard"
-            className="mb-1 flex items-center gap-1 text-[0.85rem] text-zinc-500 transition-colors hover:text-zinc-700"
+            prefetch={false}
+            className="mb-1 flex items-center gap-1 text-[0.85rem] text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Voltar ao dashboard
           </Link>
-          <h1 className="antialiased text-zinc-900" style={{ fontSize: '1.35rem', fontWeight: 600 }}>
+          <h1 className="text-foreground antialiased" style={{ fontSize: '1.35rem', fontWeight: 600 }}>
             Configurações
           </h1>
         </div>
 
-        <Card className="border-zinc-200 shadow-sm">
+        <Card className="border-border shadow-sm">
           <CardHeader className="pb-2 pt-6">
-            <h3 className="text-zinc-700" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+            <h3 className="text-foreground" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
               {company.isAutonomous ? 'Seus dados' : 'Dados da Empresa'}
             </h3>
             {company.isAutonomous && (
-              <p className="mt-1 text-zinc-500" style={{ fontSize: '0.8rem' }}>
+              <p className="mt-1 text-muted-foreground" style={{ fontSize: '0.8rem' }}>
                 Cadastro de pessoa física (autônomo). Nome, CPF e contatos vêm do seu cadastro de motorista principal.
               </p>
             )}
@@ -317,7 +341,7 @@ export default function ConfigPage() {
                     return;
                   }
                   setCompanySaving(true);
-                  setError(null);
+                  setCompanySaveError(null);
                   try {
                     if (company.autonomousDriver) {
                       await updateDriver(company.autonomousDriver.id, {
@@ -337,14 +361,14 @@ export default function ConfigPage() {
                     );
                   } catch (e) {
                     const msg = e instanceof Error ? e.message : 'Erro ao salvar';
-                    setError(msg);
+                    setCompanySaveError(msg);
                     toast.error(msg);
                   } finally {
                     setCompanySaving(false);
                   }
                 }}
                 saving={companySaving}
-                serverError={error}
+                serverError={companySaveError}
               />
             ) : (
               <CompanyForm
@@ -356,7 +380,7 @@ export default function ConfigPage() {
                     return;
                   }
                   setCompanySaving(true);
-                  setError(null);
+                  setCompanySaveError(null);
                   updateMyCompany(payload)
                     .then((updated) => {
                       setCompany(updated);
@@ -364,57 +388,57 @@ export default function ConfigPage() {
                     })
                     .catch((e) => {
                       const msg = e instanceof Error ? e.message : 'Erro ao salvar';
-                      setError(msg);
+                      setCompanySaveError(msg);
                       toast.error(msg);
                     })
                     .finally(() => setCompanySaving(false));
                 }}
                 saving={companySaving}
-                serverError={error}
+                serverError={companySaveError}
               />
             )}
           </CardContent>
         </Card>
 
         {sub && (
-          <Card className="border-zinc-200 shadow-sm">
+          <Card className="border-border shadow-sm">
             <CardHeader className="pb-2 pt-6">
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 rounded-lg bg-blue-50 p-2 text-blue-600">
+                <div className="mt-0.5 rounded-lg bg-blue-500/12 p-2 text-blue-700 dark:bg-blue-500/22 dark:text-blue-300">
                   <CreditCard className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-zinc-700" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+                  <h3 className="text-foreground" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
                     Plano e assinatura
                   </h3>
-                  <p className="mt-0.5 text-zinc-500" style={{ fontSize: '0.8rem' }}>
+                  <p className="mt-0.5 text-muted-foreground" style={{ fontSize: '0.8rem' }}>
                     Teste 30 dias (até {sub.maxVehiclesTrial} veículos). Plano: R${' '}
                     {sub.pricePerVehicleBrl.toFixed(2).replace('.', ',')}/veículo/mês via Stripe.
                   </p>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm text-zinc-700">
+            <CardContent className="space-y-4 text-sm text-foreground">
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={
                     sub.isOperational
-                      ? 'rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-800'
-                      : 'rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-900'
+                      ? 'rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-900 dark:bg-emerald-500/22 dark:text-emerald-50'
+                      : 'rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-950/45 dark:text-amber-50'
                   }
                 >
                   {sub.isOperational ? 'Acesso operacional' : 'Acesso bloqueado'}
                 </span>
-                <span className="text-xs text-zinc-500">Situação: {sub.status}</span>
+                <span className="text-xs text-muted-foreground">Situação: {sub.status}</span>
                 {sub.vehicleCount != null && (
-                  <span className="text-xs text-zinc-500">Veículos: {sub.vehicleCount}</span>
+                  <span className="text-xs text-muted-foreground">Veículos: {sub.vehicleCount}</span>
                 )}
               </div>
-              {sub.message && <p className="text-zinc-600 leading-relaxed">{sub.message}</p>}
+              {sub.message && <p className="text-muted-foreground leading-relaxed">{sub.message}</p>}
               {!sub.stripeConfigured && (
-                <p className="rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-600">
-                  O servidor ainda não definiu <code className="text-zinc-800">STRIPE_SECRET_KEY</code> e{' '}
-                  <code className="text-zinc-800">STRIPE_PRICE_ID</code>. Pagamento online fica desativado em dev; o
+                <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+                  O servidor ainda não definiu <code className="text-foreground">STRIPE_SECRET_KEY</code> e{' '}
+                  <code className="text-foreground">STRIPE_PRICE_ID</code>. Pagamento online fica desativado em dev; o
                   acesso de contas legadas continua ativo.
                 </p>
               )}
@@ -474,12 +498,12 @@ export default function ConfigPage() {
           </Card>
         )}
 
-        <Card className="border-zinc-200 shadow-sm">
+        <Card className="border-border shadow-sm">
           <CardHeader className="pb-2 pt-6">
-            <h3 className="text-zinc-700" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+            <h3 className="text-foreground" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
               Preferências de cálculo e fuso horário
             </h3>
-            <p className="mt-1 text-zinc-500" style={{ fontSize: '0.8rem' }}>
+            <p className="mt-1 text-muted-foreground" style={{ fontSize: '0.8rem' }}>
               {company.isAutonomous ? (
                 <>
                   Percentual padrão de comissão quando o cadastro do motorista não define um % próprio; método aplicado ao
@@ -518,21 +542,21 @@ export default function ConfigPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-zinc-200 shadow-sm">
+        <Card className="border-border shadow-sm">
           <CardHeader className="pb-2 pt-6">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <h3 className="text-zinc-700" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+                <h3 className="text-foreground" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
                   Categorias de Despesas
                 </h3>
-                <p className="mt-0.5 text-zinc-500" style={{ fontSize: '0.8rem' }}>
+                <p className="mt-0.5 text-muted-foreground" style={{ fontSize: '0.8rem' }}>
                   Gerencie as categorias para classificar as despesas de viagem.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={openNewCategory}
-                className="flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg bg-blue-50 px-3 py-1.5 text-blue-700 transition-colors hover:bg-blue-100 sm:w-auto"
+                className="flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg border border-blue-600/25 bg-blue-500/12 px-3 py-1.5 text-blue-900 transition-colors hover:bg-blue-500/18 dark:bg-blue-500/18 dark:text-blue-100 dark:hover:bg-blue-500/26 sm:w-auto"
                 style={{ fontSize: '0.83rem' }}
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -543,7 +567,7 @@ export default function ConfigPage() {
           <CardContent className="space-y-4">
             <div>
               <p
-                className="mb-2 text-zinc-500"
+                className="mb-2 text-muted-foreground"
                 style={{
                   fontSize: '0.78rem',
                   fontWeight: 600,
@@ -557,10 +581,10 @@ export default function ConfigPage() {
                 {systemList.map((cat) => (
                   <div
                     key={cat.id}
-                    className="flex items-center gap-2 rounded-lg border border-zinc-100 bg-zinc-50 p-2.5"
+                    className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 p-2.5 dark:bg-muted/30"
                   >
                     <CategoryColorDot color={cat.color} size="sm" />
-                    <span className="text-zinc-700" style={{ fontSize: '0.83rem' }}>
+                    <span className="text-foreground" style={{ fontSize: '0.83rem' }}>
                       {cat.name}
                     </span>
                   </div>
@@ -571,7 +595,7 @@ export default function ConfigPage() {
             {customList.length > 0 && (
               <div>
                 <p
-                  className="mb-2 text-zinc-500"
+                  className="mb-2 text-muted-foreground"
                   style={{
                     fontSize: '0.78rem',
                     fontWeight: 600,
@@ -585,11 +609,11 @@ export default function ConfigPage() {
                   {customList.map((cat) => (
                     <div
                       key={cat.id}
-                      className="flex items-center justify-between rounded-lg border border-zinc-200 bg-white p-3"
+                      className="flex items-center justify-between rounded-lg border border-border bg-card p-3"
                     >
                       <div className="flex min-w-0 items-center gap-2">
                         <CategoryColorDot color={cat.color} size="md" />
-                        <span className="truncate text-zinc-800" style={{ fontSize: '0.88rem' }}>
+                        <span className="truncate text-foreground" style={{ fontSize: '0.88rem' }}>
                           {cat.name}
                         </span>
                       </div>
@@ -597,7 +621,7 @@ export default function ConfigPage() {
                         <button
                           type="button"
                           onClick={() => openEditCategory(cat)}
-                          className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-blue-700 dark:hover:text-blue-300"
                           aria-label={`Editar ${cat.name}`}
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -605,7 +629,7 @@ export default function ConfigPage() {
                         <button
                           type="button"
                           onClick={() => removeCategory(cat)}
-                          className="rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                          className={dashboardDeleteIconTriggerClass}
                           aria-label={`Excluir ${cat.name}`}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -618,8 +642,8 @@ export default function ConfigPage() {
             )}
 
             {customList.length === 0 && (
-              <div className="rounded-lg border-2 border-dashed border-zinc-200 py-4 text-center">
-                <p className="text-zinc-400" style={{ fontSize: '0.85rem' }}>
+              <div className="rounded-lg border-2 border-dashed border-border py-4 text-center">
+                <p className="text-muted-foreground" style={{ fontSize: '0.85rem' }}>
                   Nenhuma categoria personalizada criada.
                 </p>
               </div>
@@ -636,12 +660,12 @@ export default function ConfigPage() {
             onClick={() => setCategoryDialogOpen(false)}
           />
           <div
-            className="settings-font-inter relative w-full max-w-sm rounded-xl border border-zinc-200 bg-white p-6 shadow-lg tracking-tight"
+            className="settings-font-inter relative w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-lg tracking-tight"
             role="dialog"
             aria-modal="true"
             aria-labelledby="category-dialog-title"
           >
-            <h2 id="category-dialog-title" className="text-lg font-semibold text-zinc-900">
+            <h2 id="category-dialog-title" className="text-lg font-semibold text-foreground">
               {editingCategory ? 'Editar categoria' : 'Nova categoria'}
             </h2>
             <div className="space-y-4 py-4">
@@ -654,7 +678,6 @@ export default function ConfigPage() {
                   placeholder="Nome da categoria"
                   value={categoryForm.name}
                   onChange={(e) => setCategoryForm((f) => ({ ...f, name: e.target.value }))}
-                  className="bg-white"
                 />
               </div>
               <div className="space-y-1.5">
@@ -680,7 +703,7 @@ export default function ConfigPage() {
                 </div>
               </div>
             </div>
-            <div className={`${mobileFormActionsRowClass} border-t border-zinc-100 pt-4`}>
+            <div className={`${mobileFormActionsRowClass} border-t border-border pt-4`}>
               <Button
                 type="button"
                 variant="outline"
@@ -747,10 +770,12 @@ function AutonomousProfileForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {serverError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">{serverError}</div>
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+          {serverError}
+        </div>
       )}
       {!d && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 dark:border-amber-500/35 dark:bg-amber-950/35 dark:text-amber-100">
           Nenhum motorista encontrado nesta conta. Conclua o cadastro inicial ou registre um motorista para poder informar CPF
           e contatos nesta página.
         </div>
@@ -766,7 +791,6 @@ function AutonomousProfileForm({
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="bg-white"
           />
         </div>
         <div className="space-y-1.5">
@@ -782,7 +806,6 @@ function AutonomousProfileForm({
             disabled={!d}
             value={cpf}
             onChange={(e) => setCpf(formatCpf(e.target.value))}
-            className="bg-white"
           />
         </div>
         <div className="space-y-1.5">
@@ -799,7 +822,6 @@ function AutonomousProfileForm({
             disabled={!d}
             value={phone}
             onChange={(e) => setPhone(formatPhoneBr(e.target.value))}
-            className="bg-white"
           />
         </div>
       </div>
@@ -814,7 +836,6 @@ function AutonomousProfileForm({
           placeholder="seu@email.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="bg-white"
         />
       </div>
       <div className="space-y-1.5">
@@ -826,10 +847,9 @@ function AutonomousProfileForm({
           placeholder="Rua, número, bairro, cidade - UF"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          className="bg-white"
         />
       </div>
-      <div className={`${mobileFormActionsRowClass} border-t border-zinc-100 pt-4`}>
+      <div className={`${mobileFormActionsRowClass} border-t border-border pt-4`}>
         <Button type="submit" disabled={saving} loading={saving} className={dashboardFormSaveButtonClass}>
           {!saving && <Save className="h-4 w-4" />}
           {saving ? 'Salvando…' : 'Salvar'}
@@ -876,7 +896,9 @@ function CompanyForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {serverError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">{serverError}</div>
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+          {serverError}
+        </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
@@ -889,7 +911,6 @@ function CompanyForm({
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="bg-white"
           />
         </div>
         <div className="space-y-1.5">
@@ -904,7 +925,6 @@ function CompanyForm({
             maxLength={18}
             value={document}
             onChange={(e) => setDocument(formatCpfCnpjDocument(e.target.value))}
-            className="bg-white"
           />
         </div>
       </div>
@@ -917,7 +937,6 @@ function CompanyForm({
           placeholder="Rua, número, bairro, cidade - UF"
           value={address}
           onChange={(e) => setAddress(e.target.value)}
-          className="bg-white"
         />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
@@ -934,7 +953,6 @@ function CompanyForm({
             maxLength={16}
             value={phone}
             onChange={(e) => setPhone(formatPhoneBr(e.target.value))}
-            className="bg-white"
           />
         </div>
         <div className="space-y-1.5">
@@ -947,11 +965,10 @@ function CompanyForm({
             placeholder="contato@empresa.com.br"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="bg-white"
           />
         </div>
       </div>
-      <div className={`${mobileFormActionsRowClass} border-t border-zinc-100 pt-4`}>
+      <div className={`${mobileFormActionsRowClass} border-t border-border pt-4`}>
         <Button type="submit" disabled={saving} loading={saving} className={dashboardFormSaveButtonClass}>
           {!saving && <Save className="h-4 w-4" />}
           {saving ? 'Salvando…' : 'Salvar dados da empresa'}
@@ -1004,7 +1021,9 @@ function CalculationPreferencesForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {serverError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800">{serverError}</div>
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+          {serverError}
+        </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="w-full space-y-1.5 sm:col-span-1 sm:max-w-[220px]">
@@ -1020,9 +1039,8 @@ function CalculationPreferencesForm({
             placeholder="ex.: 10"
             value={defaultCommission}
             onChange={(e) => setDefaultCommission(e.target.value)}
-            className="bg-white"
           />
-          <p className="text-xs text-zinc-500">Usada quando o motorista não tem % definido no cadastro.</p>
+          <p className="text-xs text-muted-foreground">Usada quando o motorista não tem % definido no cadastro.</p>
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <span className={labelClass}>Método da comissão ao finalizar viagem</span>
@@ -1030,7 +1048,7 @@ function CalculationPreferencesForm({
             {COMMISSION_METHOD_OPTIONS.map((opt) => (
               <label
                 key={opt.value}
-                className="flex cursor-pointer gap-3 rounded-lg border border-zinc-200 bg-white p-3 has-[:checked]:border-blue-400 has-[:checked]:ring-1 has-[:checked]:ring-blue-400"
+                className="flex cursor-pointer gap-3 rounded-lg border border-border bg-card p-3 has-[:checked]:border-primary/50 has-[:checked]:ring-2 has-[:checked]:ring-focus-ring"
               >
                 <input
                   type="radio"
@@ -1041,8 +1059,8 @@ function CalculationPreferencesForm({
                   className="mt-1"
                 />
                 <span>
-                  <span className="block text-sm font-medium text-zinc-800">{opt.label}</span>
-                  <span className="block text-xs text-zinc-500">{opt.hint}</span>
+                  <span className="block text-sm font-medium text-foreground">{opt.label}</span>
+                  <span className="block text-xs text-muted-foreground">{opt.hint}</span>
                 </span>
               </label>
             ))}
@@ -1055,7 +1073,7 @@ function CalculationPreferencesForm({
         </label>
         <select
           id="cfg-timezone"
-          className={selectClass}
+          className={cn(dashboardNativeFieldClass, 'block w-full')}
           value={timezone}
           onChange={(e) => setTimezone(e.target.value)}
         >
@@ -1066,13 +1084,13 @@ function CalculationPreferencesForm({
             </option>
           ))}
         </select>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-muted-foreground">
             {autonomous
               ? 'Define o fuso regional usado para datas, relatórios e exibição no app.'
               : 'Define o contexto regional da empresa; útil para relatórios e consistência de datas.'}
           </p>
       </div>
-      <div className={`${mobileFormActionsRowClass} border-t border-zinc-100 pt-4`}>
+      <div className={`${mobileFormActionsRowClass} border-t border-border pt-4`}>
         <Button type="submit" disabled={saving} loading={saving} className={dashboardFormSaveButtonClass}>
           {!saving && <Save className="h-4 w-4" />}
           {saving ? 'Salvando…' : 'Salvar preferências'}

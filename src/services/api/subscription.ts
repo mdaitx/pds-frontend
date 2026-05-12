@@ -21,8 +21,11 @@ export type SubscriptionStatusResponse = {
 };
 
 /** GET /subscription/status */
-export async function getSubscriptionStatus(): Promise<SubscriptionStatusResponse> {
-  return apiFetch<SubscriptionStatusResponse>('/subscription/status', { method: 'GET' });
+export async function getSubscriptionStatus(accessToken?: string): Promise<SubscriptionStatusResponse> {
+  return apiFetch<SubscriptionStatusResponse>('/subscription/status', {
+    method: 'GET',
+    ...(accessToken !== undefined ? { token: accessToken } : {}),
+  });
 }
 
 export type SubscriptionCheckoutResponse = { url: string | null };

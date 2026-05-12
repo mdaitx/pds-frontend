@@ -8,8 +8,8 @@ import { LoadingMessage } from '@/components/ui/loading';
 
 function DashboardPageSuspenseFallback() {
   return (
-    <div className="flex min-h-[40vh] items-center justify-center bg-zinc-50">
-      <LoadingMessage message="Carregando…" />
+    <div className="flex min-h-[42vh] w-full flex-1 items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/30 px-4 py-14">
+      <LoadingMessage message="Carregando…" className="text-muted-foreground" />
     </div>
   );
 }

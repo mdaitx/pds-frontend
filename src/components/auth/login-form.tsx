@@ -36,11 +36,12 @@ export function LoginForm() {
 
   if (configError) {
     return (
-      <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+      <div className="mt-6 rounded-xl border border-amber-300/70 bg-amber-100 p-3 text-sm text-amber-950 dark:border-amber-600/60 dark:bg-amber-950/40 dark:text-amber-100">
         <p className="font-medium">Configuração necessária</p>
         <p className="mt-1">{configError}</p>
         <p className="mt-2">
-          Configure <code className="rounded bg-amber-100 px-1">.env.local</code> e reinicie o servidor.
+          Configure <code className="rounded bg-amber-200/80 px-1 dark:bg-amber-900/50">.env.local</code> e reinicie o
+          servidor.
         </p>
       </div>
     );
@@ -79,14 +80,14 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="border-zinc-200 shadow-xl shadow-blue-950/10">
+    <Card className="shadow-xl shadow-foreground/[0.04] dark:shadow-black/40">
       <CardHeader className="pb-2">
-        <h2 className="text-zinc-800 text-center text-xl font-semibold">Entrar na sua conta</h2>
+        <h2 className="text-center text-xl font-semibold text-foreground">Entrar na sua conta</h2>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           {signupNotice && (
-            <p className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+            <p className="rounded-xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-foreground">
               {signupNotice}
             </p>
           )}
@@ -122,7 +123,7 @@ export function LoginForm() {
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                 aria-pressed={showPassword}
               >
@@ -132,7 +133,7 @@ export function LoginForm() {
             <div className="flex justify-end">
               <Link
                 href="/forgot-password"
-                className="text-blue-700 hover:text-blue-800 transition-colors text-sm"
+                className="text-primary text-sm transition-colors duration-200 hover:text-primary-hover"
               >
                 Esqueceu a senha?
               </Link>
@@ -140,23 +141,20 @@ export function LoginForm() {
           </div>
 
           {error && (
-            <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg border border-red-200">{error}</p>
+            <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
           )}
 
-          <Button
-            type="submit"
-            className="w-full bg-blue-700 hover:bg-blue-800 text-white"
-            disabled={loading}
-            loading={loading}
-          >
+          <Button type="submit" variant="primary" className="w-full" disabled={loading} loading={loading}>
             {loading ? 'Entrando...' : 'Entrar'}
           </Button>
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-zinc-500 text-sm">
+          <p className="text-sm text-muted-foreground">
             Não tem conta?{' '}
-            <Link href="/signup" className="text-blue-700 hover:text-blue-800 transition-colors font-semibold">
+            <Link href="/signup" className="font-semibold text-primary transition-colors duration-200 hover:text-primary-hover">
               Cadastre-se
             </Link>
           </p>
