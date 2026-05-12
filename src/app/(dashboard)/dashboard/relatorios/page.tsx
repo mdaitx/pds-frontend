@@ -45,6 +45,11 @@ import { Button } from '@/components/ui/button';
 import { LoadingMessage } from '@/components/ui/loading';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { cn } from '@/lib/cn';
+import {
+  dashboardFilterLabelClass,
+  dashboardNativeFieldClass,
+  dashboardSearchIconRightClass,
+} from '@/lib/dashboard-field-classes';
 
 type PeriodType = 'monthly' | 'semestral' | 'annual';
 
@@ -405,14 +410,23 @@ function RelatorioImpressao(props: {
 const DESEMPENHO_STATS_TABLE_CN = cn(
   'w-full min-w-[26rem] sm:min-w-[30rem] md:min-w-[34rem] xl:min-w-[36rem]',
   'text-[0.8125rem] sm:text-[0.875rem] tabular-nums',
-  '[&_th]:whitespace-nowrap [&_th]:text-left [&_th]:font-semibold [&_th]:text-zinc-500 [&_th]:text-[0.65rem] sm:[&_th]:text-[0.72rem] md:[&_th]:text-[0.78rem]',
+  '[&_th]:whitespace-nowrap [&_th]:text-left [&_th]:font-semibold [&_th]:text-muted-foreground [&_th]:text-[0.65rem] sm:[&_th]:text-[0.72rem] md:[&_th]:text-[0.78rem]',
   '[&_th]:px-2 [&_th]:py-2 sm:[&_th]:px-3 sm:[&_th]:py-2.5 md:[&_th]:px-4 md:[&_th]:py-3',
   '[&_td]:whitespace-nowrap [&_td]:px-2 [&_td]:py-2 sm:[&_td]:px-3 sm:[&_td]:py-2.5 md:[&_td]:px-4 md:[&_td]:py-3',
   '[&_tbody_td:first-child]:font-medium'
 );
 
 const DESEMPENHO_SCROLL_AREA_CN =
-  'min-h-0 flex-1 w-full min-w-0 overflow-x-auto overflow-y-auto overscroll-x-contain rounded-md border border-zinc-100 [-webkit-overflow-scrolling:touch] max-sm:max-h-[min(70dvh,26rem)] max-sm:min-h-[10rem]';
+  'min-h-0 flex-1 w-full min-w-0 overflow-x-auto overflow-y-auto overscroll-x-contain rounded-md border border-border/80 bg-muted/25 [-webkit-overflow-scrolling:touch] max-sm:max-h-[min(70dvh,26rem)] max-sm:min-h-[10rem] dark:border-border dark:bg-muted/15';
+
+const REPORT_CHART_TICK = { fontSize: 12 as const, fill: 'hsl(var(--muted-foreground))' };
+
+const REPORT_CHART_TOOLTIP_STYLE = {
+  borderRadius: 12,
+  border: '1px solid hsl(var(--border))',
+  backgroundColor: 'hsl(var(--card))',
+  color: 'hsl(var(--foreground))',
+} as const;
 
 export default function RelatoriosPage() {
   const router = useRouter();
@@ -442,7 +456,7 @@ export default function RelatoriosPage() {
 
   const reportQuery = useQuery({
     queryKey: reportsTripsQueryKey(fromYmd, toYmd),
-    queryFn: () => getTripsReport(fromYmd, toYmd),
+    queryFn: () => getTripsReport(fromYmd, toYmd, session?.access_token),
     enabled: reportEnabled,
     staleTime: 60_000,
     retry: false,
@@ -672,13 +686,13 @@ export default function RelatoriosPage() {
       innerClassName="space-y-5 sm:space-y-6 lg:space-y-7 lg:px-6 xl:px-8 print:max-w-none print:px-6 print:sm:px-8"
     >
       {loadError ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800 print:hidden">{loadError}</div>
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive print:hidden">{loadError}</div>
       ) : null}
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 py-16 text-zinc-500 print:hidden">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Carregando…
+        <div className="flex items-center justify-center gap-3 rounded-2xl border border-dashed border-border/70 bg-muted/35 py-16 text-muted-foreground print:hidden dark:bg-muted/20">
+          <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" aria-hidden />
+          <span className="text-sm font-medium">Carregando…</span>
         </div>
       ) : (
         <>
@@ -712,14 +726,14 @@ export default function RelatoriosPage() {
             <div className="min-w-0 flex-1">
               <Link
                 href="/dashboard"
-                className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
+                className="mb-1 flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
                 style={{ fontSize: '0.85rem' }}
               >
                 <ArrowLeft className="h-3.5 w-3.5" />
                 Voltar ao dashboard
               </Link>
-              <h1 className="text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">Relatórios</h1>
-              <p className="mt-0.5 text-sm text-zinc-500 md:text-base">Análise financeira da frota</p>
+              <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">Relatórios</h1>
+              <p className="mt-0.5 text-sm text-muted-foreground md:text-base">Análise financeira da frota</p>
               {(filteredTrips.length > 0) && (
                 <div className="mt-3 max-w-2xl print:hidden">
                   <div className="relative">
@@ -728,18 +742,19 @@ export default function RelatoriosPage() {
                       placeholder="Buscar por código, placa ou motorista"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full rounded-lg bg-zinc-100 py-2.5 pl-4 pr-10 text-zinc-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={cn(dashboardNativeFieldClass, 'w-full py-2.5 pl-4 pr-10')}
                       style={{ fontSize: '0.875rem' }}
                     />
-                    <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                    <Search className={dashboardSearchIconRightClass} />
                   </div>
                 </div>
               )}
             </div>
             <Button
               type="button"
+              variant="default"
               onClick={handleExportPDF}
-              className="h-11 w-full shrink-0 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto lg:h-10 print:hidden"
+              className="h-11 w-full shrink-0 sm:w-auto lg:h-10 print:hidden"
             >
               <FileDown className="mr-2 h-4 w-4" />
               Exportar PDF
@@ -747,7 +762,7 @@ export default function RelatoriosPage() {
           </div>
 
           {/* Filters */}
-          <Card className="border-zinc-200 print:hidden">
+          <Card className="border-border print:hidden">
             <CardContent className="p-4 sm:p-5">
               <div
                 className="grid w-full min-w-0 gap-3 sm:gap-4 lg:gap-5 [&>div]:min-w-0"
@@ -756,13 +771,13 @@ export default function RelatoriosPage() {
                 }}
               >
                 <div className="flex min-w-0 flex-col">
-                  <label className="mb-2 block text-zinc-700" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                  <label className={dashboardFilterLabelClass}>
                     Período
                   </label>
                   <select
                     value={periodType}
                     onChange={(e) => setPeriodType(e.target.value as PeriodType)}
-                    className="w-full min-w-0 max-w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={cn(dashboardNativeFieldClass, 'w-full')}
                     style={{ fontSize: '0.875rem' }}
                   >
                     <option value="monthly">Mensal</option>
@@ -773,14 +788,14 @@ export default function RelatoriosPage() {
 
                 {periodType === 'monthly' && (
                   <div className="flex min-w-0 flex-col">
-                    <label className="mb-2 block text-zinc-700" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                    <label className={dashboardFilterLabelClass}>
                       Mês
                     </label>
                     <input
                       type="month"
                       value={selectedMonth}
                       onChange={(e) => setSelectedMonth(e.target.value)}
-                      className="w-full min-w-0 max-w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={cn(dashboardNativeFieldClass, 'w-full')}
                       style={{ fontSize: '0.875rem' }}
                     />
                   </div>
@@ -789,13 +804,13 @@ export default function RelatoriosPage() {
                 {periodType === 'semestral' && (
                   <>
                     <div className="flex min-w-0 flex-col">
-                      <label className="mb-2 block text-zinc-700" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                      <label className={dashboardFilterLabelClass}>
                         Ano
                       </label>
                       <select
                         value={selectedYear}
                         onChange={(e) => setSelectedYear(e.target.value)}
-                        className="w-full min-w-0 max-w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className={cn(dashboardNativeFieldClass, 'w-full')}
                         style={{ fontSize: '0.875rem' }}
                       >
                         {[2024, 2025, 2026].map((year) => (
@@ -806,13 +821,13 @@ export default function RelatoriosPage() {
                       </select>
                     </div>
                     <div className="flex min-w-0 flex-col">
-                      <label className="mb-2 block text-zinc-700" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                      <label className={dashboardFilterLabelClass}>
                         Semestre
                       </label>
                       <select
                         value={selectedSemester}
                         onChange={(e) => setSelectedSemester(e.target.value as SemesterHalf)}
-                        className="w-full min-w-0 max-w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className={cn(dashboardNativeFieldClass, 'w-full')}
                         style={{ fontSize: '0.875rem' }}
                       >
                         <option value="1">1º semestre (jan–jun)</option>
@@ -824,13 +839,13 @@ export default function RelatoriosPage() {
 
                 {periodType === 'annual' && (
                   <div className="flex min-w-0 flex-col">
-                    <label className="mb-2 block text-zinc-700" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                    <label className={dashboardFilterLabelClass}>
                       Ano
                     </label>
                     <select
                       value={selectedYear}
                       onChange={(e) => setSelectedYear(e.target.value)}
-                      className="w-full min-w-0 max-w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className={cn(dashboardNativeFieldClass, 'w-full')}
                       style={{ fontSize: '0.875rem' }}
                     >
                       {[2024, 2025, 2026].map((year) => (
@@ -843,13 +858,13 @@ export default function RelatoriosPage() {
                 )}
 
                 <div className="flex min-w-0 flex-col">
-                  <label className="mb-2 block text-zinc-700" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                  <label className={dashboardFilterLabelClass}>
                     Veículo
                   </label>
                   <select
                     value={vehicleFilter}
                     onChange={(e) => setSelectedVehicle(e.target.value)}
-                    className="w-full min-w-0 max-w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={cn(dashboardNativeFieldClass, 'w-full')}
                     style={{ fontSize: '0.875rem' }}
                   >
                     <option value="all">Todas as placas</option>
@@ -866,11 +881,11 @@ export default function RelatoriosPage() {
 
           {/* Active filters indicator */}
           {vehicleFilter !== 'all' && (
-            <Card className="border-blue-200 bg-blue-50 print:hidden">
+            <Card className="border border-primary/35 bg-primary/10 print:hidden dark:border-primary/45 dark:bg-primary/15">
               <CardContent className="p-3">
                 <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-blue-700" />
-                  <p className="text-blue-900" style={{ fontSize: '0.85rem' }}>
+                  <Truck className="h-4 w-4 shrink-0 text-primary" />
+                  <p className="text-foreground" style={{ fontSize: '0.85rem' }}>
                     <span style={{ fontWeight: 600 }}>Filtro ativo:</span> Exibindo dados apenas do veículo{' '}
                     <span style={{ fontWeight: 700 }}>{getVehicleLabel()}</span> no período de{' '}
                     <span style={{ fontWeight: 700 }}>{getPeriodLabel()}</span>
@@ -886,40 +901,52 @@ export default function RelatoriosPage() {
               {
                 title: 'Faturamento total',
                 value: formatCurrency(totalFaturamento),
-                icon: <DollarSign className="h-5 w-5 text-green-600" />,
-                bg: 'bg-green-50',
+                icon: (
+                  <DollarSign className="h-5 w-5 text-emerald-600 dark:text-emerald-300" aria-hidden />
+                ),
+                wrapClass:
+                  'bg-emerald-500/12 ring-1 ring-emerald-600/20 dark:bg-emerald-500/18 dark:ring-emerald-400/25',
               },
               {
                 title: 'Total despesas',
                 value: formatCurrency(totalDespesas),
-                icon: <TrendingDown className="h-5 w-5 text-red-600" />,
-                bg: 'bg-red-50',
+                icon: (
+                  <TrendingDown className="h-5 w-5 text-red-600 dark:text-red-300" aria-hidden />
+                ),
+                wrapClass:
+                  'bg-red-500/12 ring-1 ring-red-600/20 dark:bg-red-500/18 dark:ring-red-400/28',
               },
               {
                 title: 'Lucro total',
                 value: formatCurrency(totalLucro),
-                icon: <TrendingUp className="h-5 w-5 text-blue-600" />,
-                bg: 'bg-blue-50',
+                icon: (
+                  <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-300" aria-hidden />
+                ),
+                wrapClass:
+                  'bg-blue-500/12 ring-1 ring-blue-600/20 dark:bg-blue-500/18 dark:ring-blue-400/25',
               },
               {
                 title: 'Km rodados',
                 value: `${totalKm.toLocaleString('pt-BR')} km`,
-                icon: <Route className="h-5 w-5 text-orange-600" />,
-                bg: 'bg-orange-50',
+                icon: <Route className="h-5 w-5 text-orange-600 dark:text-orange-300" aria-hidden />,
+                wrapClass:
+                  'bg-orange-500/12 ring-1 ring-orange-600/20 dark:bg-orange-500/18 dark:ring-orange-400/25',
               },
             ].map((m, i) => (
-              <Card key={i} className="border-zinc-200">
+              <Card key={i} className="border-border shadow-sm">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-zinc-500" style={{ fontSize: '0.78rem' }}>
+                      <p className="truncate text-muted-foreground" style={{ fontSize: '0.78rem' }}>
                         {m.title}
                       </p>
-                      <p className="mt-1 truncate text-zinc-900" style={{ fontSize: '1.05rem', fontWeight: 700 }}>
+                      <p className="mt-1 truncate text-foreground" style={{ fontSize: '1.05rem', fontWeight: 700 }}>
                         {m.value}
                       </p>
                     </div>
-                    <div className={`ml-2 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${m.bg}`}>
+                    <div
+                      className={`ml-2 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg ${m.wrapClass}`}
+                    >
                       {m.icon}
                     </div>
                   </div>
@@ -928,19 +955,19 @@ export default function RelatoriosPage() {
             ))}
           </div>
 
-          <Card className="border-zinc-200 shadow-sm">
+          <Card className="border-border shadow-sm">
             <CardContent className="p-4 sm:p-5">
               <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-600">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/80 text-muted-foreground">
                       <Fuel className="h-4 w-4" aria-hidden />
                     </div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-600">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Média km/L no período
                     </p>
                   </div>
-                  <p className="mt-3 text-2xl font-bold tabular-nums tracking-tight text-zinc-900 sm:text-[1.65rem]">
+                  <p className="mt-3 text-2xl font-bold tabular-nums tracking-tight text-foreground sm:text-[1.65rem]">
                     {fuelPeriodMetrics.kmPerLiter != null
                       ? `${fuelPeriodMetrics.kmPerLiter.toLocaleString('pt-BR', {
                           maximumFractionDigits: 2,
@@ -948,15 +975,15 @@ export default function RelatoriosPage() {
                         })} km/L`
                       : '—'}
                   </p>
-                  <p className="mt-2 max-w-xl text-sm leading-relaxed text-zinc-500">
+                  <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
                     Registre km inicial/final e litragem nas despesas de combustível para ver a média km/L.
                   </p>
                 </div>
-                <div className="shrink-0 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 sm:min-w-[11.5rem] sm:self-center">
-                  <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-zinc-500">
+                <div className="shrink-0 rounded-xl border border-border bg-muted/40 px-4 py-3 sm:min-w-[11.5rem] sm:self-center dark:bg-muted/25">
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">
                     Custo combustível / km
                   </p>
-                  <p className="mt-1.5 text-lg font-bold tabular-nums text-zinc-900">
+                  <p className="mt-1.5 text-lg font-bold tabular-nums text-foreground">
                     {fuelPeriodMetrics.costPerKm != null
                       ? `${formatCurrency(fuelPeriodMetrics.costPerKm)} / km`
                       : '— / km'}
@@ -969,33 +996,39 @@ export default function RelatoriosPage() {
           {/* Charts — lado a lado em telas grandes (modo anual) */}
           {periodType === 'annual' && monthlyChartData.length > 0 && (
             <div className="grid gap-5 sm:gap-6 xl:grid-cols-2 xl:gap-8 2xl:gap-10">
-              <Card className="border-zinc-200 xl:min-h-0">
+              <Card className="border-border xl:min-h-0">
                 <CardHeader className="pb-2">
-                  <h3 className="text-base font-semibold text-zinc-800">Faturamento × Despesas ({selectedYear})</h3>
+                  <h3 className="text-base font-semibold text-foreground">
+                    Faturamento × Despesas ({selectedYear})
+                  </h3>
                 </CardHeader>
                 <CardContent className="h-[300px] p-4 sm:p-5">
                   <ResponsiveContainer width="100%" height={280}>
                     <BarChart data={monthlyChartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.65)" strokeOpacity={0.9} />
+                      <XAxis dataKey="mes" tick={REPORT_CHART_TICK} />
+                      <YAxis
+                        tick={REPORT_CHART_TICK}
+                        tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                      />
                       <Tooltip
                         formatter={(value) =>
                           value != null && Number.isFinite(Number(value))
                             ? formatCurrency(Number(value))
                             : '—'
                         }
+                        contentStyle={REPORT_CHART_TOOLTIP_STYLE}
                       />
-                      <Legend />
+                      <Legend wrapperStyle={{ color: 'hsl(var(--muted-foreground))' }} iconType="square" />
                       <Bar dataKey="faturamento" name="Faturamento" fill="#2563eb" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="despesas" name="Despesas" fill="#ef4444" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
-              <Card className="border-zinc-200 xl:min-h-0">
+              <Card className="border-border xl:min-h-0">
                 <CardHeader className="pb-2">
-                  <h3 className="text-base font-semibold text-zinc-800">Evolução do lucro líquido</h3>
+                  <h3 className="text-base font-semibold text-foreground">Evolução do lucro líquido</h3>
                 </CardHeader>
                 <CardContent className="h-[280px] p-4 sm:p-5">
                   <ResponsiveContainer width="100%" height={240}>
@@ -1003,15 +1036,19 @@ export default function RelatoriosPage() {
                       data={monthlyChartData.map((d) => ({ ...d, lucro: d.faturamento - d.despesas }))}
                       margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="mes" tick={{ fontSize: 12 }} />
-                      <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border) / 0.65)" strokeOpacity={0.9} />
+                      <XAxis dataKey="mes" tick={REPORT_CHART_TICK} />
+                      <YAxis
+                        tick={REPORT_CHART_TICK}
+                        tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                      />
                       <Tooltip
                         formatter={(value) =>
                           value != null && Number.isFinite(Number(value))
                             ? formatCurrency(Number(value))
                             : '—'
                         }
+                        contentStyle={REPORT_CHART_TOOLTIP_STYLE}
                       />
                       <Line
                         type="monotone"
@@ -1032,15 +1069,15 @@ export default function RelatoriosPage() {
           {(searchedVehicleStats.length > 0 || searchedDriverStats.length > 0) && (
             <div className="grid w-full min-w-0 grid-cols-1 gap-4 sm:gap-5 md:gap-6 lg:grid-cols-2 lg:items-stretch lg:gap-6 xl:gap-8 2xl:gap-10">
               {searchedVehicleStats.length > 0 && (
-                <Card className="flex h-full min-h-0 w-full max-w-full flex-col overflow-hidden border-zinc-200 lg:min-w-0">
+                <Card className="flex h-full min-h-0 w-full max-w-full flex-col overflow-hidden border-border lg:min-w-0">
                   <CardHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
-                    <h3 className="text-sm font-semibold text-zinc-800 sm:text-base">Desempenho por Veículo</h3>
+                    <h3 className="text-sm font-semibold text-foreground sm:text-base">Desempenho por Veículo</h3>
                   </CardHeader>
                   <CardContent className="flex min-h-0 flex-1 flex-col px-4 pb-5 sm:px-6 sm:pb-6">
                     <div className={DESEMPENHO_SCROLL_AREA_CN}>
                       <table className={DESEMPENHO_STATS_TABLE_CN}>
                         <thead>
-                          <tr className="border-b border-zinc-100 bg-zinc-50">
+                          <tr className="border-b border-border bg-muted/45 dark:bg-muted/30">
                             <th className="text-left">PLACA</th>
                             <th className="text-left">VIAGENS</th>
                             <th className="text-left" title="Viagens de deslocamento (sem carga até o carregamento)">
@@ -1053,19 +1090,22 @@ export default function RelatoriosPage() {
                         </thead>
                         <tbody>
                           {searchedVehicleStats.map((v, i) => (
-                            <tr key={i} className="border-b border-zinc-50 transition-colors hover:bg-zinc-50">
-                              <td className="text-zinc-800">{v.placa}</td>
-                              <td className="text-zinc-600">{v.viagens}</td>
-                              <td className="text-zinc-600">
+                            <tr
+                              key={i}
+                              className="border-b border-border/60 transition-colors hover:bg-muted/40 dark:border-border/45 dark:hover:bg-muted/25"
+                            >
+                              <td className="text-foreground">{v.placa}</td>
+                              <td className="text-muted-foreground">{v.viagens}</td>
+                              <td className="text-muted-foreground">
                                 {v.deslocamentos > 0 ? (
-                                  <span className="font-semibold text-amber-800">{v.deslocamentos}</span>
+                                  <span className="font-semibold text-amber-800 dark:text-amber-200">{v.deslocamentos}</span>
                                 ) : (
                                   '—'
                                 )}
                               </td>
-                              <td className="font-semibold text-green-700">{formatCurrency(v.faturamento)}</td>
-                              <td className="font-semibold text-red-700">{formatCurrency(v.despesas)}</td>
-                              <td className="text-zinc-600">{v.km.toLocaleString('pt-BR')} km</td>
+                              <td className="font-semibold text-emerald-700 dark:text-emerald-300">{formatCurrency(v.faturamento)}</td>
+                              <td className="font-semibold text-red-700 dark:text-red-300">{formatCurrency(v.despesas)}</td>
+                              <td className="text-muted-foreground">{v.km.toLocaleString('pt-BR')} km</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1076,15 +1116,15 @@ export default function RelatoriosPage() {
               )}
 
               {searchedDriverStats.length > 0 && (
-                <Card className="flex h-full min-h-0 w-full max-w-full flex-col overflow-hidden border-zinc-200 lg:min-w-0">
+                <Card className="flex h-full min-h-0 w-full max-w-full flex-col overflow-hidden border-border lg:min-w-0">
                   <CardHeader className="shrink-0 px-4 pb-2 pt-5 sm:px-6 sm:pt-6">
-                    <h3 className="text-sm font-semibold text-zinc-800 sm:text-base">Desempenho por Motorista</h3>
+                    <h3 className="text-sm font-semibold text-foreground sm:text-base">Desempenho por Motorista</h3>
                   </CardHeader>
                   <CardContent className="flex min-h-0 flex-1 flex-col px-4 pb-5 sm:px-6 sm:pb-6">
                     <div className={DESEMPENHO_SCROLL_AREA_CN}>
                       <table className={DESEMPENHO_STATS_TABLE_CN}>
                         <thead>
-                          <tr className="border-b border-zinc-100 bg-zinc-50">
+                          <tr className="border-b border-border bg-muted/45 dark:bg-muted/30">
                             <th className="text-left">MOTORISTA</th>
                             <th className="text-left">VIAGENS</th>
                             <th className="text-left" title="Viagens de deslocamento (sem carga até o carregamento)">
@@ -1096,23 +1136,26 @@ export default function RelatoriosPage() {
                         </thead>
                         <tbody>
                           {searchedDriverStats.map((d, i) => (
-                            <tr key={i} className="border-b border-zinc-50 transition-colors hover:bg-zinc-50">
+                            <tr
+                              key={i}
+                              className="border-b border-border/60 transition-colors hover:bg-muted/40 dark:border-border/45 dark:hover:bg-muted/25"
+                            >
                               <td
-                                className="max-w-[9rem] truncate text-zinc-800 sm:max-w-none sm:whitespace-normal"
+                                className="max-w-[9rem] truncate text-foreground sm:max-w-none sm:whitespace-normal"
                                 title={d.name}
                               >
                                 {d.name}
                               </td>
-                              <td className="text-zinc-600">{d.viagens}</td>
-                              <td className="text-zinc-600">
+                              <td className="text-muted-foreground">{d.viagens}</td>
+                              <td className="text-muted-foreground">
                                 {d.deslocamentos > 0 ? (
-                                  <span className="font-semibold text-amber-800">{d.deslocamentos}</span>
+                                  <span className="font-semibold text-amber-800 dark:text-amber-200">{d.deslocamentos}</span>
                                 ) : (
                                   '—'
                                 )}
                               </td>
-                              <td className="font-semibold text-green-700">{formatCurrency(d.faturamento)}</td>
-                              <td className="font-semibold text-blue-700">{formatCurrency(d.comissao)}</td>
+                              <td className="font-semibold text-emerald-700 dark:text-emerald-300">{formatCurrency(d.faturamento)}</td>
+                              <td className="font-semibold text-blue-700 dark:text-blue-300">{formatCurrency(d.comissao)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1125,42 +1168,43 @@ export default function RelatoriosPage() {
           )}
 
           {filteredTrips.length > 0 ? (
-            <Card className="border-zinc-200">
+            <Card className="border-border shadow-sm">
               <CardHeader className="pb-2">
-                <h3 className="text-base font-semibold text-zinc-800">Viagens no período</h3>
-                <p className="text-xs font-normal text-zinc-500">
-                  Viagens de <span className="font-semibold text-amber-900">deslocamento</span> (sem carga até o
+                <h3 className="text-base font-semibold text-foreground">Viagens no período</h3>
+                <p className="text-xs font-normal text-muted-foreground">
+                  Viagens de{' '}
+                  <span className="font-semibold text-amber-800 dark:text-amber-200">deslocamento</span> (sem carga até o
                   carregamento) aparecem com fundo destacado e selo &quot;Deslocamento&quot;.
                 </p>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto rounded-md border border-zinc-100">
+                <div className="overflow-x-auto rounded-md border border-border/80 bg-muted/15 dark:border-border dark:bg-muted/10">
                   <table className="w-full min-w-[720px]" style={{ fontSize: '0.875rem' }}>
                     <thead>
-                      <tr className="border-b border-zinc-100 bg-zinc-50">
+                      <tr className="border-b border-border bg-muted/45 dark:bg-muted/30">
                         {(['Código', 'Data', 'Placa', 'Motorista'] as const).map((h) => (
                           <th
                             key={h}
-                            className="px-4 py-3 text-left text-zinc-500"
+                            className="px-4 py-3 text-left text-muted-foreground"
                             style={{ fontWeight: 600, fontSize: '0.78rem' }}
                           >
                             {h.toUpperCase()}
                           </th>
                         ))}
                         <th
-                          className="px-4 py-3 text-right text-zinc-500"
+                          className="px-4 py-3 text-right text-muted-foreground"
                           style={{ fontWeight: 600, fontSize: '0.78rem' }}
                         >
                           FRETE
                         </th>
                         <th
-                          className="px-4 py-3 text-right text-zinc-500"
+                          className="px-4 py-3 text-right text-muted-foreground"
                           style={{ fontWeight: 600, fontSize: '0.78rem' }}
                         >
                           DESPESAS
                         </th>
                         <th
-                          className="px-4 py-3 text-right text-zinc-500"
+                          className="px-4 py-3 text-right text-muted-foreground"
                           style={{ fontWeight: 600, fontSize: '0.78rem' }}
                         >
                           KM
@@ -1170,7 +1214,7 @@ export default function RelatoriosPage() {
                     <tbody>
                       {tripRowsTable.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="px-4 py-8 text-center text-sm text-zinc-500">
+                          <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">
                             Nenhuma viagem encontrada para a busca.
                           </td>
                         </tr>
@@ -1179,36 +1223,36 @@ export default function RelatoriosPage() {
                           <tr
                             key={t.id}
                             className={cn(
-                              'border-b border-zinc-50 transition-colors',
+                              'border-b border-border/60 transition-colors dark:border-border/45',
                               t.displacementToLoad
-                                ? 'bg-amber-50/90 hover:bg-amber-50'
-                                : 'hover:bg-zinc-50'
+                                ? 'bg-amber-500/[0.08] hover:bg-amber-500/[0.12] dark:bg-amber-500/15 dark:hover:bg-amber-500/22'
+                                : 'hover:bg-muted/40 dark:hover:bg-muted/25',
                             )}
                           >
                             <td className="px-4 py-3">
-                              <span className="font-medium text-zinc-900">{t.code}</span>
+                              <span className="font-medium text-foreground">{t.code}</span>
                               {t.displacementToLoad ? (
-                                <span className="ml-2 inline-flex rounded-md bg-amber-200/90 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-950">
+                                <span className="ml-2 inline-flex rounded-md bg-amber-200/90 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-amber-950 dark:bg-amber-400/35 dark:text-amber-50">
                                   Deslocamento
                                 </span>
                               ) : null}
                             </td>
-                            <td className="px-4 py-3 text-zinc-600">
+                            <td className="px-4 py-3 text-muted-foreground">
                               {new Date(t.startDate).toLocaleDateString('pt-BR')}
                             </td>
-                            <td className="px-4 py-3 text-zinc-800" style={{ fontWeight: 500 }}>
+                            <td className="px-4 py-3 text-foreground" style={{ fontWeight: 500 }}>
                               {t.placa}
                             </td>
-                            <td className="max-w-[10rem] truncate px-4 py-3 text-zinc-700" title={t.motorista}>
+                            <td className="max-w-[10rem] truncate px-4 py-3 text-muted-foreground" title={t.motorista}>
                               {t.motorista}
                             </td>
-                            <td className="px-4 py-3 text-right font-semibold text-green-700">
+                            <td className="px-4 py-3 text-right font-semibold text-emerald-700 dark:text-emerald-300">
                               {formatCurrency(t.faturamento)}
                             </td>
-                            <td className="px-4 py-3 text-right font-semibold text-red-700">
+                            <td className="px-4 py-3 text-right font-semibold text-red-700 dark:text-red-300">
                               {formatCurrency(t.despesas)}
                             </td>
-                            <td className="px-4 py-3 text-right text-zinc-600">
+                            <td className="px-4 py-3 text-right text-muted-foreground">
                               {t.km.toLocaleString('pt-BR')} km
                             </td>
                           </tr>
@@ -1223,10 +1267,10 @@ export default function RelatoriosPage() {
 
           {/* Empty state */}
           {filteredTrips.length === 0 && (
-            <Card className="border-zinc-200">
+            <Card className="border-border shadow-sm">
               <CardContent className="py-16 text-center">
-                <BarChart3 className="mx-auto mb-4 h-12 w-12 text-zinc-300" />
-                <p className="text-zinc-500">Nenhuma viagem concluída encontrada para o período selecionado.</p>
+                <BarChart3 className="mx-auto mb-4 h-12 w-12 text-muted-foreground/50" aria-hidden />
+                <p className="text-muted-foreground">Nenhuma viagem concluída encontrada para o período selecionado.</p>
               </CardContent>
             </Card>
           )}

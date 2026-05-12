@@ -14,14 +14,14 @@ export default function ResetPasswordPage() {
         <div className="mb-4 flex h-36 w-36 items-center justify-center">
           <BrandLogo size={144} priority />
         </div>
-        <h1 className="text-[1.75rem] font-bold text-zinc-900">Truck Finanças</h1>
-        <p className="mt-1 text-zinc-500">Gestão de fretes e comissões</p>
+        <h1 className="text-[1.75rem] font-bold text-foreground">Truck Finanças</h1>
+        <p className="mt-1 text-muted-foreground">Gestão de fretes e comissões</p>
       </div>
 
-      <Card className="shadow-xl border-zinc-200">
+      <Card className="shadow-xl border-border">
         <CardHeader className="pb-2">
-          <h2 className="text-center text-xl font-semibold text-zinc-800">Nova senha</h2>
-          <p className="mt-1 text-center text-sm text-zinc-500">
+          <h2 className="text-center text-xl font-semibold text-foreground">Nova senha</h2>
+          <p className="mt-1 text-center text-sm text-muted-foreground">
             Defina uma nova senha após clicar no link do e-mail.
           </p>
         </CardHeader>

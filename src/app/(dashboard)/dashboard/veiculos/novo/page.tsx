@@ -26,6 +26,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
+import { dashboardNativeFieldClass } from '@/lib/dashboard-field-classes';
+import { dashboardFormCancelLinkClass } from '@/lib/dashboard-action-buttons';
+import { cn } from '@/lib/cn';
 
 const PLATE_REGEX = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$|^[A-Z]{3}[0-9]{4}$/;
 const CURRENT_YEAR = new Date().getFullYear();
@@ -211,18 +214,22 @@ export default function NovoVeiculoPage() {
 
   if (authLoading || !session) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <LoadingMessage />
-      </div>
+      <DashboardPageShell maxWidth="2xl">
+        <div className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 dark:bg-muted/20">
+          <LoadingMessage className="text-muted-foreground" />
+        </div>
+      </DashboardPageShell>
     );
   }
 
   const fleetStaff = appUser?.role === 'OWNER' || appUser?.role === 'ADMIN';
   if (!appUser || !fleetStaff) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <LoadingMessage />
-      </div>
+      <DashboardPageShell maxWidth="2xl">
+        <div className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 dark:bg-muted/20">
+          <LoadingMessage className="text-muted-foreground" />
+        </div>
+      </DashboardPageShell>
     );
   }
 
@@ -232,24 +239,26 @@ export default function NovoVeiculoPage() {
         <div>
           <Link
             href="/dashboard/veiculos"
-            className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
+            className="mb-1 flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
             style={{ fontSize: '0.85rem' }}
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Voltar à lista de veículos
           </Link>
-          <h1 className="text-zinc-900" style={{ fontWeight: 700, fontSize: '1.35rem' }}>
+          <h1 className="text-foreground" style={{ fontWeight: 700, fontSize: '1.35rem' }}>
             Novo veículo
           </h1>
         </div>
 
         {globalError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{globalError}</div>
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {globalError}
+          </div>
         )}
 
-        <Card className="border-zinc-200">
+        <Card className="border-border shadow-sm">
           <CardHeader className="pb-2">
-            <h2 className="text-zinc-700" style={{ fontSize: '1rem', fontWeight: 600 }}>
+            <h2 className="text-foreground" style={{ fontSize: '1rem', fontWeight: 600 }}>
               Dados do veículo
             </h2>
           </CardHeader>
@@ -258,7 +267,7 @@ export default function NovoVeiculoPage() {
               <div className="space-y-1.5">
                 <Label htmlFor="new-plate">
                   Placa *{' '}
-                  <span className="text-zinc-400" style={{ fontWeight: 400, fontSize: '0.78rem' }}>
+                  <span className="text-muted-foreground/90" style={{ fontWeight: 400, fontSize: '0.78rem' }}>
                     (Mercosul ou antigo)
                   </span>
                 </Label>
@@ -270,7 +279,7 @@ export default function NovoVeiculoPage() {
                   maxLength={8}
                   autoComplete="off"
                 />
-                {errors.plate && <p className="text-sm text-red-600">{errors.plate}</p>}
+                {errors.plate && <p className="text-sm text-destructive">{errors.plate}</p>}
               </div>
 
               <div className="space-y-1.5">
@@ -279,7 +288,7 @@ export default function NovoVeiculoPage() {
                   id="new-status"
                   value={form.status}
                   onChange={(e) => setField('status', e.target.value)}
-                  className="flex h-9 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className={cn(dashboardNativeFieldClass, 'flex h-9 py-2')}
                 >
                   <option value="ACTIVE">Ativo</option>
                   <option value="INACTIVE">Inativo</option>
@@ -294,7 +303,7 @@ export default function NovoVeiculoPage() {
                 id="new-vehicle-type"
                 value={form.vehicleType}
                 onChange={(e) => setField('vehicleType', e.target.value)}
-                className="flex h-9 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className={cn(dashboardNativeFieldClass, 'flex h-9 py-2')}
               >
                 {(Object.keys(VEHICLE_TYPE_LABELS) as VehicleType[]).map((key) => (
                   <option key={key} value={key}>
@@ -311,7 +320,7 @@ export default function NovoVeiculoPage() {
                   id="new-trailer"
                   value={linkedVehicleId}
                   onChange={(e) => setLinkedVehicleId(e.target.value)}
-                  className="flex h-9 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className={cn(dashboardNativeFieldClass, 'flex h-9 py-2')}
                 >
                   <option value="">Nenhum</option>
                   {semiOptions.map((v) => (
@@ -320,7 +329,7 @@ export default function NovoVeiculoPage() {
                     </option>
                   ))}
                 </select>
-                <p className="text-zinc-500" style={{ fontSize: '0.78rem' }}>
+                <p className="text-muted-foreground" style={{ fontSize: '0.78rem' }}>
                   Cadastre o semi-reboque antes se ainda não estiver na lista.
                 </p>
               </div>
@@ -333,7 +342,7 @@ export default function NovoVeiculoPage() {
                   id="new-tractor"
                   value={linkedVehicleId}
                   onChange={(e) => setLinkedVehicleId(e.target.value)}
-                  className="flex h-9 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  className={cn(dashboardNativeFieldClass, 'flex h-9 py-2')}
                 >
                   <option value="">Nenhum</option>
                   {cavaloOptions.map((v) => (
@@ -342,7 +351,7 @@ export default function NovoVeiculoPage() {
                     </option>
                   ))}
                 </select>
-                <p className="text-zinc-500" style={{ fontSize: '0.78rem' }}>
+                <p className="text-muted-foreground" style={{ fontSize: '0.78rem' }}>
                   Ou vincule depois ao editar o cavalo ou este semi-reboque.
                 </p>
               </div>
@@ -357,7 +366,7 @@ export default function NovoVeiculoPage() {
                   value={form.brand}
                   onChange={(e) => setField('brand', e.target.value)}
                 />
-                {errors.brand && <p className="text-sm text-red-600">{errors.brand}</p>}
+                {errors.brand && <p className="text-sm text-destructive">{errors.brand}</p>}
               </div>
 
               <div className="space-y-1.5">
@@ -368,7 +377,7 @@ export default function NovoVeiculoPage() {
                   value={form.model}
                   onChange={(e) => setField('model', e.target.value)}
                 />
-                {errors.model && <p className="text-sm text-red-600">{errors.model}</p>}
+                {errors.model && <p className="text-sm text-destructive">{errors.model}</p>}
               </div>
             </div>
 
@@ -384,7 +393,7 @@ export default function NovoVeiculoPage() {
                   value={form.year}
                   onChange={(e) => setField('year', e.target.value)}
                 />
-                {errors.year && <p className="text-sm text-red-600">{errors.year}</p>}
+                {errors.year && <p className="text-sm text-destructive">{errors.year}</p>}
               </div>
 
               <div className="space-y-1.5">
@@ -411,7 +420,7 @@ export default function NovoVeiculoPage() {
                 type="button"
                 onClick={handlePhotoZoneClick}
                 disabled={uploading}
-                className="w-full cursor-pointer rounded-lg border-2 border-dashed border-zinc-300 p-6 text-center transition-colors hover:border-blue-400 hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full cursor-pointer rounded-lg border-2 border-dashed border-border bg-transparent p-6 text-center transition-colors hover:border-primary/45 hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-muted/25"
               >
                 {photoUrl ? (
                   <div className="flex flex-col items-center gap-3">
@@ -423,16 +432,16 @@ export default function NovoVeiculoPage() {
                       className="h-28 w-full max-w-xs rounded-lg object-cover"
                       unoptimized
                     />
-                    <p className="text-zinc-500" style={{ fontSize: '0.85rem' }}>
+                    <p className="text-muted-foreground" style={{ fontSize: '0.85rem' }}>
                       {uploading ? 'Enviando…' : 'Clique para trocar a foto'}
                     </p>
                   </div>
                 ) : (
                   <>
-                    <p className="text-zinc-500" style={{ fontSize: '0.85rem' }}>
+                    <p className="text-muted-foreground" style={{ fontSize: '0.85rem' }}>
                       {uploading ? 'Enviando…' : 'Clique para fazer upload da foto do veículo'}
                     </p>
-                    <p className="mt-1 text-zinc-400" style={{ fontSize: '0.75rem' }}>
+                    <p className="mt-1 text-muted-foreground/80" style={{ fontSize: '0.75rem' }}>
                       JPG, PNG ou WebP até 5MB
                     </p>
                   </>
@@ -441,10 +450,7 @@ export default function NovoVeiculoPage() {
             </div>
 
             <div className={`${mobileFormActionsRowClass} pt-2`}>
-              <Link
-                href="/dashboard/veiculos"
-                className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-300 px-4 py-2 font-medium text-zinc-700 hover:bg-zinc-50 sm:w-auto"
-              >
+              <Link href="/dashboard/veiculos" className={dashboardFormCancelLinkClass}>
                 Cancelar
               </Link>
               <Button

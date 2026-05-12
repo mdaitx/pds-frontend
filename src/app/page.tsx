@@ -20,14 +20,15 @@ export default function HomePage() {
 
   if (configError) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-100 p-6">
-        <div className="max-w-md rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
+        <div className="max-w-md rounded-xl border border-amber-300/70 bg-amber-100 p-4 text-amber-950 dark:border-amber-600/60 dark:bg-amber-950/40 dark:text-amber-100">
           <p className="font-medium">Configuração necessária</p>
           <p className="mt-2 text-sm">{configError}</p>
           <p className="mt-3 text-sm">
-            Crie um arquivo <code className="rounded bg-amber-100 px-1">.env.local</code> na pasta{' '}
-            <code className="rounded bg-amber-100 px-1">pds-frontend</code> com as variáveis do{' '}
-            <code className="rounded bg-amber-100 px-1">.env.example</code> e reinicie o servidor.
+            Crie um arquivo{' '}
+            <code className="rounded bg-amber-200/80 px-1 dark:bg-amber-900/50">.env.local</code> na pasta{' '}
+            <code className="rounded bg-amber-200/80 px-1 dark:bg-amber-900/50">pds-frontend</code> com as variáveis do{' '}
+            <code className="rounded bg-amber-200/80 px-1 dark:bg-amber-900/50">.env.example</code> e reinicie o servidor.
           </p>
         </div>
       </div>
@@ -35,7 +36,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-zinc-100 px-6">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6">
       <LoadingMessage message="Carregando aplicação…" />
     </div>
   );

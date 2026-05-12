@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks';
 import {
@@ -25,9 +25,10 @@ import { LoadingMessage } from '@/components/ui/loading';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
+import { dashboardNativeFieldClass } from '@/lib/dashboard-field-classes';
+import { cn } from '@/lib/cn';
 
-const selectClass =
-  'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
+const selectClass = cn(dashboardNativeFieldClass, 'flex h-auto min-h-10 py-2');
 
 export default function NovoUsuarioPage() {
   const router = useRouter();
@@ -184,9 +185,11 @@ export default function NovoUsuarioPage() {
 
   if (authLoading || !session) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <LoadingMessage />
-      </div>
+      <DashboardPageShell maxWidth="2xl">
+        <div className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 dark:bg-muted/20">
+          <LoadingMessage className="text-muted-foreground" />
+        </div>
+      </DashboardPageShell>
     );
   }
 
@@ -197,19 +200,29 @@ export default function NovoUsuarioPage() {
       <div>
         <Link
           href="/dashboard/usuarios"
-          className="flex items-center gap-1 text-zinc-500 hover:text-zinc-700 transition-colors mb-1"
+          className="mb-3 flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
           style={{ fontSize: '0.85rem' }}
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="h-3.5 w-3.5" />
           Voltar aos usuários
         </Link>
-        <h1 className="text-zinc-900 text-xl font-semibold">Novo Usuário</h1>
+        <div className="flex gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-border bg-blue-500/12 text-blue-700 shadow-sm ring-1 ring-blue-600/15 dark:bg-blue-500/20 dark:text-blue-200 dark:ring-blue-400/25 [&_svg]:text-blue-700 dark:[&_svg]:text-blue-200">
+            <UserPlus className="h-7 w-7" aria-hidden />
+          </div>
+          <div className="min-w-0 pt-0.5">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Novo usuário</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Convide alguém com login (motorista, administrador ou coproprietário)
+            </p>
+          </div>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Card className="border-zinc-200">
+        <Card className="border-border shadow-sm">
           <CardHeader className="pb-2">
-            <h3 className="text-zinc-700 font-medium">Dados Pessoais</h3>
+            <h3 className="font-medium text-foreground">Dados Pessoais</h3>
           </CardHeader>
           <CardContent className="space-y-4">
             {form.role === 'DRIVER' && (
@@ -254,7 +267,7 @@ export default function NovoUsuarioPage() {
                       </option>
                     ))}
                 </select>
-                <p className="text-zinc-500 text-xs">
+                <p className="text-muted-foreground text-xs">
                   Motorista cadastrado na frota ainda sem conta de acesso. Selecionando, os dados são preenchidos automaticamente.
                 </p>
               </div>
@@ -273,7 +286,7 @@ export default function NovoUsuarioPage() {
                 value={form.name}
                 onChange={(e) => setField('name', e.target.value)}
               />
-              {errors.name && <p className="text-red-600 text-sm">{errors.name}</p>}
+              {errors.name && <p className="text-destructive text-sm">{errors.name}</p>}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="userEmail">E-mail *</Label>
@@ -284,13 +297,13 @@ export default function NovoUsuarioPage() {
                 value={form.email}
                 onChange={(e) => setField('email', e.target.value)}
               />
-              {errors.email && <p className="text-red-600 text-sm">{errors.email}</p>}
+              {errors.email && <p className="text-destructive text-sm">{errors.email}</p>}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">
                 Senha *
                 {form.role !== 'DRIVER' && canInviteStaff && (
-                  <span className="text-zinc-500 text-xs ml-1">(ou convite por e-mail)</span>
+                  <span className="text-muted-foreground ml-1 text-xs">(ou convite por e-mail)</span>
                 )}
               </Label>
               <Input
@@ -302,20 +315,20 @@ export default function NovoUsuarioPage() {
                 autoComplete="new-password"
                 disabled={form.role !== 'DRIVER' && inviteByEmail}
               />
-              {errors.password && <p className="text-red-600 text-sm">{errors.password}</p>}
+              {errors.password && <p className="text-destructive text-sm">{errors.password}</p>}
             </div>
             {form.role !== 'DRIVER' && canInviteStaff && (
-              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-zinc-200 bg-white p-3">
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-card p-3">
                 <input
                   type="checkbox"
-                  className="mt-1"
+                  className="border-border mt-1 accent-primary"
                   checked={inviteByEmail}
                   onChange={(e) => {
                     setInviteByEmail(e.target.checked);
                     setErrors((er) => ({ ...er, password: '' }));
                   }}
                 />
-                <span className="text-sm text-zinc-700">
+                <span className="text-foreground text-sm">
                   Convidar por e-mail — sem definir senha agora. O Supabase envia um link.
                 </span>
               </label>
@@ -335,16 +348,16 @@ export default function NovoUsuarioPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-zinc-200">
+        <Card className="border-border shadow-sm">
           <CardHeader className="pb-2">
-            <h3 className="text-zinc-700 font-medium">Permissões e Acesso</h3>
+            <h3 className="font-medium text-foreground">Permissões e Acesso</h3>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <p className="text-blue-900 text-sm font-semibold mb-1">
+            <div className="rounded-lg border border-blue-600/28 bg-blue-500/12 p-3 dark:bg-blue-500/16">
+              <p className="mb-1 text-sm font-semibold text-blue-950 dark:text-blue-50">
                 Restrições de Acesso por Perfil
               </p>
-              <ul className="text-blue-800 text-xs space-y-1 ml-4 list-disc">
+              <ul className="ml-4 list-disc space-y-1 text-xs text-blue-900 dark:text-blue-100/95">
                 <li>
                   <strong>Proprietário:</strong> Acesso total ao sistema, incluindo gestão de
                   usuários, configurações e relatórios financeiros.
@@ -381,7 +394,7 @@ export default function NovoUsuarioPage() {
                   <option value="ADMIN">Administrador</option>
                   <option value="DRIVER">Usuário motorista</option>
                 </select>
-                <p className="text-zinc-500 text-xs mt-1">
+                <p className="text-muted-foreground mt-1 text-xs">
                   {form.role === 'OWNER' && 'Acesso total ao sistema, incluindo configurações.'}
                   {form.role === 'ADMIN' && 'Pode gerenciar viagens, veículos e motoristas.'}
                   {form.role === 'DRIVER' && 'Conta de acesso para motorista da frota. Pode vincular a um motorista já cadastrado ou criar novo.'}
@@ -401,7 +414,7 @@ export default function NovoUsuarioPage() {
                   <option value="ACTIVE">Ativo</option>
                   <option value="INACTIVE">Inativo</option>
                 </select>
-                <p className="text-zinc-500 text-xs mt-1">
+                <p className="text-muted-foreground mt-1 text-xs">
                   Usuários inativos não poderão fazer login no sistema.
                 </p>
               </div>
@@ -420,7 +433,7 @@ export default function NovoUsuarioPage() {
             Cancelar
           </Button>
           <Button
-            className="flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
+            className="w-full sm:w-auto"
             disabled={loading}
             loading={loading}
             type="submit"

@@ -48,6 +48,9 @@ function formatCurrency(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+/** Grid compatível claro/escuro (CSS variables dos tokens). */
+const CHART_GRID_STROKE = 'hsl(var(--border))';
+
 export function DashboardCharts({
   chartPeriod,
   onChartPeriodChange,
@@ -57,9 +60,9 @@ export function DashboardCharts({
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-zinc-600">Período dos gráficos</p>
+        <p className="text-sm text-muted-foreground">Período dos gráficos</p>
         <div
-          className="inline-flex rounded-lg border border-zinc-200 bg-zinc-50 p-0.5"
+          className="inline-flex rounded-lg border border-border bg-muted/55 p-0.5"
           role="group"
           aria-label="Período dos gráficos"
         >
@@ -71,8 +74,8 @@ export function DashboardCharts({
               className={cn(
                 'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
                 chartPeriod === opt.id
-                  ? 'bg-white text-zinc-900 shadow-sm'
-                  : 'text-zinc-600 hover:text-zinc-900'
+                  ? 'bg-card text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {opt.label}
@@ -82,10 +85,10 @@ export function DashboardCharts({
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <Card className="border-zinc-200">
+        <Card className="border-border">
           <CardHeader className="pb-2">
-            <h3 className="text-zinc-800">Faturamento vs Despesas</h3>
-            <p className="mt-1 text-xs font-normal text-zinc-500">
+            <h3 className="text-foreground">Faturamento vs Despesas</h3>
+            <p className="mt-1 text-xs font-normal text-muted-foreground">
               {chartPeriod === '1m' && 'Mês atual (semanas no gráfico de linhas)'}
               {chartPeriod === '6m' && 'Últimos 6 meses'}
               {chartPeriod === '1y' && 'Últimos 12 meses'}
@@ -102,15 +105,21 @@ export function DashboardCharts({
                   bottom: chartPeriod === '1y' ? 28 : 5,
                 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                 <XAxis
                   dataKey="mes"
-                  tick={{ fontSize: chartPeriod === '1y' ? 10 : 12 }}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: chartPeriod === '1y' ? 10 : 12 }}
                   angle={chartPeriod === '1y' ? -22 : 0}
                   textAnchor={chartPeriod === '1y' ? 'end' : 'middle'}
                   height={chartPeriod === '1y' ? 48 : 24}
+                  stroke={CHART_GRID_STROKE}
                 />
-                <YAxis width={108} tick={{ fontSize: 11 }} tickFormatter={(v) => formatCurrency(Number(v))} />
+                <YAxis
+                  width={108}
+                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                  tickFormatter={(v) => formatCurrency(Number(v))}
+                  stroke={CHART_GRID_STROKE}
+                />
                 <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
                 <Legend />
                 <Line
@@ -134,10 +143,10 @@ export function DashboardCharts({
           </CardContent>
         </Card>
 
-        <Card className="border-zinc-200">
+        <Card className="border-border">
           <CardHeader className="pb-2">
-            <h3 className="text-zinc-800">Despesas por Categoria</h3>
-            <p className="mt-1 text-xs font-normal text-zinc-500">
+            <h3 className="text-foreground">Despesas por Categoria</h3>
+            <p className="mt-1 text-xs font-normal text-muted-foreground">
               {chartPeriod === '1m' && 'Total no mês atual'}
               {chartPeriod === '6m' && 'Total nos últimos 6 meses'}
               {chartPeriod === '1y' && 'Total nos últimos 12 meses'}
@@ -145,15 +154,24 @@ export function DashboardCharts({
           </CardHeader>
           <CardContent>
             {barDataDespesasCategoria.length === 0 ? (
-              <p className="py-12 text-center text-sm text-zinc-500">
+              <p className="py-12 text-center text-sm text-muted-foreground">
                 Nenhuma despesa no período selecionado.
               </p>
             ) : (
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={barDataDespesasCategoria} margin={{ top: 5, right: 12, left: 4, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="categoria" tick={{ fontSize: 12 }} />
-                  <YAxis width={108} tick={{ fontSize: 11 }} tickFormatter={(v) => formatCurrency(Number(v))} />
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
+                  <XAxis
+                    dataKey="categoria"
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    stroke={CHART_GRID_STROKE}
+                  />
+                  <YAxis
+                    width={108}
+                    tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                    tickFormatter={(v) => formatCurrency(Number(v))}
+                    stroke={CHART_GRID_STROKE}
+                  />
                   <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
                   <Bar dataKey="valor" name="Valor" radius={[8, 8, 0, 0]}>
                     {barDataDespesasCategoria.map((row) => (

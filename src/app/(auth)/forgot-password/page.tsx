@@ -11,8 +11,8 @@ export default function ForgotPasswordPage() {
         <div className="mb-4 flex h-36 w-36 items-center justify-center">
           <BrandLogo size={144} priority />
         </div>
-        <h1 className="text-[1.75rem] font-bold text-zinc-900">Truck Finanças</h1>
-        <p className="mt-1 text-zinc-500">Gestão de fretes e comissões</p>
+        <h1 className="text-[1.75rem] font-bold text-foreground">Truck Finanças</h1>
+        <p className="mt-1 text-muted-foreground">Gestão de fretes e comissões</p>
       </div>
 
       <ForgotPasswordForm />

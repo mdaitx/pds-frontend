@@ -19,7 +19,7 @@ export function Input({ className = '', label, error, helperText, id, ...props }
       aria-invalid={error ? true : undefined}
       aria-describedby={describedBy}
       className={cn(
-        'peer flex min-h-10 w-full rounded-lg border border-border bg-surface-muted px-3 py-2 text-base text-foreground outline-none transition-all duration-200 ease-out placeholder:text-muted-foreground focus:border-primary focus:bg-surface focus:ring-2 focus:ring-focus-ring disabled:cursor-not-allowed disabled:opacity-50',
+        'peer flex min-h-10 w-full rounded-xl border border-border bg-card px-3 py-2 text-base text-foreground shadow-sm outline-none transition-all duration-200 ease-out placeholder:text-muted-foreground focus:bg-card focus:border-primary focus:ring-2 focus:ring-focus-ring disabled:cursor-not-allowed disabled:opacity-50 dark:bg-muted/55 dark:shadow-none dark:focus:bg-card/90',
         error && 'border-danger focus:border-danger focus:ring-danger',
         className
       )}

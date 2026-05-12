@@ -36,11 +36,12 @@ export function ForgotPasswordForm() {
 
   if (configError) {
     return (
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+      <div className="rounded-xl border border-amber-300/70 bg-amber-100 p-3 text-sm text-amber-950 dark:border-amber-600/60 dark:bg-amber-950/40 dark:text-amber-100">
         <p className="font-medium">Configuração necessária</p>
         <p className="mt-1">{configError}</p>
         <p className="mt-2">
-          Configure <code className="rounded bg-amber-100 px-1">.env.local</code> e reinicie o servidor.
+          Configure <code className="rounded bg-amber-200/80 px-1 dark:bg-amber-900/50">.env.local</code> e reinicie o
+          servidor.
         </p>
       </div>
     );
@@ -48,14 +49,14 @@ export function ForgotPasswordForm() {
 
   if (sent) {
     return (
-      <Card className="border-zinc-200 shadow-xl">
+      <Card className="border-border shadow-xl">
         <CardContent className="pt-6">
-          <div className="rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          <div className="rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-foreground">
             Se o e-mail existir na base, você receberá um link para redefinir a senha.
           </div>
           <Link
             href="/login"
-            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:bg-primary-hover"
           >
             <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
             Voltar ao login
@@ -66,10 +67,10 @@ export function ForgotPasswordForm() {
   }
 
   return (
-    <Card className="border-zinc-200 shadow-xl">
+    <Card className="border-border shadow-xl">
       <CardHeader className="pb-2">
-        <h2 className="text-center text-xl font-semibold text-zinc-800">Recuperar a senha</h2>
-        <p className="mt-1 text-center text-sm text-zinc-500">
+        <h2 className="text-center text-xl font-semibold text-foreground">Recuperar a senha</h2>
+        <p className="mt-1 text-center text-sm text-muted-foreground">
           Informe seu e-mail para receber o link de redefinição.
         </p>
       </CardHeader>
@@ -90,12 +91,13 @@ export function ForgotPasswordForm() {
           </div>
 
           {error && (
-            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</p>
+            <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
           )}
 
           <Button
             type="submit"
-            className="w-full bg-blue-600 text-white hover:bg-blue-700"
+            variant="primary"
+            className="w-full"
             disabled={loading}
             loading={loading}
           >
@@ -104,10 +106,10 @@ export function ForgotPasswordForm() {
         </form>
 
         <div className="mt-6 text-center">
-          <p className="text-[0.9rem] text-zinc-500">
+          <p className="text-[0.9rem] text-muted-foreground">
             <Link
               href="/login"
-              className="inline-flex items-center justify-center gap-1.5 font-semibold text-blue-600 transition-colors hover:text-blue-700"
+              className="inline-flex items-center justify-center gap-1.5 font-semibold text-primary transition-colors duration-200 hover:text-primary-hover"
             >
               <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
               Voltar ao login

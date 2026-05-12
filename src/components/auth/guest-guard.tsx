@@ -46,7 +46,7 @@ export function GuestGuard({ children, redirectTo = '/dashboard' }: GuestGuardPr
   if (session && appUser) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <p className="text-zinc-500">Redirecionando…</p>
+        <p className="text-muted-foreground">Redirecionando…</p>
       </div>
     );
   }

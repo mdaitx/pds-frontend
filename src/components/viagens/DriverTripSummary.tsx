@@ -25,6 +25,12 @@ import { LoadingMessage } from '@/components/ui/loading';
 import { DriverTripExpenses } from '@/components/viagens/DriverTripExpenses';
 import { TripAdvancesPanel } from '@/components/viagens/TripAdvancesPanel';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
+import { cn } from '@/lib/cn';
+import { dashboardNativeFieldClass } from '@/lib/dashboard-field-classes';
+import {
+  dashboardFormCancelLinkClass,
+  dashboardLinkPrimaryToolbarClass,
+} from '@/lib/dashboard-action-buttons';
 
 const STATUS_LABEL: Record<Trip['status'], string> = {
   PENDING: 'Aguardando',
@@ -34,19 +40,22 @@ const STATUS_LABEL: Record<Trip['status'], string> = {
 };
 
 const STATUS_PILL: Record<Trip['status'], string> = {
-  PENDING: 'bg-amber-100 text-amber-800',
-  IN_PROGRESS: 'bg-blue-100 text-blue-800',
-  COMPLETED: 'bg-green-100 text-green-800',
-  CANCELLED: 'bg-zinc-100 text-zinc-600',
+  PENDING:
+    'bg-amber-100 text-amber-900 dark:bg-amber-500/18 dark:text-amber-100',
+  IN_PROGRESS:
+    'bg-blue-100 text-blue-900 dark:bg-blue-500/22 dark:text-blue-50',
+  COMPLETED:
+    'bg-emerald-100 text-emerald-900 dark:bg-emerald-500/22 dark:text-emerald-50',
+  CANCELLED: 'bg-muted text-muted-foreground',
 };
 
 type Props = { tripId: string };
 
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-0.5 border-b border-zinc-100 py-3 last:border-0 sm:grid-cols-[minmax(7rem,11rem)_1fr] sm:gap-4 sm:py-2.5">
-      <dt className="text-[0.8rem] font-medium text-zinc-500">{label}</dt>
-      <dd className="text-[0.88rem] text-zinc-900">{children}</dd>
+    <div className="grid gap-0.5 border-b border-border py-3 last:border-0 sm:grid-cols-[minmax(7rem,11rem)_1fr] sm:gap-4 sm:py-2.5">
+      <dt className="text-[0.8rem] font-medium text-muted-foreground">{label}</dt>
+      <dd className="text-[0.88rem] text-foreground">{children}</dd>
     </div>
   );
 }
@@ -171,9 +180,14 @@ export function DriverTripSummary({ tripId }: Props) {
 
   if (authLoading || loading) {
     return (
-      <div className="settings-font-inter flex min-h-[50vh] items-center justify-center bg-zinc-50 tracking-tight">
-        <LoadingMessage message="Carregando viagem…" />
-      </div>
+      <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="3xl">
+        <div className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 dark:bg-muted/20">
+          <LoadingMessage
+            message="Carregando viagem…"
+            className="text-muted-foreground"
+          />
+        </div>
+      </DashboardPageShell>
     );
   }
 
@@ -182,12 +196,12 @@ export function DriverTripSummary({ tripId }: Props) {
       <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="3xl">
         <Link
           href="/dashboard/viagens"
-          className="flex items-center gap-1 text-[0.85rem] text-zinc-500 transition-colors hover:text-zinc-700"
+          className="flex items-center gap-1 text-[0.85rem] text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Minhas viagens
         </Link>
-        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div className="mt-6 rounded-xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive dark:border-destructive/35 dark:bg-destructive/15">
           {error || 'Viagem não encontrada.'}
         </div>
       </DashboardPageShell>
@@ -201,53 +215,56 @@ export function DriverTripSummary({ tripId }: Props) {
       <div>
         <Link
           href="/dashboard/viagens"
-          className="mb-1 flex items-center gap-1 text-[0.85rem] text-zinc-500 transition-colors hover:text-zinc-700"
+          className="mb-2 flex items-center gap-1 text-[0.85rem] text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Minhas viagens
         </Link>
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="break-words text-zinc-900 antialiased" style={{ fontSize: '1.35rem', fontWeight: 600 }}>
+          <h1 className="break-words text-foreground antialiased" style={{ fontSize: '1.35rem', fontWeight: 600 }}>
             Viagem {trip.code}
           </h1>
           <span className={`rounded-full px-2.5 py-0.5 text-[0.72rem] font-semibold ${STATUS_PILL[trip.status]}`}>
             {STATUS_LABEL[trip.status]}
           </span>
           {isDisplacement && (
-            <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-[0.72rem] font-semibold text-violet-800">
+            <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-[0.72rem] font-semibold text-violet-900 dark:bg-violet-500/20 dark:text-violet-100">
               Deslocamento até carga
             </span>
           )}
         </div>
-        <p className="mt-1 text-zinc-600" style={{ fontSize: '0.88rem' }}>
-          {trip.origin || '—'} <span className="text-zinc-400">→</span> {trip.destination || '—'}
+        <p className="mt-1 text-muted-foreground" style={{ fontSize: '0.88rem' }}>
+          {trip.origin || '—'}{' '}
+          <span className="text-muted-foreground/60">→</span>{' '}
+          {trip.destination || '—'}
         </p>
-        <p className="mt-2 text-zinc-500" style={{ fontSize: '0.78rem' }}>
+        <p className="mt-2 text-muted-foreground" style={{ fontSize: '0.78rem' }}>
           {isDisplacement
             ? 'Deslocamento até o carregamento: ao finalizar, a viagem é encerrada sem acerto de frete. Você pode lançar despesas do trecho se precisar.'
             : 'Você pode iniciar a viagem, anexar comprovante de entrega e finalizar. Não é possível editar os dados da viagem — fale com o dono da frota se algo estiver errado.'}
         </p>
       </div>
 
+      <div className="flex w-full flex-col gap-7 sm:gap-8">
       {trip.status === 'PENDING' && (
         <button
           type="button"
           onClick={handleStart}
           disabled={starting}
-          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-center text-base font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50"
+          className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-primary px-4 py-3.5 text-center text-base font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover disabled:opacity-50 sm:py-4"
         >
-          <PlayCircle className="h-5 w-5" />
+          <PlayCircle className="h-5 w-5 shrink-0" aria-hidden />
           {starting ? 'Iniciando…' : 'Iniciar viagem'}
         </button>
       )}
 
       {trip.status === 'IN_PROGRESS' && isDisplacement && (
-        <Card className="border-violet-200 bg-violet-50/40 shadow-sm">
+        <Card className="border-violet-500/30 bg-violet-500/[0.08] shadow-sm dark:border-violet-500/25 dark:bg-violet-950/35">
           <CardHeader className="pb-2 pt-6">
-            <h2 className="text-violet-900" style={{ fontSize: '1.05rem', fontWeight: 600 }}>
+            <h2 className="text-violet-950 dark:text-violet-50" style={{ fontSize: '1.05rem', fontWeight: 600 }}>
               Finalizar deslocamento
             </h2>
-            <p className="text-[0.8rem] text-violet-800">
+            <p className="text-[0.8rem] text-violet-900 dark:text-violet-100/90">
               Este trecho não gera acerto de frete. Ao finalizar, a viagem é apenas marcada como concluída.
             </p>
           </CardHeader>
@@ -258,7 +275,7 @@ export function DriverTripSummary({ tripId }: Props) {
                 setFinalizeErr(null);
                 setFinalizeOpen(true);
               }}
-              className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-green-700"
+              className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500 sm:py-3.5"
             >
               <CheckCircle className="h-4 w-4" />
               Finalizar deslocamento
@@ -268,17 +285,17 @@ export function DriverTripSummary({ tripId }: Props) {
       )}
 
       {trip.status === 'IN_PROGRESS' && !isDisplacement && (
-        <Card className="border-zinc-200 shadow-sm">
+        <Card className="border-border shadow-sm">
           <CardHeader className="pb-2 pt-6">
-            <h2 className="text-zinc-700" style={{ fontSize: '1.05rem', fontWeight: 600 }}>
+            <h2 className="text-foreground" style={{ fontSize: '1.05rem', fontWeight: 600 }}>
               Comprovante de entrega
             </h2>
-            <p className="text-[0.8rem] text-zinc-500">
+            <p className="text-[0.8rem] text-muted-foreground">
               Obrigatório para finalizar a viagem. Use foto ou PDF do canhoto / comprovante de entrega.
             </p>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <label className="flex cursor-pointer flex-col gap-2 rounded-xl border border-dashed border-zinc-300 bg-zinc-50 px-4 py-4 text-center transition-colors hover:border-blue-400 hover:bg-blue-50/40">
+          <CardContent className="space-y-4 pb-6">
+            <label className="flex cursor-pointer flex-col gap-2 rounded-xl border border-dashed border-border bg-muted/35 px-4 py-4 text-center transition-colors hover:border-primary/40 hover:bg-muted/50 dark:bg-muted/20 dark:hover:bg-muted/35">
               <input
                 type="file"
                 accept="image/jpeg,image/png,image/webp,application/pdf"
@@ -286,18 +303,18 @@ export function DriverTripSummary({ tripId }: Props) {
                 onChange={handleReceiptChange}
                 disabled={receiptUploading}
               />
-              <span className="text-sm font-medium text-zinc-800">
+              <span className="text-sm font-medium text-foreground">
                 {receiptUploading ? 'Enviando…' : 'Toque para anexar comprovante'}
               </span>
-              <span className="text-xs text-zinc-500">JPEG, PNG, WebP ou PDF · até 15 MB</span>
+              <span className="text-xs text-muted-foreground">JPEG, PNG, WebP ou PDF · até 15 MB</span>
             </label>
-            {receiptErr && <p className="text-sm text-red-600">{receiptErr}</p>}
+            {receiptErr && <p className="text-sm text-destructive">{receiptErr}</p>}
             {deliveryUrl && (
               <a
                 href={deliveryUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block truncate text-sm font-medium text-blue-600 underline"
+                className="block truncate text-sm font-medium text-primary underline hover:text-primary/90"
               >
                 Ver comprovante anexado
               </a>
@@ -309,21 +326,23 @@ export function DriverTripSummary({ tripId }: Props) {
                 setFinalizeOpen(true);
               }}
               disabled={!canFinalizeDriver}
-              className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500 sm:py-3.5"
             >
-              <CheckCircle className="h-4 w-4" />
+              <CheckCircle className="h-4 w-4 shrink-0" />
               Finalizar viagem
             </button>
             {!canFinalizeDriver && (
-              <p className="text-center text-xs text-amber-800">Anexe o comprovante de entrega para habilitar a finalização.</p>
+              <p className="text-center text-xs text-amber-900 dark:text-amber-100/95">
+                Anexe o comprovante de entrega para habilitar a finalização.
+              </p>
             )}
           </CardContent>
         </Card>
       )}
 
-      <Card className="border-zinc-200 shadow-sm">
+      <Card className="border-border shadow-sm">
         <CardHeader className="pb-2 pt-6">
-          <h2 className="text-zinc-700" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+          <h2 className="text-foreground" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
             Resumo
           </h2>
         </CardHeader>
@@ -343,32 +362,43 @@ export function DriverTripSummary({ tripId }: Props) {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-6 sm:gap-7">
         <DriverTripExpenses tripId={tripId} tripStatus={trip.status} embed />
         <TripAdvancesPanel tripId={tripId} tripStatus={trip.status} embed />
       </div>
 
+      <nav
+        className="flex w-full flex-col gap-3 sm:gap-4 lg:flex-row lg:items-center lg:gap-4"
+        aria-label="Atalhos da viagem"
+      >
       <Link
         href={`/dashboard/viagens/${tripId}/comprovantes`}
-        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-zinc-300 bg-white px-4 py-3 text-center text-base font-semibold text-zinc-700 shadow-sm transition-colors hover:bg-zinc-50"
+        className={cn(
+          dashboardFormCancelLinkClass,
+          'flex min-h-12 w-full items-center justify-center gap-3 px-4 py-3.5 text-base font-semibold no-underline hover:no-underline sm:py-4 lg:flex-1 lg:min-h-12 lg:min-w-0'
+        )}
       >
-        <ImageIcon className="h-5 w-5" />
+        <ImageIcon className="h-5 w-5 shrink-0" />
         Ver comprovantes das despesas
       </Link>
 
       {settlement && !isDisplacement && (
         <Link
           href={`/dashboard/viagens/${tripId}/acerto`}
-          className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-center text-base font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+          className={cn(
+            dashboardLinkPrimaryToolbarClass,
+            'flex min-h-12 w-full justify-center gap-3 px-4 py-3.5 text-base font-semibold sm:py-4 lg:flex-1 lg:min-h-12 lg:min-w-0'
+          )}
         >
-          <FileText className="h-5 w-5" />
+          <FileText className="h-5 w-5 shrink-0" />
           Ver acerto completo (valores e PDF)
         </Link>
       )}
+      </nav>
 
       {trip.status === 'COMPLETED' && !isDisplacement && !settlement && (
-        <Card className="border-amber-200 bg-amber-50 shadow-sm">
-          <CardContent className="py-4 text-sm text-amber-900">
+        <Card className="border-amber-200 bg-amber-50 shadow-sm dark:border-amber-500/35 dark:bg-amber-950/35">
+          <CardContent className="py-4 text-sm text-amber-950 dark:text-amber-50">
             Esta viagem está concluída, mas não há acerto registrado no sistema. Em caso de dúvida, fale com o dono da
             frota.
           </CardContent>
@@ -379,33 +409,34 @@ export function DriverTripSummary({ tripId }: Props) {
         trip.status !== 'IN_PROGRESS' &&
         trip.status !== 'PENDING' &&
         !isDisplacement && (
-        <p className="text-center text-sm text-zinc-500">
+        <p className="text-center text-sm text-muted-foreground">
           O acerto detalhado fica disponível após a viagem ser finalizada.
         </p>
       )}
+      </div>
 
       {finalizeOpen && trip.status === 'IN_PROGRESS' && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl border border-zinc-200 bg-white p-5 shadow-lg">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-lg">
             <div className="mb-4 flex items-start justify-between gap-2">
-              <h3 className="text-zinc-900" style={{ fontWeight: 600 }}>
+              <h3 className="text-foreground" style={{ fontWeight: 600 }}>
                 {isDisplacement ? 'Finalizar deslocamento' : 'Finalizar viagem'}
               </h3>
               <button
                 type="button"
                 onClick={() => setFinalizeOpen(false)}
-                className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+                className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 aria-label="Fechar"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <p className="text-sm text-zinc-600">
+            <p className="text-sm text-muted-foreground">
               {isDisplacement
                 ? 'Confirme o fim do deslocamento. Não será gerado acerto de frete neste trecho. O km final é opcional.'
                 : 'Confirma a entrega? Será gerado o acerto e a viagem marcada como concluída. O km final é opcional.'}
             </p>
-            <label htmlFor="driverFinalKm" className="mt-4 block text-sm font-medium text-zinc-700">
+            <label htmlFor="driverFinalKm" className="mt-4 block text-sm font-medium text-foreground">
               Km final (opcional)
             </label>
             <input
@@ -415,15 +446,18 @@ export function DriverTripSummary({ tripId }: Props) {
               autoComplete="off"
               value={finalKm}
               onChange={(e) => setFinalKm(formatKmInput(e.target.value))}
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={cn(dashboardNativeFieldClass, 'mt-1')}
               placeholder={trip.initialKm != null ? `ex.: ${(trip.initialKm + 100).toLocaleString('pt-BR')}` : ''}
             />
-            {finalizeErr && <p className="mt-2 text-sm text-red-600">{finalizeErr}</p>}
-            <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            {finalizeErr && <p className="mt-2 text-sm text-destructive">{finalizeErr}</p>}
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:gap-4">
               <button
                 type="button"
                 onClick={() => setFinalizeOpen(false)}
-                className="w-full rounded-lg border border-zinc-300 px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 sm:w-auto"
+                className={cn(
+                  dashboardFormCancelLinkClass,
+                  'w-full justify-center px-4 py-2 sm:w-auto'
+                )}
               >
                 Cancelar
               </button>
@@ -431,7 +465,7 @@ export function DriverTripSummary({ tripId }: Props) {
                 type="button"
                 onClick={handleFinalize}
                 disabled={finalizing || !canFinalizeDriver}
-                className="w-full rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 sm:w-auto"
+                className="w-full rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500 sm:w-auto sm:min-w-[10rem]"
               >
                 {finalizing ? 'Finalizando…' : 'Confirmar'}
               </button>

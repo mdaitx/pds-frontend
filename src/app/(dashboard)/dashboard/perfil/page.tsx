@@ -28,7 +28,7 @@ const ROLE_LABEL: Record<AuthUser['role'], string> = {
 
 const MIN_PASSWORD_LEN = 6;
 
-const labelClass = 'text-sm font-medium leading-none text-zinc-700';
+const labelClass = 'text-sm font-medium leading-none text-foreground';
 
 function withCacheBust(url: string, token: number): string {
   const separator = url.includes('?') ? '&' : '?';
@@ -38,9 +38,9 @@ function withCacheBust(url: string, token: number): string {
 /** Mesmo padrão de ficha da tela de viagem (motorista). */
 function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-0.5 border-b border-zinc-100 py-3 last:border-0 sm:grid-cols-[minmax(7rem,11rem)_1fr] sm:gap-4 sm:py-2.5">
-      <dt className="text-[0.8rem] font-medium text-zinc-500">{label}</dt>
-      <dd className="text-[0.88rem] text-zinc-900">{children}</dd>
+    <div className="grid gap-0.5 border-b border-border py-3 last:border-0 sm:grid-cols-[minmax(7rem,11rem)_1fr] sm:gap-4 sm:py-2.5">
+      <dt className="text-[0.8rem] font-medium text-muted-foreground">{label}</dt>
+      <dd className="text-[0.88rem] text-foreground">{children}</dd>
     </div>
   );
 }
@@ -57,14 +57,14 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="mt-0.5 shrink-0 rounded-lg bg-blue-50 p-2 text-blue-600">
+      <div className="mt-0.5 shrink-0 rounded-lg bg-primary/12 p-2 text-primary ring-1 ring-primary/18 dark:bg-primary/18 dark:ring-primary/25">
         <Icon className="h-5 w-5" aria-hidden />
       </div>
       <div className="min-w-0">
-        <h3 className="text-zinc-700" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
+        <h3 className="text-foreground" style={{ fontSize: '1.1rem', fontWeight: 600 }}>
           {title}
         </h3>
-        <p className="mt-0.5 leading-snug text-zinc-500" style={{ fontSize: '0.8rem' }}>
+        <p className="mt-0.5 leading-snug text-muted-foreground" style={{ fontSize: '0.8rem' }}>
           {description}
         </p>
       </div>
@@ -191,27 +191,29 @@ export default function PerfilPage() {
         <div>
           <Link
             href="/dashboard"
-            className="mb-2 flex items-center gap-1.5 text-[0.85rem] text-zinc-500 transition-colors hover:text-zinc-800"
+            className="mb-2 flex items-center gap-1.5 text-[0.85rem] text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5 shrink-0" aria-hidden />
             {isDriver ? 'Painel' : 'Dashboard'}
           </Link>
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="break-words text-zinc-900 antialiased" style={{ fontSize: '1.35rem', fontWeight: 600 }}>
+            <h1 className="break-words text-foreground antialiased" style={{ fontSize: '1.35rem', fontWeight: 600 }}>
               Perfil
             </h1>
             {appUser && (
               <span
                 className={cn(
                   'rounded-full px-2.5 py-0.5 text-[0.72rem] font-semibold',
-                  isDriver ? 'bg-blue-100 text-blue-800' : 'bg-zinc-200 text-zinc-700'
+                  isDriver
+                    ? 'bg-sky-500/18 text-sky-950 ring-1 ring-sky-500/25 dark:bg-sky-500/22 dark:text-sky-50 dark:ring-sky-400/30'
+                    : 'bg-muted text-muted-foreground ring-1 ring-border/60'
                 )}
               >
                 {ROLE_LABEL[appUser.role]}
               </span>
             )}
           </div>
-          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-zinc-600">
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
             {isDriver
               ? 'Foto, senha e dados da sua conta. As alterações valem para o app e para o que a frota enxerga do seu usuário.'
               : 'Foto da conta, senha e dados básicos do usuário.'}
@@ -220,14 +222,14 @@ export default function PerfilPage() {
 
         {configError ? (
           <div
-            className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+            className="rounded-xl border border-amber-500/35 bg-amber-500/[0.12] px-4 py-3 text-sm text-amber-950 dark:bg-amber-950/35 dark:text-amber-50"
             role="status"
           >
             {configError}
           </div>
         ) : null}
 
-        <Card className="!rounded-xl border-zinc-200 !bg-white shadow-sm">
+        <Card className="rounded-xl border-border bg-card shadow-sm">
           <CardHeader className="pb-2 pt-6">
             <SectionHeader
               icon={Camera}
@@ -237,7 +239,7 @@ export default function PerfilPage() {
           </CardHeader>
           <CardContent className="pb-6">
             {loading || !appUser ? (
-              <LoadingMessage />
+              <LoadingMessage className="text-muted-foreground" />
             ) : (
               <div className={cn(photoBusy && 'pointer-events-none opacity-70')}>
                 <div className="[&_.relative]:h-20 [&_.relative]:w-20 sm:[&_.relative]:h-24 sm:[&_.relative]:w-24">
@@ -249,7 +251,7 @@ export default function PerfilPage() {
                   />
                 </div>
                 <div className="mt-4 flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm leading-relaxed text-zinc-500 sm:max-w-md">
+                  <p className="text-sm leading-relaxed text-muted-foreground sm:max-w-md">
                     {photoDirty
                       ? 'Imagem alterada. Use Salvar para aplicar no servidor.'
                       : 'Toque na área da foto para trocar ou remover. Depois confirme com Salvar.'}
@@ -269,7 +271,7 @@ export default function PerfilPage() {
           </CardContent>
         </Card>
 
-        <Card className="!rounded-xl border-zinc-200 !bg-white shadow-sm">
+        <Card className="rounded-xl border-border bg-card shadow-sm">
           <CardHeader className="pb-2 pt-6">
             <SectionHeader
               icon={KeyRound}
@@ -277,7 +279,7 @@ export default function PerfilPage() {
               description="Digite a nova senha duas vezes. Você permanece logado após a troca."
             />
           </CardHeader>
-          <CardContent className="pb-6 text-sm text-zinc-700">
+          <CardContent className="pb-6 text-sm text-foreground">
             <form
               onSubmit={handlePasswordSubmit}
               className={cn(passwordBusy && 'pointer-events-none opacity-70')}
@@ -295,7 +297,7 @@ export default function PerfilPage() {
                     onChange={(e) => setNewPassword(e.target.value)}
                     disabled={passwordBusy || !!configError}
                     minLength={MIN_PASSWORD_LEN}
-                    className="h-11 border-zinc-300 bg-white"
+                    className="h-11"
                   />
                 </div>
                 <div className="space-y-2">
@@ -310,12 +312,12 @@ export default function PerfilPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     disabled={passwordBusy || !!configError}
                     minLength={MIN_PASSWORD_LEN}
-                    className="h-11 border-zinc-300 bg-white"
+                    className="h-11"
                   />
                 </div>
               </div>
               <div className="mt-4 flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm leading-relaxed text-zinc-500 sm:max-w-md">
+                <p className="text-sm leading-relaxed text-muted-foreground sm:max-w-md">
                   {canSavePassword
                     ? 'Pronto para salvar. Você permanece logado após a troca.'
                     : `Preencha os dois campos com a mesma senha (mín. ${MIN_PASSWORD_LEN} caracteres). O botão libera automaticamente.`}
@@ -333,7 +335,7 @@ export default function PerfilPage() {
           </CardContent>
         </Card>
 
-        <Card className="!rounded-xl border-zinc-200 !bg-white shadow-sm">
+        <Card className="rounded-xl border-border bg-card shadow-sm">
           <CardHeader className="pb-2 pt-6">
             <SectionHeader
               icon={CircleUserRound}
@@ -341,9 +343,9 @@ export default function PerfilPage() {
               description="Somente leitura — definições da organização vêm do gestor da frota."
             />
           </CardHeader>
-          <CardContent className="pb-6 text-sm text-zinc-700">
+          <CardContent className="pb-6 text-sm text-foreground">
             {loading || !appUser ? (
-              <LoadingMessage />
+              <LoadingMessage className="text-muted-foreground" />
             ) : (
               <dl>
                 <DetailRow label="E-mail">

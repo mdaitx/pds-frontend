@@ -23,7 +23,6 @@ import { LoadingMessage } from '@/components/ui/loading';
 import { Input } from '@/components/ui/input';
 import {
   ArrowLeft,
-  Edit,
   Plus,
   Search,
   Trash2,
@@ -36,21 +35,31 @@ import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { VehicleTruckOrTrailerIcon } from '@/components/vehicles/VehicleTruckOrTrailerIcon';
 import { cn } from '@/lib/cn';
 import { mobileFilterPillRowClass } from '@/lib/dashboard-mobile';
-import { dashboardCardDeleteButtonClass, dashboardCardEditButtonClass } from '@/lib/dashboard-action-buttons';
+import {
+  dashboardCardDeleteButtonClass,
+  dashboardLinkPrimaryClass,
+} from '@/lib/dashboard-action-buttons';
+import { dashboardFilterPillInactiveClass, dashboardSearchIconLeftClass } from '@/lib/dashboard-field-classes';
 
 const statusConfig: Record<
   Vehicle['status'],
   { label: string; className: string }
 > = {
-  ACTIVE: { label: 'Ativo', className: 'bg-green-100 text-green-800' },
-  INACTIVE: { label: 'Inativo', className: 'bg-zinc-100 text-zinc-600' },
-  MAINTENANCE: { label: 'Manutenção', className: 'bg-yellow-100 text-yellow-800' },
+  ACTIVE: {
+    label: 'Ativo',
+    className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/22 dark:text-emerald-50',
+  },
+  INACTIVE: { label: 'Inativo', className: 'bg-muted text-muted-foreground' },
+  MAINTENANCE: {
+    label: 'Manutenção',
+    className: 'bg-amber-100 text-amber-900 dark:bg-amber-500/22 dark:text-amber-100',
+  },
 };
 
 const singleVehicleTypeSealClass: Record<VehicleType, string> = {
-  CAMINHAO: 'bg-sky-100 text-sky-900',
-  CAVALO_MECANICO: 'bg-amber-100 text-amber-900',
-  SEMI_REBOQUE: 'bg-violet-100 text-violet-900',
+  CAMINHAO: 'bg-sky-100 text-sky-900 dark:bg-sky-500/22 dark:text-sky-50',
+  CAVALO_MECANICO: 'bg-amber-100 text-amber-950 dark:bg-amber-500/22 dark:text-amber-100',
+  SEMI_REBOQUE: 'bg-violet-100 text-violet-900 dark:bg-violet-500/22 dark:text-violet-100',
 };
 
 function withCacheBust(url: string, token: string): string {
@@ -71,7 +80,7 @@ function VehicleCardInner({ vehicle }: { vehicle: Vehicle }) {
           {VEHICLE_TYPE_LABELS[vt]}
         </span>
       </div>
-      <div className="mb-3 flex h-28 w-full items-center justify-center rounded-lg bg-zinc-100">
+      <div className="mb-3 flex h-28 w-full items-center justify-center rounded-lg bg-muted/80 dark:bg-muted/45">
         {vehicle.photoUrl ? (
           <Image
             src={withCacheBust(vehicle.photoUrl, vehicle.updatedAt)}
@@ -82,21 +91,21 @@ function VehicleCardInner({ vehicle }: { vehicle: Vehicle }) {
             unoptimized
           />
         ) : (
-          <VehicleTruckOrTrailerIcon vehicleType={vt} className="h-12 w-12 text-zinc-400" />
+          <VehicleTruckOrTrailerIcon vehicleType={vt} className="h-12 w-12 text-muted-foreground/70" />
         )}
       </div>
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-mono text-zinc-900" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
+          <h3 className="font-mono text-foreground" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
             {vehicle.plate}
           </h3>
           <span className={`rounded-full px-2 py-0.5 text-xs ${cfg.className}`}>{cfg.label}</span>
         </div>
-        <div className="mt-3 space-y-1 border-t border-zinc-100 pt-2 text-[0.82rem]">
-          <p className="truncate text-zinc-700">
+        <div className="mt-3 space-y-1 border-t border-border pt-2 text-[0.82rem]">
+          <p className="truncate text-muted-foreground">
             {vehicle.brand} {vehicle.model}
           </p>
-          <p className="truncate text-zinc-700">
+          <p className="truncate text-muted-foreground">
             {vehicle.year}
             {vehicle.nickname ? ` · "${vehicle.nickname}"` : ''}
           </p>
@@ -111,12 +120,12 @@ function PairedVehicleCardInner({ tractor, trailer }: { tractor: Vehicle; traile
   return (
     <div>
       <div className="mb-2">
-        <span className="inline-block rounded-md bg-indigo-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-indigo-800">
+        <span className="inline-block rounded-md bg-indigo-100 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-indigo-800 dark:bg-indigo-500/22 dark:text-indigo-100">
           Cavalo + semi-reboque
         </span>
       </div>
       <div className="mb-3 grid grid-cols-2 gap-2">
-        <div className="flex h-24 items-center justify-center overflow-hidden rounded-lg bg-zinc-100">
+        <div className="flex h-24 items-center justify-center overflow-hidden rounded-lg bg-muted/80 dark:bg-muted/45">
           {tractor.photoUrl ? (
             <Image
               src={withCacheBust(tractor.photoUrl, tractor.updatedAt)}
@@ -127,10 +136,10 @@ function PairedVehicleCardInner({ tractor, trailer }: { tractor: Vehicle; traile
               unoptimized
             />
           ) : (
-            <Truck className="h-9 w-9 text-zinc-400" aria-hidden />
+            <Truck className="h-9 w-9 text-muted-foreground/70" aria-hidden />
           )}
         </div>
-        <div className="flex h-24 items-center justify-center overflow-hidden rounded-lg bg-zinc-100">
+        <div className="flex h-24 items-center justify-center overflow-hidden rounded-lg bg-muted/80 dark:bg-muted/45">
           {trailer.photoUrl ? (
             <Image
               src={withCacheBust(trailer.photoUrl, trailer.updatedAt)}
@@ -143,32 +152,32 @@ function PairedVehicleCardInner({ tractor, trailer }: { tractor: Vehicle; traile
           ) : (
             <VehicleTruckOrTrailerIcon
               vehicleType={trailer.vehicleType ?? 'SEMI_REBOQUE'}
-              className="h-9 w-9 text-zinc-400"
+              className="h-9 w-9 text-muted-foreground/70"
               aria-hidden
             />
           )}
         </div>
       </div>
-      <p className="mb-0.5 text-[0.7rem] font-medium uppercase tracking-wide text-zinc-500">Placas</p>
+      <p className="mb-0.5 text-[0.7rem] font-medium uppercase tracking-wide text-muted-foreground">Placas</p>
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="font-mono text-zinc-900" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
+        <span className="font-mono text-foreground" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
           {tractor.plate}
         </span>
-        <span className="text-zinc-400" aria-hidden>
+        <span className="text-muted-foreground/80" aria-hidden>
           +
         </span>
-        <span className="font-mono text-zinc-900" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
+        <span className="font-mono text-foreground" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
           {trailer.plate}
         </span>
         <span className={`rounded-full px-2 py-0.5 text-xs ${cfg.className}`}>{cfg.label}</span>
       </div>
-      <div className="mt-3 space-y-1 border-t border-zinc-100 pt-2" style={{ fontSize: '0.82rem' }}>
-        <p className="text-zinc-700">
-          <span className="text-zinc-500">Cavalo:</span> {tractor.brand} {tractor.model} · {tractor.year}
+      <div className="mt-3 space-y-1 border-t border-border pt-2" style={{ fontSize: '0.82rem' }}>
+        <p className="text-muted-foreground">
+          <span className="text-muted-foreground/85">Cavalo:</span> {tractor.brand} {tractor.model} · {tractor.year}
           {tractor.nickname ? ` · "${tractor.nickname}"` : ''}
         </p>
-        <p className="text-zinc-700">
-          <span className="text-zinc-500">Semi:</span> {trailer.brand} {trailer.model} · {trailer.year}
+        <p className="text-muted-foreground">
+          <span className="text-muted-foreground/85">Semi:</span> {trailer.brand} {trailer.model} · {trailer.year}
           {trailer.nickname ? ` · "${trailer.nickname}"` : ''}
         </p>
       </div>
@@ -209,16 +218,16 @@ function buildDisplayUnits(list: Vehicle[]): DisplayUnit[] {
 function StatCard(props: { label: string; value: number; icon: ReactNode; iconWrapClass: string }) {
   const { label, value, icon, iconWrapClass } = props;
   return (
-    <Card className="border-zinc-200 p-4">
+    <Card className="border-border p-4 shadow-sm">
       <div className="flex items-center gap-3">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${iconWrapClass}`}>
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ring-1 ring-inset ${iconWrapClass}`}>
           {icon}
         </div>
         <div className="min-w-0">
-          <p className="text-zinc-500" style={{ fontSize: '0.78rem' }}>
+          <p className="text-muted-foreground" style={{ fontSize: '0.78rem' }}>
             {label}
           </p>
-          <p className="text-zinc-900" style={{ fontSize: '1.4rem', fontWeight: 700 }}>
+          <p className="text-foreground" style={{ fontSize: '1.4rem', fontWeight: 700 }}>
             {value}
           </p>
         </div>
@@ -231,9 +240,6 @@ export default function VeiculosPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { session, appUser, loading: authLoading } = useAuth();
-  const [list, setList] = useState<Vehicle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterActive, setFilterActive] = useState(false);
   const [filterMaintenance, setFilterMaintenance] = useState(false);
@@ -246,11 +252,20 @@ export default function VeiculosPage() {
   const fleetStaff = appUser?.role === 'OWNER' || appUser?.role === 'ADMIN';
   const vehiclesQuery = useQuery({
     queryKey: ['vehicles-list'],
-    queryFn: getVehicles,
+    queryFn: () => getVehicles(session?.access_token),
     enabled: Boolean(session && appUser && fleetStaff),
-    staleTime: 5 * 60_000,
+    staleTime: 60_000,
     retry: false,
   });
+
+  const list = useMemo(() => vehiclesQuery.data ?? [], [vehiclesQuery.data]);
+  const loading = Boolean(fleetStaff && vehiclesQuery.isPending && !vehiclesQuery.data);
+  const error =
+    fleetStaff && vehiclesQuery.isError
+      ? vehiclesQuery.error instanceof Error
+        ? vehiclesQuery.error.message
+        : 'Erro ao carregar'
+      : null;
 
   useEffect(() => {
     if (!session || !appUser) return;
@@ -258,24 +273,6 @@ export default function VeiculosPage() {
       router.replace('/dashboard');
     }
   }, [session, appUser, fleetStaff, router]);
-
-  useEffect(() => {
-    if (!fleetStaff) return;
-    if (vehiclesQuery.isLoading) {
-      setLoading(true);
-      return;
-    }
-    if (vehiclesQuery.isError) {
-      setError(vehiclesQuery.error instanceof Error ? vehiclesQuery.error.message : 'Erro ao carregar');
-      setLoading(false);
-      return;
-    }
-    if (vehiclesQuery.data) {
-      setList(vehiclesQuery.data);
-      setError(null);
-      setLoading(false);
-    }
-  }, [fleetStaff, vehiclesQuery.data, vehiclesQuery.error, vehiclesQuery.isError, vehiclesQuery.isLoading]);
 
   useEffect(() => {
     if (!authLoading && !session) router.replace('/login');
@@ -354,7 +351,6 @@ export default function VeiculosPage() {
     setDeleting(true);
     try {
       await deleteVehicle(deleteTarget.id);
-      setList((prev) => prev.filter((v) => v.id !== deleteTarget.id));
       queryClient.setQueryData<Vehicle[]>(['vehicles-list'], (current) =>
         current?.filter((v) => v.id !== deleteTarget.id)
       );
@@ -369,9 +365,11 @@ export default function VeiculosPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <LoadingMessage message="Carregando veículos…" />
-      </div>
+      <DashboardPageShell maxWidth="6xl">
+        <div className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 dark:bg-muted/20">
+          <LoadingMessage message="Carregando veículos…" className="text-muted-foreground" />
+        </div>
+      </DashboardPageShell>
     );
   }
 
@@ -381,19 +379,21 @@ export default function VeiculosPage() {
           <div className="min-w-0">
             <Link
               href="/dashboard"
-              className="mb-1 flex items-center gap-1 text-sm text-zinc-500 transition-colors hover:text-zinc-700"
+              prefetch={false}
+              className="mb-1 flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               Voltar ao dashboard
             </Link>
-            <h1 className="break-words text-xl font-semibold text-zinc-900 md:text-2xl">Veículos</h1>
-            <p className="mt-0.5 text-zinc-500" style={{ fontSize: '0.85rem' }}>
+            <h1 className="break-words text-xl font-semibold text-foreground md:text-2xl">Veículos</h1>
+            <p className="mt-0.5 text-muted-foreground" style={{ fontSize: '0.85rem' }}>
               Frota cadastrada (placa, documentação e status). Use a busca e os filtros para refinar a lista.
             </p>
           </div>
           <Link
             href="/dashboard/veiculos/novo"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+            prefetch={false}
+            className={cn(dashboardLinkPrimaryClass, 'w-full sm:w-auto')}
           >
             <Plus className="h-4 w-4" />
             Novo veículo
@@ -401,11 +401,11 @@ export default function VeiculosPage() {
         </div>
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>
         )}
 
         <div className="relative w-full min-w-0 max-w-full sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <Search className={dashboardSearchIconLeftClass} />
           <Input
             placeholder="Buscar por placa, marca ou modelo..."
             value={search}
@@ -417,87 +417,87 @@ export default function VeiculosPage() {
 
         <div className={cn(mobileFilterPillRowClass)}>
           <div className="flex w-max min-w-full flex-wrap items-center gap-2 sm:w-auto sm:min-w-0">
-          <span className="shrink-0 text-xs font-medium text-zinc-500">Situação:</span>
-          <button
-            type="button"
-            onClick={() => setFilterActive(!filterActive)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-              filterActive
-                ? 'border border-green-300 bg-green-100 text-green-800'
-                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-            }`}
-          >
-            {filterActive ? '✓ ' : ''}Ativo
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterMaintenance(!filterMaintenance)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-              filterMaintenance
-                ? 'border border-yellow-300 bg-yellow-100 text-yellow-800'
-                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-            }`}
-          >
-            {filterMaintenance ? '✓ ' : ''}Manutenção
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterInactive(!filterInactive)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-              filterInactive
-                ? 'border border-zinc-400 bg-zinc-200 text-zinc-800'
-                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-            }`}
-          >
-            {filterInactive ? '✓ ' : ''}Inativo
-          </button>
-          <span className="mx-1 hidden h-4 w-px bg-zinc-200 sm:inline" aria-hidden />
-          <span className="w-full text-xs font-medium text-zinc-500 sm:w-auto">Tipo:</span>
-          <button
-            type="button"
-            onClick={() => setFilterCaminhao(!filterCaminhao)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-              filterCaminhao
-                ? 'border border-sky-300 bg-sky-100 text-sky-900'
-                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-            }`}
-          >
-            {filterCaminhao ? '✓ ' : ''}
-            {VEHICLE_TYPE_LABELS.CAMINHAO}
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterCavaloMecanico(!filterCavaloMecanico)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-              filterCavaloMecanico
-                ? 'border border-amber-300 bg-amber-100 text-amber-900'
-                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-            }`}
-          >
-            {filterCavaloMecanico ? '✓ ' : ''}
-            {VEHICLE_TYPE_LABELS.CAVALO_MECANICO}
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilterSemiReboque(!filterSemiReboque)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-              filterSemiReboque
-                ? 'border border-violet-300 bg-violet-100 text-violet-900'
-                : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
-            }`}
-          >
-            {filterSemiReboque ? '✓ ' : ''}
-            {VEHICLE_TYPE_LABELS.SEMI_REBOQUE}
-          </button>
-          {hasFilters && (
+            <span className="shrink-0 text-xs font-medium text-muted-foreground">Situação:</span>
             <button
               type="button"
-              onClick={clearFilters}
-              className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100"
+              onClick={() => setFilterActive(!filterActive)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                filterActive
+                  ? 'border border-emerald-500/45 bg-emerald-500/[0.14] text-emerald-900 dark:text-emerald-50'
+                  : dashboardFilterPillInactiveClass
+              }`}
             >
-              Limpar filtros
+              {filterActive ? '✓ ' : ''}Ativo
             </button>
-          )}
+            <button
+              type="button"
+              onClick={() => setFilterMaintenance(!filterMaintenance)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                filterMaintenance
+                  ? 'border border-amber-500/45 bg-amber-500/[0.14] text-amber-950 dark:text-amber-100'
+                  : dashboardFilterPillInactiveClass
+              }`}
+            >
+              {filterMaintenance ? '✓ ' : ''}Manutenção
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterInactive(!filterInactive)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                filterInactive
+                  ? 'border border-muted-foreground/40 bg-muted/80 text-foreground'
+                  : dashboardFilterPillInactiveClass
+              }`}
+            >
+              {filterInactive ? '✓ ' : ''}Inativo
+            </button>
+            <span className="mx-1 hidden h-4 w-px bg-border sm:inline" aria-hidden />
+            <span className="w-full text-xs font-medium text-muted-foreground sm:w-auto">Tipo:</span>
+            <button
+              type="button"
+              onClick={() => setFilterCaminhao(!filterCaminhao)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                filterCaminhao
+                  ? 'border border-sky-500/45 bg-sky-500/[0.14] text-sky-950 dark:text-sky-50'
+                  : dashboardFilterPillInactiveClass
+              }`}
+            >
+              {filterCaminhao ? '✓ ' : ''}
+              {VEHICLE_TYPE_LABELS.CAMINHAO}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterCavaloMecanico(!filterCavaloMecanico)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                filterCavaloMecanico
+                  ? 'border border-amber-500/45 bg-amber-500/[0.14] text-amber-950 dark:text-amber-100'
+                  : dashboardFilterPillInactiveClass
+              }`}
+            >
+              {filterCavaloMecanico ? '✓ ' : ''}
+              {VEHICLE_TYPE_LABELS.CAVALO_MECANICO}
+            </button>
+            <button
+              type="button"
+              onClick={() => setFilterSemiReboque(!filterSemiReboque)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                filterSemiReboque
+                  ? 'border border-violet-500/45 bg-violet-500/[0.14] text-violet-950 dark:text-violet-100'
+                  : dashboardFilterPillInactiveClass
+              }`}
+            >
+              {filterSemiReboque ? '✓ ' : ''}
+              {VEHICLE_TYPE_LABELS.SEMI_REBOQUE}
+            </button>
+            {hasFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="rounded-lg border border-destructive/35 bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive transition-colors hover:bg-destructive/18"
+              >
+                Limpar filtros
+              </button>
+            )}
           </div>
         </div>
 
@@ -505,37 +505,38 @@ export default function VeiculosPage() {
           <StatCard
             label="Total de veículos"
             value={totalCount}
-            icon={<Truck className="h-5 w-5 text-blue-600" />}
-            iconWrapClass="bg-blue-100"
+            icon={<Truck className="h-5 w-5 text-primary" />}
+            iconWrapClass="bg-primary/12 ring-primary/20 dark:bg-primary/22 dark:ring-primary/25"
           />
           <StatCard
             label="Ativos"
             value={activeCount}
-            icon={<Activity className="h-5 w-5 text-green-600" />}
-            iconWrapClass="bg-green-100"
+            icon={<Activity className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />}
+            iconWrapClass="bg-emerald-500/12 ring-emerald-600/18 dark:bg-emerald-500/20 dark:ring-emerald-400/28"
           />
           <StatCard
             label="Manutenção"
             value={maintenanceCount}
-            icon={<Wrench className="h-5 w-5 text-yellow-700" />}
-            iconWrapClass="bg-yellow-100"
+            icon={<Wrench className="h-5 w-5 text-amber-700 dark:text-amber-300" />}
+            iconWrapClass="bg-amber-500/12 ring-amber-600/18 dark:bg-amber-500/22 dark:ring-amber-400/25"
           />
           <StatCard
             label="Inativos"
             value={inactiveCount}
-            icon={<Ban className="h-5 w-5 text-zinc-600" />}
-            iconWrapClass="bg-zinc-100"
+            icon={<Ban className="h-5 w-5 text-muted-foreground" />}
+            iconWrapClass="bg-muted ring-border/50 dark:bg-muted/80"
           />
         </div>
 
         <div className="grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {list.length === 0 ? (
             <div className="col-span-full py-12 text-center">
-              <Truck className="mx-auto mb-3 h-12 w-12 text-zinc-300" />
-              <p className="text-zinc-500">Nenhum veículo cadastrado.</p>
+              <Truck className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40" />
+              <p className="text-muted-foreground">Nenhum veículo cadastrado.</p>
               <Link
                 href="/dashboard/veiculos/novo"
-                className="mt-4 inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                prefetch={false}
+                className={cn(dashboardLinkPrimaryClass, 'mt-4 inline-flex')}
               >
                 <Plus className="h-4 w-4" />
                 Adicionar veículo
@@ -543,8 +544,8 @@ export default function VeiculosPage() {
             </div>
           ) : displayUnits.length === 0 ? (
             <div className="col-span-full py-12 text-center">
-              <Truck className="mx-auto mb-3 h-12 w-12 text-zinc-300" />
-              <p className="text-zinc-500">Nenhum veículo corresponde à busca ou aos filtros.</p>
+              <Truck className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40" />
+              <p className="text-muted-foreground">Nenhum veículo corresponde à busca ou aos filtros.</p>
               <Button type="button" variant="outline" className="mt-4" onClick={clearFilters}>
                 Limpar filtros
               </Button>
@@ -566,21 +567,15 @@ export default function VeiculosPage() {
                       }
                     }}
                   >
-                    <Card className="flex h-full min-h-0 flex-col border-zinc-200 bg-gradient-to-b from-white to-indigo-50/40 p-4 transition-all hover:border-blue-300 hover:shadow-md">
+                    <Card className="flex h-full min-h-0 flex-col border-border bg-gradient-to-b from-card to-indigo-500/[0.06] p-4 transition-all hover:border-primary/35 hover:shadow-md dark:to-indigo-950/35">
                       <div className="min-h-0 min-w-0 flex-1">
                         <PairedVehicleCardInner tractor={unit.tractor} trailer={unit.trailer} />
                       </div>
                       <div
-                        className="mt-auto flex flex-wrap gap-2 border-t border-zinc-100 pt-3"
+                        className="mt-auto flex flex-wrap gap-2 border-t border-border pt-3"
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
                       >
-                        <Link href={`/dashboard/veiculos/${unit.tractor.id}`} className="min-w-0 flex-1">
-                          <Button variant="outline" className={dashboardCardEditButtonClass}>
-                            <Edit className="h-3.5 w-3.5" />
-                            Editar
-                          </Button>
-                        </Link>
                         <Button
                           variant="outline"
                           onClick={() => setDeleteTarget(unit.tractor)}
@@ -609,21 +604,15 @@ export default function VeiculosPage() {
                       }
                     }}
                   >
-                    <Card className="flex h-full min-h-0 flex-col border-zinc-200 p-4 transition-all hover:border-blue-300 hover:shadow-md">
+                    <Card className="flex h-full min-h-0 flex-col border-border p-4 transition-all hover:border-primary/35 hover:shadow-md">
                       <div className="min-h-0 min-w-0 flex-1">
                         <VehicleCardInner vehicle={unit.vehicle} />
                       </div>
                       <div
-                        className="mt-auto flex flex-wrap gap-2 border-t border-zinc-100 pt-3"
+                        className="mt-auto flex flex-wrap gap-2 border-t border-border pt-3"
                         onClick={(e) => e.stopPropagation()}
                         onKeyDown={(e) => e.stopPropagation()}
                       >
-                        <Link href={`/dashboard/veiculos/${unit.vehicle.id}`} className="min-w-0 flex-1">
-                          <Button variant="outline" className={dashboardCardEditButtonClass}>
-                            <Edit className="h-3.5 w-3.5" />
-                            Editar
-                          </Button>
-                        </Link>
                         <Button
                           variant="outline"
                           onClick={() => setDeleteTarget(unit.vehicle)}
@@ -644,10 +633,10 @@ export default function VeiculosPage() {
 
         {deleteTarget && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
-              <h3 className="mb-2 font-semibold text-zinc-900">Confirmar exclusão</h3>
-              <p className="mb-4 text-sm text-zinc-600">
-                Tem certeza que deseja excluir o veículo <strong>{deleteTarget.plate}</strong>? Esta ação não pode
+            <div className="mx-4 w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-xl">
+              <h3 className="mb-2 font-semibold text-foreground">Confirmar exclusão</h3>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Tem certeza que deseja excluir o veículo <strong className="text-foreground">{deleteTarget.plate}</strong>? Esta ação não pode
                 ser desfeita.
               </p>
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -660,7 +649,8 @@ export default function VeiculosPage() {
                   Cancelar
                 </Button>
                 <Button
-                  className="w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto"
+                  variant="danger"
+                  className="w-full sm:w-auto"
                   onClick={handleDelete}
                   disabled={deleting}
                 >

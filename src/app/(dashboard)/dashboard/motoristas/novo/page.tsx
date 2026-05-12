@@ -6,7 +6,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, CircleUserRound, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks';
 import {
@@ -33,9 +33,10 @@ import { LoadingMessage } from '@/components/ui/loading';
 import { ImageUpload } from '@/components/ui/image-upload';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
+import { dashboardNativeFieldClass } from '@/lib/dashboard-field-classes';
+import { cn } from '@/lib/cn';
 
-const selectClass =
-  'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
+const selectClass = cn(dashboardNativeFieldClass, 'flex h-auto min-h-10 py-2');
 
 export default function NovoMotoristaPage() {
   const router = useRouter();
@@ -184,9 +185,11 @@ export default function NovoMotoristaPage() {
 
   if (authLoading || !session) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <LoadingMessage />
-      </div>
+      <DashboardPageShell maxWidth="2xl">
+        <div className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 dark:bg-muted/20">
+          <LoadingMessage className="text-muted-foreground" />
+        </div>
+      </DashboardPageShell>
     );
   }
 
@@ -195,22 +198,29 @@ export default function NovoMotoristaPage() {
       <div>
         <Link
           href="/dashboard/motoristas"
-          className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
+          className="mb-3 flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
           style={{ fontSize: '0.85rem' }}
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Voltar aos motoristas
         </Link>
-        <h1 className="text-2xl font-semibold text-zinc-900">Novo Motorista</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Cadastre um motorista para vincular às viagens
-        </p>
+        <div className="flex gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-border bg-emerald-500/12 text-emerald-700 shadow-sm ring-1 ring-emerald-600/15 dark:bg-emerald-500/18 dark:text-emerald-300 dark:ring-emerald-400/25 [&_svg]:text-emerald-700 dark:[&_svg]:text-emerald-300">
+            <CircleUserRound className="h-7 w-7" aria-hidden />
+          </div>
+          <div className="min-w-0 pt-0.5">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Novo motorista</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Cadastre um motorista para vincular às viagens
+            </p>
+          </div>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Card className="border-zinc-200">
+        <Card className="border-border shadow-sm">
           <CardHeader className="pb-2">
-            <h3 className="font-medium text-zinc-700">Dados Pessoais</h3>
+            <h3 className="font-medium text-foreground">Dados Pessoais</h3>
           </CardHeader>
           <CardContent className="space-y-4">
             <ImageUpload
@@ -219,7 +229,7 @@ export default function NovoMotoristaPage() {
               onChange={handlePhotoChange}
               disabled={loading}
             />
-            {errors.photo && <p className="text-sm text-red-600">{errors.photo}</p>}
+            {errors.photo && <p className="text-sm text-destructive">{errors.photo}</p>}
 
             <div className="space-y-1.5">
               <Label htmlFor="linkedUserId">Vincular a usuário já existente</Label>
@@ -249,7 +259,7 @@ export default function NovoMotoristaPage() {
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted-foreground">
                 Opcional: associa esta ficha a uma conta de motorista já criada em Usuários (mesma
                 empresa).
               </p>
@@ -263,7 +273,7 @@ export default function NovoMotoristaPage() {
                 value={form.name}
                 onChange={(e) => setField('name', e.target.value)}
               />
-              {errors.name && <p className="text-sm text-red-600">{errors.name}</p>}
+              {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="userEmail">E-mail</Label>
@@ -274,7 +284,7 @@ export default function NovoMotoristaPage() {
                 value={form.email}
                 onChange={(e) => setField('email', e.target.value)}
               />
-              {errors.email && <p className="text-sm text-red-600">{errors.email}</p>}
+              {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
             </div>
 
             <div className="space-y-1.5">
@@ -299,7 +309,7 @@ export default function NovoMotoristaPage() {
                   value={form.cpf}
                   onChange={(e) => setField('cpf', formatCpf(e.target.value))}
                 />
-                {errors.cpf && <p className="text-sm text-red-600">{errors.cpf}</p>}
+                {errors.cpf && <p className="text-sm text-destructive">{errors.cpf}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="rg">RG</Label>
@@ -322,16 +332,16 @@ export default function NovoMotoristaPage() {
                 <option value="ACTIVE">Ativo</option>
                 <option value="INACTIVE">Inativo</option>
               </select>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Motoristas inativos não poderão ser vinculados a novas viagens.
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-zinc-200">
+        <Card className="border-border shadow-sm">
           <CardHeader className="pb-2">
-            <h3 className="font-medium text-zinc-700">Dados profissionais</h3>
+            <h3 className="font-medium text-foreground">Dados profissionais</h3>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-1.5">
@@ -358,8 +368,8 @@ export default function NovoMotoristaPage() {
                 value={form.monthlySalary}
                 onChange={(e) => setField('monthlySalary', formatBrlCurrencyInput(e.target.value))}
               />
-              {errors.monthlySalary && <p className="text-sm text-red-600">{errors.monthlySalary}</p>}
-              <p className="text-xs text-zinc-500">
+              {errors.monthlySalary && <p className="text-sm text-destructive">{errors.monthlySalary}</p>}
+              <p className="text-xs text-muted-foreground">
                 Digite o valor em reais (separador de milhar e centavos como no Brasil). Usado no relatório por
                 motorista (proporcional ao período) junto com as comissões das viagens.
               </p>
@@ -398,7 +408,7 @@ export default function NovoMotoristaPage() {
             type="submit"
             disabled={loading}
             loading={loading}
-            className="flex w-full items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 sm:w-auto"
+            className="w-full sm:w-auto"
           >
             {!loading && <Save className="h-4 w-4" />}
             {loading ? 'Salvando...' : 'Salvar'}

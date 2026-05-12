@@ -20,14 +20,15 @@ import {
   type Driver,
 } from '@/lib';
 import { Button, Card, CardContent, CardHeader, LoadingMessage, LocalizedDateField } from '@/components/ui';
-import { DASHBOARD_FORM_PADDING } from '@/components/dashboard/DashboardPageShell';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { cn } from '@/lib/cn';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
+import { dashboardNativeFieldClass } from '@/lib/dashboard-field-classes';
+import { dashboardFormCancelLinkClass } from '@/lib/dashboard-action-buttons';
 
-/** Campos como no Figma Make (vE): borda zinc-300, ring azul no foco. */
-const inputClass =
-  'mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
-const labelClass = 'block text-sm font-medium text-zinc-700';
+const nativeFieldClass = cn(dashboardNativeFieldClass, 'mt-1 block w-full');
+
+const labelClass = 'block text-sm font-medium text-foreground';
 
 const STATUS_OPTIONS: { value: TripStatus; label: string }[] = [
   { value: 'PENDING', label: 'Aguardando' },
@@ -121,40 +122,44 @@ export default function NovaViagemPage() {
 
   if (authLoading || !session) {
     return (
-      <div className="settings-font-inter flex min-h-[50vh] items-center justify-center bg-zinc-50 tracking-tight">
-        <LoadingMessage />
-      </div>
+      <DashboardPageShell maxWidth="3xl">
+        <div className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 dark:bg-muted/20">
+          <LoadingMessage className="text-muted-foreground" />
+        </div>
+      </DashboardPageShell>
     );
   }
 
   return (
-    <div className="settings-font-inter flex min-h-screen flex-col bg-zinc-50">
+    <DashboardPageShell maxWidth="3xl">
       <form
         onSubmit={handleSubmit}
-        className={cn(DASHBOARD_FORM_PADDING, 'max-w-3xl settings-font-inter')}
+        className="settings-font-inter flex flex-col gap-4 tracking-tight pb-6"
         style={{ fontSize: '0.9rem' }}
       >
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {error}
+          </div>
         )}
 
         <div>
           <Link
             href="/dashboard/viagens"
-            className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
+            className="mb-1 flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
             style={{ fontSize: '0.85rem' }}
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Voltar à lista
           </Link>
-          <h1 className="text-zinc-900" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
+          <h1 className="text-foreground" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
             Nova Viagem
           </h1>
         </div>
 
-        <Card className="border-zinc-200 shadow-sm">
+        <Card className="border-border shadow-sm">
           <CardHeader className="pb-2 pt-6">
-            <h3 className="text-zinc-700" style={{ fontWeight: 600, fontSize: '1.05rem' }}>
+            <h3 className="text-foreground" style={{ fontWeight: 600, fontSize: '1.05rem' }}>
               Dados da Viagem
             </h3>
           </CardHeader>
@@ -169,7 +174,7 @@ export default function NovaViagemPage() {
                   required
                   value={vehicleId}
                   onChange={(e) => setVehicleId(e.target.value)}
-                  className={inputClass}
+                  className={nativeFieldClass}
                 >
                   <option value="">Selecione um veículo</option>
                   {vehicles.map((v) => (
@@ -188,7 +193,7 @@ export default function NovaViagemPage() {
                   required
                   value={driverId}
                   onChange={(e) => setDriverId(e.target.value)}
-                  className={inputClass}
+                  className={nativeFieldClass}
                 >
                   <option value="">Selecione um motorista</option>
                   {drivers.map((d) => (
@@ -210,7 +215,7 @@ export default function NovaViagemPage() {
                 placeholder="Nome do cliente ou empresa"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
-                className={inputClass}
+                className={nativeFieldClass}
               />
             </div>
 
@@ -225,7 +230,7 @@ export default function NovaViagemPage() {
                   placeholder="ex: São Paulo, SP"
                   value={origin}
                   onChange={(e) => setOrigin(e.target.value)}
-                  className={inputClass}
+                  className={nativeFieldClass}
                 />
               </div>
               <div className="space-y-1.5">
@@ -238,7 +243,7 @@ export default function NovaViagemPage() {
                   placeholder="ex: Rio de Janeiro, RJ"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
-                  className={inputClass}
+                  className={nativeFieldClass}
                 />
               </div>
             </div>
@@ -250,7 +255,7 @@ export default function NovaViagemPage() {
                 onChange={setStartDate}
                 className="w-full min-w-0"
                 labelClassName={labelClass}
-                buttonClassName={`${inputClass} w-full min-w-0 text-left font-normal`}
+                buttonClassName={cn(nativeFieldClass, 'w-full min-w-0 text-left font-normal')}
               />
               <LocalizedDateField
                 label="Data fim"
@@ -258,7 +263,7 @@ export default function NovaViagemPage() {
                 onChange={setEndDate}
                 className="w-full min-w-0"
                 labelClassName={labelClass}
-                buttonClassName={`${inputClass} w-full min-w-0 text-left font-normal`}
+                buttonClassName={cn(nativeFieldClass, 'w-full min-w-0 text-left font-normal')}
               />
             </div>
 
@@ -274,7 +279,7 @@ export default function NovaViagemPage() {
                   placeholder="0,00"
                   value={freightValue}
                   onChange={(e) => setFreightValue(formatBrlCurrencyInput(e.target.value))}
-                  className={inputClass}
+                  className={nativeFieldClass}
                 />
               </div>
               <div className="space-y-1.5">
@@ -289,7 +294,7 @@ export default function NovaViagemPage() {
                   autoComplete="off"
                   value={initialKm}
                   onChange={(e) => setInitialKm(formatKmInput(e.target.value))}
-                  className={inputClass}
+                  className={nativeFieldClass}
                 />
               </div>
             </div>
@@ -305,7 +310,7 @@ export default function NovaViagemPage() {
                   placeholder="ex: Carga geral"
                   value={loadType}
                   onChange={(e) => setLoadType(e.target.value)}
-                  className={inputClass}
+                  className={nativeFieldClass}
                 />
               </div>
               <div className="space-y-1.5">
@@ -316,7 +321,7 @@ export default function NovaViagemPage() {
                   id="status"
                   value={status}
                   onChange={(e) => setStatus(e.target.value as TripStatus)}
-                  className={inputClass}
+                  className={nativeFieldClass}
                 >
                   {STATUS_OPTIONS.map((o) => (
                     <option key={o.value} value={o.value}>
@@ -337,22 +342,22 @@ export default function NovaViagemPage() {
                 placeholder="Observações adicionais sobre a viagem…"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className={`${inputClass} resize-none`}
+                className={cn(nativeFieldClass, 'resize-none')}
               />
             </div>
 
-            <div className="rounded-xl border border-violet-200 bg-violet-50/60 px-4 py-3">
+            <div className="rounded-xl border border-violet-500/35 bg-violet-500/10 px-4 py-3 dark:bg-violet-950/35">
               <label className="flex cursor-pointer items-start gap-3">
                 <input
                   id="displacementToLoad"
                   type="checkbox"
                   checked={displacementToLoad}
                   onChange={(e) => setDisplacementToLoad(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
+                  className="border-border mt-1 h-4 w-4 rounded text-primary focus:ring-focus-ring"
                 />
                 <span>
                   <span className={labelClass}>Viagem de deslocamento até o carregamento</span>
-                  <p className="mt-0.5 text-[0.8rem] font-normal text-zinc-600">
+                  <p className="mt-0.5 text-[0.8rem] font-normal text-muted-foreground">
                     Marque quando a viagem for só o trecho até buscar a carga (sem frete de ida carregado). Aparece
                     identificada na lista para o motorista e a frota.
                   </p>
@@ -362,11 +367,10 @@ export default function NovaViagemPage() {
           </CardContent>
         </Card>
 
-        <div className={`${mobileFormActionsRowClass} mt-auto border-t border-zinc-200 pt-6 pb-2`}>
+        <div className={`${mobileFormActionsRowClass} mt-auto border-t border-border pt-6`}>
           <Link
             href="/dashboard/viagens"
-            className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-zinc-700 transition-colors hover:bg-zinc-50 sm:w-auto"
-            style={{ fontSize: '0.875rem' }}
+            className={dashboardFormCancelLinkClass}
           >
             Cancelar
           </Link>
@@ -381,6 +385,6 @@ export default function NovaViagemPage() {
           </Button>
         </div>
       </form>
-    </div>
+    </DashboardPageShell>
   );
 }

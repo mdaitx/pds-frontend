@@ -43,12 +43,12 @@ export function ResetPasswordForm() {
   if (success) {
     return (
       <div className="mt-6 space-y-4">
-        <div className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-800">
+        <div className="rounded-xl border border-accent/35 bg-accent/10 px-3 py-2 text-sm text-foreground dark:bg-accent/15">
           Senha alterada. Faça login com a nova senha.
         </div>
         <Link
           href="/login"
-          className="block w-full rounded-lg bg-blue-600 px-4 py-2 text-center font-medium text-white hover:bg-blue-700"
+          className="block w-full rounded-lg bg-primary px-4 py-2 text-center font-medium text-primary-foreground hover:bg-primary-hover"
         >
           Ir para login
         </Link>
@@ -61,12 +61,12 @@ export function ResetPasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="mt-6 space-y-4">
       {!fromEmail && (
-        <div className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <div className="rounded-md border border-amber-400/65 bg-amber-100 px-3 py-2 text-sm text-amber-950 dark:border-amber-600/55 dark:bg-amber-950/45 dark:text-amber-50">
           Acesse esta página pelo link enviado no seu e-mail.
         </div>
       )}
       {error && (
-        <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </div>
       )}
@@ -83,7 +83,7 @@ export function ResetPasswordForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           disabled={loading}
-          className="mt-1 bg-white"
+          className="mt-1"
         />
       </div>
       <div>
@@ -99,19 +99,14 @@ export function ResetPasswordForm() {
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}
           disabled={loading}
-          className="mt-1 bg-white"
+          className="mt-1"
         />
       </div>
-      <Button
-        type="submit"
-        disabled={loading}
-        loading={loading}
-        className="w-full"
-      >
+      <Button type="submit" variant="primary" disabled={loading} loading={loading} className="w-full">
         {loading ? 'Salvando…' : 'Definir nova senha'}
       </Button>
-      <p className="text-center text-sm text-zinc-600">
-        <Link href="/login" className="font-medium text-blue-600 hover:text-blue-800">
+      <p className="text-center text-sm text-muted-foreground">
+        <Link href="/login" className="font-medium text-primary hover:text-primary-hover">
           Voltar ao login
         </Link>
       </p>

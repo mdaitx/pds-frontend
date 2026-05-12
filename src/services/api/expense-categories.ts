@@ -14,9 +14,10 @@ export type ExpenseCategoriesResponse = {
 };
 
 /** GET /expense-categories - lista categorias do sistema + customizadas */
-export async function getExpenseCategories(): Promise<ExpenseCategoriesResponse> {
+export async function getExpenseCategories(accessToken?: string): Promise<ExpenseCategoriesResponse> {
   return apiFetch<ExpenseCategoriesResponse>('/expense-categories', {
     method: 'GET',
+    ...(accessToken !== undefined ? { token: accessToken } : {}),
   });
 }
 

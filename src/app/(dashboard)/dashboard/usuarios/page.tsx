@@ -24,7 +24,9 @@ import { Button } from '@/components/ui/button';
 import { LoadingMessage } from '@/components/ui/loading';
 import { Plus, Search, UserCircle, Shield, Truck as TruckIcon, ArrowLeft, Trash2 } from 'lucide-react';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
-import { dashboardCardDeleteButtonClass } from '@/lib/dashboard-action-buttons';
+import { dashboardCardDeleteButtonClass, dashboardLinkPrimaryClass } from '@/lib/dashboard-action-buttons';
+import { dashboardSearchIconLeftClass } from '@/lib/dashboard-field-classes';
+import { cn } from '@/lib/cn';
 
 type UserRole = 'OWNER' | 'ADMIN' | 'DRIVER';
 
@@ -46,23 +48,29 @@ const roleConfig: Record<
   OWNER: {
     label: 'Proprietário',
     icon: <Shield className="h-4 w-4" />,
-    className: 'bg-purple-100 text-purple-800',
+    className:
+      'bg-purple-100 text-purple-900 dark:bg-purple-500/22 dark:text-purple-100 [&_svg]:text-purple-700 dark:[&_svg]:text-purple-200',
   },
   ADMIN: {
     label: 'Administrador',
     icon: <Shield className="h-4 w-4" />,
-    className: 'bg-blue-100 text-blue-800',
+    className:
+      'bg-blue-100 text-blue-900 dark:bg-blue-500/22 dark:text-blue-50 [&_svg]:text-blue-700 dark:[&_svg]:text-blue-200',
   },
   DRIVER: {
     label: 'Usuário motorista',
     icon: <TruckIcon className="h-4 w-4" />,
-    className: 'bg-green-100 text-green-800',
+    className:
+      'bg-emerald-100 text-emerald-900 dark:bg-emerald-500/22 dark:text-emerald-50 [&_svg]:text-emerald-700 dark:[&_svg]:text-emerald-200',
   },
 };
 
 const statusConfig = {
-  ACTIVE: { label: 'Ativo', className: 'bg-green-100 text-green-800' },
-  INACTIVE: { label: 'Inativo', className: 'bg-zinc-100 text-zinc-600' },
+  ACTIVE: {
+    label: 'Ativo',
+    className: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/22 dark:text-emerald-50',
+  },
+  INACTIVE: { label: 'Inativo', className: 'bg-muted text-muted-foreground' },
 };
 
 function staffDisplayName(m: CompanyStaffMember): string {
@@ -97,15 +105,15 @@ function UserCardInner({ user }: { user: ListUser }) {
           unoptimized
         />
       ) : (
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-100">
-          <UserCircle className="h-7 w-7 text-zinc-400" />
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted">
+          <UserCircle className="h-7 w-7 text-muted-foreground/75" />
         </div>
       )}
       <div className="min-w-0 flex-1">
-        <h3 className="truncate text-zinc-900" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
+        <h3 className="truncate text-foreground" style={{ fontSize: '0.95rem', fontWeight: 600 }}>
           {user.name}
         </h3>
-        <p className="truncate text-zinc-500" style={{ fontSize: '0.8rem' }}>
+        <p className="truncate text-muted-foreground" style={{ fontSize: '0.8rem' }}>
           {user.email || '—'}
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -120,7 +128,7 @@ function UserCardInner({ user }: { user: ListUser }) {
           </span>
         </div>
         {user.phone ? (
-          <p className="mt-2 text-zinc-400" style={{ fontSize: '0.75rem' }}>
+          <p className="mt-2 text-muted-foreground/85" style={{ fontSize: '0.75rem' }}>
             {formatPhoneBr(user.phone ?? '')}
           </p>
         ) : null}
@@ -133,20 +141,26 @@ export default function UsuariosPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { session, appUser, loading: authLoading } = useAuth();
-  const [staff, setStaff] = useState<CompanyStaffMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<ListUser | null>(null);
   const [deleting, setDeleting] = useState(false);
   const fleetStaff = appUser?.role === 'OWNER' || appUser?.role === 'ADMIN';
   const staffQuery = useQuery({
     queryKey: ['company-staff'],
-    queryFn: getCompanyStaff,
+    queryFn: () => getCompanyStaff(session?.access_token),
     enabled: Boolean(session && appUser && fleetStaff),
-    staleTime: 5 * 60_000,
+    staleTime: 60_000,
     retry: false,
   });
+
+  const staff = useMemo(() => staffQuery.data?.staff ?? [], [staffQuery.data]);
+  const loading = Boolean(fleetStaff && staffQuery.isPending && !staffQuery.data);
+  const error =
+    fleetStaff && staffQuery.isError
+      ? staffQuery.error instanceof Error
+        ? staffQuery.error.message
+        : 'Erro ao carregar'
+      : null;
 
   const users = useMemo(() => staffToUsers(staff), [staff]);
 
@@ -156,24 +170,6 @@ export default function UsuariosPage() {
       router.replace('/dashboard');
     }
   }, [session, appUser, fleetStaff, router]);
-
-  useEffect(() => {
-    if (!fleetStaff) return;
-    if (staffQuery.isLoading) {
-      setLoading(true);
-      return;
-    }
-    if (staffQuery.isError) {
-      setError(staffQuery.error instanceof Error ? staffQuery.error.message : 'Erro ao carregar');
-      setLoading(false);
-      return;
-    }
-    if (staffQuery.data) {
-      setStaff(staffQuery.data.staff);
-      setError(null);
-      setLoading(false);
-    }
-  }, [fleetStaff, staffQuery.data, staffQuery.error, staffQuery.isError, staffQuery.isLoading]);
 
   useEffect(() => {
     if (!authLoading && !session) router.replace('/login');
@@ -205,7 +201,6 @@ export default function UsuariosPage() {
     setDeleting(true);
     try {
       await deleteCompanyStaffUser(deleteTarget.id);
-      setStaff((s) => s.filter((x) => x.id !== deleteTarget.id));
       queryClient.setQueryData<CompanyStaffResponse>(['company-staff'], (current) =>
         current
           ? {
@@ -240,7 +235,7 @@ export default function UsuariosPage() {
           }
         }}
       >
-        <Card className="h-full border-zinc-200 p-4 transition-all hover:border-blue-300 hover:shadow-md">
+        <Card className="h-full border-border p-4 transition-all hover:border-primary/35 hover:shadow-md">
         <UserCardInner user={user} />
         {showExcluir && (
           <div className="mt-3 flex justify-end">
@@ -264,9 +259,11 @@ export default function UsuariosPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <LoadingMessage message="Carregando usuários…" />
-      </div>
+      <DashboardPageShell maxWidth="6xl">
+        <div className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 dark:bg-muted/20">
+          <LoadingMessage message="Carregando usuários…" className="text-muted-foreground" />
+        </div>
+      </DashboardPageShell>
     );
   }
 
@@ -276,20 +273,22 @@ export default function UsuariosPage() {
           <div className="min-w-0">
             <Link
               href="/dashboard"
-              className="flex items-center gap-1 text-zinc-500 hover:text-zinc-700 transition-colors mb-1 text-sm"
+              prefetch={false}
+              className="mb-1 flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               Voltar ao dashboard
             </Link>
-            <h1 className="break-words text-xl font-semibold text-zinc-900 md:text-2xl">Usuários</h1>
-            <p className="mt-0.5 text-zinc-500" style={{ fontSize: '0.85rem' }}>
+            <h1 className="break-words text-xl font-semibold text-foreground md:text-2xl">Usuários</h1>
+            <p className="mt-0.5 text-muted-foreground" style={{ fontSize: '0.85rem' }}>
               Contas com login (acesso ao sistema). Motoristas da frota sem acesso ficam em Motoristas.
             </p>
           </div>
           {canInviteNewUsers ? (
             <Link
               href="/dashboard/usuarios/novo"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+              prefetch={false}
+              className={cn(dashboardLinkPrimaryClass, 'w-full sm:w-auto')}
             >
               <Plus className="h-4 w-4" />
               Novo usuário
@@ -298,13 +297,13 @@ export default function UsuariosPage() {
         </div>
 
         {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         )}
 
         <div className="relative w-full min-w-0 max-w-full sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <Search className={dashboardSearchIconLeftClass} />
           <Input
             placeholder="Buscar por nome ou e-mail..."
             value={search}
@@ -314,46 +313,46 @@ export default function UsuariosPage() {
         </div>
 
         <div className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-3 gap-3 items-stretch">
-          <Card className="border-zinc-200 p-4">
+          <Card className="border-border p-4 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-100">
-                <Shield className="h-5 w-5 text-purple-600" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-500/12 ring-1 ring-inset ring-purple-600/20 dark:bg-purple-500/22 dark:ring-purple-400/28">
+                <Shield className="h-5 w-5 text-purple-700 dark:text-purple-300" />
               </div>
-              <div>
-                <p className="text-zinc-500" style={{ fontSize: '0.78rem' }}>
+              <div className="min-w-0">
+                <p className="text-muted-foreground" style={{ fontSize: '0.78rem' }}>
                   Proprietários
                 </p>
-                <p className="text-zinc-900" style={{ fontSize: '1.4rem', fontWeight: 700 }}>
+                <p className="text-foreground" style={{ fontSize: '1.4rem', fontWeight: 700 }}>
                   {ownerCount}
                 </p>
               </div>
             </div>
           </Card>
-          <Card className="border-zinc-200 p-4">
+          <Card className="border-border p-4 shadow-sm">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100">
-                <Shield className="h-5 w-5 text-blue-600" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/12 ring-1 ring-inset ring-primary/20 dark:bg-primary/22 dark:ring-primary/28">
+                <Shield className="h-5 w-5 text-primary" />
               </div>
-              <div>
-                <p className="text-zinc-500" style={{ fontSize: '0.78rem' }}>
+              <div className="min-w-0">
+                <p className="text-muted-foreground" style={{ fontSize: '0.78rem' }}>
                   Administradores
                 </p>
-                <p className="text-zinc-900" style={{ fontSize: '1.4rem', fontWeight: 700 }}>
+                <p className="text-foreground" style={{ fontSize: '1.4rem', fontWeight: 700 }}>
                   {adminCount}
                 </p>
               </div>
             </div>
           </Card>
-          <Card className="border-zinc-200 p-4 min-[420px]:col-span-2 sm:col-span-1">
+          <Card className="border-border p-4 shadow-sm min-[420px]:col-span-2 sm:col-span-1">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
-                <TruckIcon className="h-5 w-5 text-green-600" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/12 ring-1 ring-inset ring-emerald-600/18 dark:bg-emerald-500/20 dark:ring-emerald-400/28">
+                <TruckIcon className="h-5 w-5 text-emerald-700 dark:text-emerald-300" />
               </div>
-              <div>
-                <p className="text-zinc-500" style={{ fontSize: '0.78rem' }}>
+              <div className="min-w-0">
+                <p className="text-muted-foreground" style={{ fontSize: '0.78rem' }}>
                   Usuários motorista
                 </p>
-                <p className="text-zinc-900" style={{ fontSize: '1.4rem', fontWeight: 700 }}>
+                <p className="text-foreground" style={{ fontSize: '1.4rem', fontWeight: 700 }}>
                   {driverUserCount}
                 </p>
               </div>
@@ -364,8 +363,8 @@ export default function UsuariosPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.length === 0 ? (
             <div className="col-span-full py-12 text-center">
-              <UserCircle className="mx-auto mb-3 h-12 w-12 text-zinc-300" />
-              <p className="text-zinc-500">Nenhum usuário encontrado.</p>
+              <UserCircle className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40" />
+              <p className="text-muted-foreground">Nenhum usuário encontrado.</p>
             </div>
           ) : (
             filtered.map((user) => <div key={user.id}>{resolveCard(user)}</div>)
@@ -374,10 +373,10 @@ export default function UsuariosPage() {
 
         {deleteTarget && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="mx-4 w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
-              <h3 className="mb-2 font-semibold text-zinc-900">Confirmar exclusão</h3>
-              <p className="mb-4 text-sm text-zinc-600">
-                Tem certeza que deseja excluir <strong>{deleteTarget.name}</strong>?
+            <div className="mx-4 w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-xl">
+              <h3 className="mb-2 font-semibold text-foreground">Confirmar exclusão</h3>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Tem certeza que deseja excluir <strong className="text-foreground">{deleteTarget.name}</strong>?
               </p>
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <Button
@@ -388,11 +387,7 @@ export default function UsuariosPage() {
                 >
                   Cancelar
                 </Button>
-                <Button
-                  className="w-full bg-red-600 text-white hover:bg-red-700 sm:w-auto"
-                  onClick={handleDelete}
-                  disabled={deleting}
-                >
+                <Button variant="danger" className="w-full sm:w-auto" onClick={handleDelete} disabled={deleting}>
                   {deleting ? 'Excluindo...' : 'Excluir'}
                 </Button>
               </div>

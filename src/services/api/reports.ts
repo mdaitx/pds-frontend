@@ -28,7 +28,10 @@ export function defaultMonthlyReportRange(): { fromYmd: string; toYmd: string } 
   return { fromYmd, toYmd };
 }
 
-export async function getTripsReport(fromYmd: string, toYmd: string): Promise<TripsReportData> {
+export async function getTripsReport(fromYmd: string, toYmd: string, accessToken?: string): Promise<TripsReportData> {
   const params = new URLSearchParams({ from: fromYmd, to: toYmd });
-  return apiFetch<TripsReportData>(`/reports/trips?${params.toString()}`, { method: 'GET' });
+  return apiFetch<TripsReportData>(`/reports/trips?${params.toString()}`, {
+    method: 'GET',
+    ...(accessToken !== undefined ? { token: accessToken } : {}),
+  });
 }

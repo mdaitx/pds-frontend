@@ -1,76 +1,203 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+/** Tema manual: `dark:*` só ativa quando `html[data-theme="dark"]`, não só `prefers-color-scheme`. */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/*
+  Design tokens — valores em canais HSL (sem hsl()) para usar com hsl(var(--token) / <alpha>)
+  Hierarquia: background (página) → card/surface (elevado, branco) → muted (dentro do card).
+
+  Referência Figma / hex / RGB (:root claro — canais são a fonte de verdade no código):
+    background          hsl(220 20% 97%)   · #f6f7f9 · rgb(246, 247, 249)
+    foreground          hsl(224 71% 4%)    · #030711 · rgb(3, 7, 17)
+    card / surface      hsl(0 0% 100%)      · #ffffff · rgb(255, 255, 255)
+    surface-muted       hsl(220 16% 98%)   · #f9fafb · rgb(249, 250, 251)
+    muted               hsl(220 14% 96%)    · #f3f4f6 · rgb(243, 244, 246)
+    muted-foreground    hsl(220 9% 46%)     · #6b7280 · rgb(107, 114, 128)
+    border              hsl(220 13% 90%)    · #e2e4e9 · rgb(226, 228, 233)
+    primary             hsl(221 83% 53%)    · #2463eb · rgb(36, 99, 235)
+    primary-hover       hsl(221 83% 47%)    · #1453db · rgb(20, 83, 219)
+    primary-foreground  hsl(0 0% 100%)      · #ffffff · rgb(255, 255, 255)
+    accent              hsl(160 84% 39%)    · #10b77f · rgb(16, 183, 127)
+    accent-foreground   hsl(0 0% 98%)       · #fafafa · rgb(250, 250, 250)
+    destructive         hsl(0 84% 60%)       · #ef4343 · rgb(239, 67, 67)
+    destructive-hover   hsl(0 84% 52%)       · #eb1e1e · rgb(235, 30, 30)
+
+  Escuro (:root.dark) — primary equivalente típico p/ barras/status PWA quando dark:
+    hsl(217 91% 62%)   · #468af6 · rgb(70, 138, 246)
+*/
 
 :root {
   color-scheme: light;
-  --background: #ffffff;
-  --foreground: #171717;
-  --surface: #ffffff;
-  --surface-muted: #f8fafc;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --border: #e4e4e7;
-  --primary: #2563eb;
-  --primary-foreground: #ffffff;
-  --primary-hover: #1d4ed8;
-  --danger: #dc2626;
-  --danger-foreground: #ffffff;
-  --danger-hover: #b91c1c;
-  --focus-ring: #3b82f6;
-  --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.08);
-  --shadow-popover: 0 4px 20px rgba(15, 23, 42, 0.15);
+
+  --background: 220 20% 97%;
+  --foreground: 224 71% 4%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 224 71% 4%;
+
+  /** @deprecated use --card — mantido para não quebrar telas que usam surface */
+  --surface: 0 0% 100%;
+  /** Faixas levemente acinzentadas entre seções ou hovers sutis na página */
+  --surface-muted: 220 16% 98%;
+
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 9% 46%;
+
+  --border: 220 13% 90%;
+
+  --primary: 221 83% 53%;
+  --primary-foreground: 0 0% 100%;
+  --primary-hover: 221 83% 47%;
+
+  --accent: 160 84% 39%;
+  --accent-foreground: 0 0% 98%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --destructive-hover: 0 84% 52%;
+
+  /** Alias compatível com código existente (`bg-danger`, `Button` variant danger) */
+  --danger: 0 84% 60%;
+  --danger-foreground: 0 0% 100%;
+  --danger-hover: 0 84% 52%;
+
+  --focus-ring: 221 83% 53%;
+
+  --shadow-card: 0 1px 3px hsl(224 71% 4% / 0.06);
+  --shadow-popover: 0 12px 40px hsl(224 71% 4% / 0.12);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-surface: var(--surface);
-  --color-surface-muted: var(--surface-muted);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary-hover: var(--primary-hover);
-  --color-danger: var(--danger);
-  --color-danger-foreground: var(--danger-foreground);
-  --color-danger-hover: var(--danger-hover);
-  --color-focus-ring: var(--focus-ring);
-  --font-sans: var(--font-geist-sans);
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  --color-surface: hsl(var(--surface));
+  --color-surface-muted: hsl(var(--surface-muted));
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+
+  --color-border: hsl(var(--border));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-hover: hsl(var(--primary-hover));
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive-hover: hsl(var(--destructive-hover));
+
+  --color-danger: hsl(var(--danger));
+  --color-danger-foreground: hsl(var(--danger-foreground));
+  --color-danger-hover: hsl(var(--danger-hover));
+
+  --color-focus-ring: hsl(var(--focus-ring));
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
-/* Figma Make (Inter) — usar em páginas espelhadas ao protótipo */
+/** Tipografia recomendada (use nas páginas em vez de tamanhos ad hoc) */
+@layer utilities {
+  .pds-page-title {
+    @apply text-3xl font-bold tracking-tight text-foreground;
+  }
+
+  .pds-card-title {
+    @apply text-lg font-semibold text-foreground;
+  }
+
+  .pds-label {
+    @apply text-sm font-medium text-foreground;
+  }
+
+  .pds-body {
+    @apply text-sm font-normal text-foreground;
+  }
+
+  .pds-caption {
+    @apply text-xs font-normal text-muted-foreground;
+  }
+}
+
+/* Telas espelhadas ao protótipo Figma também podem forçar Inter via classe herdada em layout */
 .settings-font-inter {
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Dark mode fica preparado, mas só deve ser ativado quando as telas estiverem migradas. */
+/* Dark mode: preparado; ative :root.dark ou data-theme quando as telas forem revisadas */
 :root.dark,
 [data-theme='dark'] {
   color-scheme: dark;
-  --background: #0f172a;
-  --foreground: #f1f5f9;
-  --surface: #1e293b;
-  --surface-muted: #172033;
-  --muted: #334155;
-  --muted-foreground: #94a3b8;
-  --border: #334155;
-  --primary: #60a5fa;
-  --primary-foreground: #0f172a;
-  --primary-hover: #93c5fd;
-  --danger: #f87171;
-  --danger-foreground: #450a0a;
-  --danger-hover: #fca5a5;
-  --focus-ring: #93c5fd;
-  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.28);
-  --shadow-popover: 0 4px 20px rgba(0, 0, 0, 0.42);
+
+  --background: 226 43% 9%;
+  --foreground: 210 36% 96%;
+
+  --card: 222 41% 14%;
+  --card-foreground: 210 36% 96%;
+
+  --surface: 222 41% 14%;
+  --surface-muted: 220 39% 12%;
+
+  --muted: 217 33% 20%;
+  --muted-foreground: 215 20% 66%;
+
+  --border: 217 33% 22%;
+
+  --primary: 217 91% 62%;
+  --primary-foreground: 226 43% 9%;
+  --primary-hover: 213 93% 70%;
+
+  --accent: 160 72% 45%;
+  --accent-foreground: 152 82% 8%;
+
+  --destructive: 0 74% 59%;
+  --destructive-foreground: 358 83% 6%;
+  --destructive-hover: 0 88% 66%;
+
+  --danger: var(--destructive);
+  --danger-foreground: var(--destructive-foreground);
+  --danger-hover: var(--destructive-hover);
+
+  --focus-ring: 213 93% 70%;
+
+  --shadow-card: 0 1px 3px hsl(0 0% 0% / 0.35);
+  --shadow-popover: 0 18px 50px hsl(0 0% 0% / 0.45);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-inter), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   min-height: 100dvh;
+}
+
+/* Chrome autofill não “lavar” o campo no tema escuro (usa cores semânticas). */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+select:-webkit-autofill {
+  box-shadow: 0 0 0 1000px hsl(var(--card)) inset;
+  -webkit-text-fill-color: hsl(var(--foreground));
+  caret-color: hsl(var(--foreground));
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/** react-day-picker v9+: variáveis seguem tema (Popover do LocalizedDateField). */
+.rdp-root,
+.rdp {
+  --rdp-accent-color: hsl(var(--primary));
+  --rdp-accent-background-color: hsl(var(--muted));
+  --rdp-background-color: hsl(var(--card));
+  color: hsl(var(--foreground));
 }
 
 /* Área segura (notch / home indicator) em telas do motorista / PWA */

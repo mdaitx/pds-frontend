@@ -79,8 +79,11 @@ export type UpdateDriverPayload = {
   linkedUserId?: string | null;
 };
 
-export async function getDrivers(): Promise<Driver[]> {
-  return apiFetch<Driver[]>('/drivers', { method: 'GET' });
+export async function getDrivers(accessToken?: string): Promise<Driver[]> {
+  return apiFetch<Driver[]>('/drivers', {
+    method: 'GET',
+    ...(accessToken !== undefined ? { token: accessToken } : {}),
+  });
 }
 
 export async function getDriversPage(pagination: PaginationOptions): Promise<PaginatedResult<Driver>> {

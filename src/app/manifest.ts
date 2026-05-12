@@ -9,8 +9,10 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: '/',
     display: 'standalone',
     orientation: 'portrait-primary',
-    background_color: '#f8fafc',
-    theme_color: '#2563eb',
+    /** Alinha com hsl(220 20% 97%) — --background */
+    background_color: '#f6f7f9',
+    /** Alinha com hsl(221 83% 53%) — --primary */
+    theme_color: '#2463eb',
     categories: ['business', 'finance'],
     lang: 'pt-BR',
     dir: 'ltr',

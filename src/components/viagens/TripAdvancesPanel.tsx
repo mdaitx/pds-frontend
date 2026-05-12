@@ -16,10 +16,13 @@ import {
 import { useActivityHint } from '@/hooks';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { dashboardDeleteIconTriggerClass } from '@/lib/dashboard-action-buttons';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoadingMessage } from '@/components/ui/loading';
 import { LocalizedDateField } from '@/components/ui/localized-date-field';
+import { cn } from '@/lib/cn';
+import { dashboardNativeFieldClass } from '@/lib/dashboard-field-classes';
 
 const METHOD_OPTIONS: { value: AdvanceMethod; label: string }[] = [
   { value: 'CASH', label: 'Dinheiro' },
@@ -39,8 +42,7 @@ function formatBrl(n: number): string {
   return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-const selectClass =
-  'mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-base text-zinc-800 focus:outline-none focus:ring-2 focus:ring-orange-500';
+const selectClass = cn(dashboardNativeFieldClass, 'mt-1 flex h-auto min-h-11 py-2 text-[0.9rem]');
 
 type Props = {
   tripId: string;
@@ -142,14 +144,14 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
 
   if (loading) {
     return (
-      <Card className={`border-zinc-200 shadow-sm ${embed ? '' : 'mt-6'}`}>
+      <Card className={`border-border shadow-sm ${embed ? '' : 'mt-6'}`}>
         <CardHeader className="pb-2 pt-6">
-          <h3 className="text-zinc-700" style={{ fontWeight: 600, fontSize: '1.05rem' }}>
+          <h3 className="text-foreground" style={{ fontWeight: 600, fontSize: '1.05rem' }}>
             Adiantamentos
           </h3>
         </CardHeader>
         <CardContent>
-          <LoadingMessage message="Carregando adiantamentos…" />
+          <LoadingMessage message="Carregando adiantamentos…" className="text-muted-foreground" />
         </CardContent>
       </Card>
     );
@@ -157,16 +159,16 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
 
   return (
     <>
-      <Card className={`border-zinc-200 shadow-sm ${embed ? '' : 'mt-6'}`}>
+      <Card className={`border-border shadow-sm ${embed ? '' : 'mt-6'}`}>
         <CardHeader className="pb-2 pt-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h3 className="text-zinc-700" style={{ fontWeight: 600, fontSize: '1.05rem' }}>
+              <h3 className="text-foreground" style={{ fontWeight: 600, fontSize: '1.05rem' }}>
                 Adiantamentos
               </h3>
-              <p className="mt-0.5 text-zinc-500" style={{ fontSize: '0.8rem' }}>
+              <p className="mt-0.5 text-muted-foreground" style={{ fontSize: '0.8rem' }}>
                 Total:{' '}
-                <span className="text-orange-600" style={{ fontWeight: 700 }}>
+                <span className="text-orange-600 dark:text-orange-400" style={{ fontWeight: 700 }}>
                   {formatBrl(totalAdvances)}
                 </span>
               </p>
@@ -175,7 +177,7 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
               <button
                 type="button"
                 onClick={openAdvanceModal}
-                className="flex items-center gap-1.5 rounded-lg bg-orange-50 px-3 py-1.5 text-orange-700 transition-colors hover:bg-orange-100"
+                className="flex items-center gap-1.5 rounded-lg bg-orange-500/15 px-3 py-1.5 text-orange-900 transition-colors hover:bg-orange-500/25 dark:bg-orange-500/20 dark:text-orange-100 dark:hover:bg-orange-500/30"
                 style={{ fontSize: '0.83rem' }}
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -186,7 +188,7 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
         </CardHeader>
         <CardContent className="pb-6">
           {list.length === 0 ? (
-            <p className="py-6 text-center text-zinc-400" style={{ fontSize: '0.9rem' }}>
+            <p className="py-6 text-center text-muted-foreground/80" style={{ fontSize: '0.9rem' }}>
               Nenhum adiantamento registrado.
             </p>
           ) : (
@@ -196,16 +198,16 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
                 return (
                   <div
                     key={adv.id}
-                    className="flex items-center justify-between rounded-lg border border-zinc-100 bg-zinc-50 p-3"
+                    className="flex items-center justify-between rounded-lg border border-border bg-muted/40 dark:bg-muted/20 p-3"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-orange-600" style={{ fontSize: '0.88rem', fontWeight: 700 }}>
+                        <span className="text-orange-600 dark:text-orange-400" style={{ fontSize: '0.88rem', fontWeight: 700 }}>
                           {formatBrl(adv.amount)}
                         </span>
-                        <span className="text-xs text-zinc-500">{ml}</span>
+                        <span className="text-xs text-muted-foreground">{ml}</span>
                       </div>
-                      <p className="text-zinc-500" style={{ fontSize: '0.78rem' }}>
+                      <p className="text-muted-foreground" style={{ fontSize: '0.78rem' }}>
                         {new Date(adv.date).toLocaleDateString('pt-BR')}
                         {adv.description ? ` · ${adv.description}` : ''}
                       </p>
@@ -214,7 +216,7 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
                           href={adv.receiptUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-1 inline-block text-xs font-medium text-orange-600 hover:underline"
+                          className="mt-1 inline-block text-xs font-medium text-orange-600 underline hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
                         >
                           Ver comprovante
                         </a>
@@ -224,7 +226,7 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
                       <button
                         type="button"
                         onClick={() => handleDeleteAdvance(adv.id)}
-                        className="ml-3 rounded-lg p-1.5 text-zinc-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                        className={`ml-3 shrink-0 ${dashboardDeleteIconTriggerClass}`}
                         aria-label="Remover adiantamento"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -236,7 +238,7 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
             </div>
           )}
           {!canAdd && (
-            <p className="mt-3 text-sm text-zinc-500">
+            <p className="mt-3 text-sm text-muted-foreground">
               {tripStatus === 'COMPLETED'
                 ? 'Viagem concluída — não é possível alterar adiantamentos aqui.'
                 : 'Esta viagem não aceita novos lançamentos.'}
@@ -248,19 +250,19 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
       {advanceOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div
-            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-zinc-200 bg-white p-5 shadow-lg"
+            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-card p-5 shadow-lg"
             role="dialog"
             aria-modal="true"
             aria-labelledby="advance-modal-title"
           >
             <div className="mb-4 flex items-start justify-between gap-2">
-              <h3 id="advance-modal-title" className="text-zinc-900" style={{ fontWeight: 600 }}>
+              <h3 id="advance-modal-title" className="text-foreground" style={{ fontWeight: 600 }}>
                 Novo adiantamento
               </h3>
               <button
                 type="button"
                 onClick={() => setAdvanceOpen(false)}
-                className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+                className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 aria-label="Fechar"
               >
                 <X className="h-5 w-5" />
@@ -269,7 +271,9 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
 
             <div className="space-y-3">
               {formError && (
-                <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{formError}</div>
+                <div className="rounded-lg border border-destructive/25 bg-destructive/10 p-3 text-sm text-destructive dark:border-destructive/35 dark:bg-destructive/15">
+                  {formError}
+                </div>
               )}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -279,7 +283,7 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
                     type="text"
                     inputMode="decimal"
                     placeholder="0,00"
-                    className="h-11 bg-white"
+                    className="h-11"
                     value={amountStr}
                     onChange={(e) => setAmountStr(formatBrlCurrencyInput(e.target.value))}
                   />
@@ -288,8 +292,8 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
                   label="Data *"
                   value={dateYmd}
                   onChange={setDateYmd}
-                  labelClassName="text-sm font-medium leading-none text-zinc-700"
-                  buttonClassName="h-11 w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-left text-sm text-zinc-900 hover:bg-zinc-50"
+                  labelClassName="text-sm font-medium leading-none text-foreground"
+                  buttonClassName="h-11 w-full min-w-0 rounded-lg border border-border bg-card px-3 py-2 text-left text-sm text-foreground hover:bg-muted"
                 />
               </div>
               <div className="space-y-1.5">
@@ -313,7 +317,7 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
                 <Input
                   id="modal-adv-desc"
                   placeholder="Motivo do adiantamento"
-                  className="h-11 bg-white"
+                  className="h-11"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
@@ -326,7 +330,7 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
               </Button>
               <Button
                 type="button"
-                className="bg-orange-600 text-white hover:bg-orange-700"
+                className="bg-orange-600 text-white hover:bg-orange-700 dark:bg-orange-600 dark:hover:bg-orange-500"
                 onClick={handleSaveAdvance}
                 disabled={saving}
               >

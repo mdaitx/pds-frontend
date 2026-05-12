@@ -58,19 +58,24 @@ export default function AcertoViagemPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <LoadingMessage />
-      </div>
+      <DashboardPageShell maxWidth="3xl">
+        <div className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 dark:bg-muted/20">
+          <LoadingMessage className="text-muted-foreground" />
+        </div>
+      </DashboardPageShell>
     );
   }
 
   if (error && !trip) {
     return (
       <DashboardPageShell maxWidth="lg">
-        <Link href="/dashboard/viagens" className="text-sm text-blue-600 hover:underline">
+        <Link
+          href="/dashboard/viagens"
+          className="text-sm text-muted-foreground transition-colors hover:text-primary"
+        >
           ← Viagens
         </Link>
-        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">{error}</div>
+        <div className="mt-4 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-destructive">{error}</div>
       </DashboardPageShell>
     );
   }
@@ -78,25 +83,28 @@ export default function AcertoViagemPage() {
   if (!settlement) {
     return (
       <DashboardPageShell maxWidth="lg">
-        <Link href="/dashboard/viagens" className="text-sm text-blue-600 hover:underline">
+        <Link
+          href="/dashboard/viagens"
+          className="text-sm text-muted-foreground transition-colors hover:text-primary"
+        >
           ← Viagens
         </Link>
-        <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-          <h1 className="text-xl font-semibold text-zinc-900">Acerto não disponível</h1>
-          <p className="mt-2 text-sm text-zinc-600">
+        <div className="mt-6 rounded-lg border border-border bg-card p-6 shadow-sm">
+          <h1 className="text-xl font-semibold text-foreground">Acerto não disponível</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
             {trip?.status === 'COMPLETED'
               ? 'Esta viagem está concluída, mas não há acerto registrado (dado legado).'
               : 'O acerto só é gerado quando o dono finaliza a viagem.'}
           </p>
           {trip && (
-            <p className="mt-2 text-sm text-zinc-500">
-              Viagem <strong>{trip.code}</strong> · {trip.status}
+            <p className="mt-2 text-sm text-muted-foreground">
+              Viagem <strong className="text-foreground">{trip.code}</strong> · {trip.status}
             </p>
           )}
-          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+          {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
           <Link
             href={`/dashboard/viagens/${tripId}`}
-            className="mt-6 inline-block text-sm font-medium text-blue-600 hover:underline"
+            className="mt-6 inline-block text-sm font-medium text-primary hover:underline"
           >
             Voltar à viagem
           </Link>
@@ -108,9 +116,11 @@ export default function AcertoViagemPage() {
   const isFleetStaff = appUser?.role === 'OWNER' || appUser?.role === 'ADMIN';
 
   return (
-    <>
+    <DashboardPageShell maxWidth="3xl">
       {error && (
-        <div className="bg-amber-50 px-6 py-2 text-center text-sm text-amber-900">{error}</div>
+        <div className="rounded-xl border border-amber-500/35 bg-amber-500/12 px-4 py-2 text-center text-sm text-amber-950 dark:bg-amber-950/35 dark:text-amber-50">
+          {error}
+        </div>
       )}
       <SettlementAcertoView
         settlement={settlement}
@@ -120,6 +130,6 @@ export default function AcertoViagemPage() {
         backHref={`/dashboard/viagens/${tripId}`}
         backLabel={isFleetStaff ? 'Voltar à edição da viagem' : 'Voltar ao resumo da viagem'}
       />
-    </>
+    </DashboardPageShell>
   );
 }

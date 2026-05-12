@@ -56,8 +56,10 @@ export default function SessionRedirectPage() {
   }, [loading, session, router]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 p-6">
-      <LoadingMessage message="Entrando na sua conta..." />
+    <div className="flex min-h-screen items-center justify-center bg-background p-6 text-foreground">
+      <div className="flex w-full max-w-md min-h-[36vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 px-6 py-10 dark:bg-muted/20">
+        <LoadingMessage message="Entrando na sua conta..." />
+      </div>
     </div>
   );
 }

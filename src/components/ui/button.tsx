@@ -23,18 +23,18 @@ export function Button({
   ...props
 }: ButtonProps) {
   const base =
-    'inline-flex items-center justify-center gap-2 rounded-lg border text-sm font-medium outline-none transition-all duration-200 ease-out focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-50';
+    'inline-flex items-center justify-center gap-2 rounded-xl border text-sm font-medium outline-none transition-all duration-200 ease-out focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-50';
   const variants = {
     default:
       'border-transparent bg-primary text-primary-foreground shadow-sm hover:-translate-y-px hover:bg-primary-hover hover:shadow-md active:translate-y-0',
     primary:
       'border-transparent bg-primary text-primary-foreground shadow-sm hover:-translate-y-px hover:bg-primary-hover hover:shadow-md active:translate-y-0',
     secondary:
-      'border-transparent bg-muted text-foreground hover:-translate-y-px hover:bg-zinc-200 hover:shadow-sm active:translate-y-0',
+      'border-transparent bg-muted text-foreground hover:-translate-y-px hover:bg-muted/80 hover:shadow-sm active:translate-y-0',
     outline:
       'border-border bg-surface text-foreground hover:-translate-y-px hover:bg-surface-muted hover:shadow-sm active:translate-y-0',
     ghost:
-      'border-transparent bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground active:bg-zinc-200',
+      'border-transparent bg-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground active:bg-muted',
     danger:
       'border-transparent bg-danger text-danger-foreground shadow-sm hover:-translate-y-px hover:bg-danger-hover hover:shadow-md active:translate-y-0',
   };

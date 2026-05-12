@@ -11,9 +11,11 @@ export function Card({ children, className = '', interactive = false }: CardProp
   return (
     <div
       className={cn(
-        'rounded-lg border border-border bg-surface shadow-[var(--shadow-card)]',
+        /** Contorno mais visível no escuro (--border já é relativamente alto contraste em card). */
+        'rounded-2xl border bg-card shadow-sm dark:shadow-black/35',
+        'border-border/70 dark:border-border',
         interactive &&
-          'transition-all duration-200 ease-out hover:-translate-y-px hover:border-primary/30 hover:shadow-md',
+          'cursor-pointer transition-shadow duration-200 ease-out hover:border-primary/30 hover:shadow-md dark:hover:border-primary/40',
         className
       )}
     >
