@@ -70,6 +70,8 @@ export {
   getTrips,
   getTripsList,
   getTripsReport,
+  reportsTripsQueryKey,
+  defaultMonthlyReportRange,
   getTripsPage,
   getTrip,
   createTrip,

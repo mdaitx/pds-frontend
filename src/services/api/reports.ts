@@ -12,24 +12,23 @@ export type TripsReportData = {
   generatedAt: string;
 };
 
-const REPORT_CACHE_TTL_MS = 30_000;
-const tripsReportCache = new Map<string, { expiresAt: number; promise: Promise<TripsReportData> }>();
+/** QueryKey partilhado entre a página de relatórios, prefetch no dashboard e na sidebar. */
+export const reportsTripsQueryKey = (fromYmd: string, toYmd: string) =>
+  ['reports-trips', fromYmd, toYmd] as const;
+
+/** Mesmo recorte “mês civil atual” usado como default na UI de relatórios — alinha prefetch com a primeira vista. */
+export function defaultMonthlyReportRange(): { fromYmd: string; toYmd: string } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const fromYmd = `${y}-${pad(m)}-01`;
+  const lastDay = new Date(y, m, 0).getDate();
+  const toYmd = `${y}-${pad(m)}-${pad(lastDay)}`;
+  return { fromYmd, toYmd };
+}
 
 export async function getTripsReport(fromYmd: string, toYmd: string): Promise<TripsReportData> {
   const params = new URLSearchParams({ from: fromYmd, to: toYmd });
-  const key = params.toString();
-  const now = Date.now();
-  const cached = tripsReportCache.get(key);
-
-  if (cached && cached.expiresAt > now) {
-    return cached.promise;
-  }
-
-  const promise = apiFetch<TripsReportData>(`/reports/trips?${key}`, { method: 'GET' }).catch((error) => {
-    tripsReportCache.delete(key);
-    throw error;
-  });
-
-  tripsReportCache.set(key, { expiresAt: now + REPORT_CACHE_TTL_MS, promise });
-  return promise;
+  return apiFetch<TripsReportData>(`/reports/trips?${params.toString()}`, { method: 'GET' });
 }

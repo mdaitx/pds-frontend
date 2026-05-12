@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Truck,
   Route,
@@ -25,6 +25,9 @@ import {
   getOnboardingStatus,
   getDashboardCharts,
   getDashboardSummary,
+  getTripsReport,
+  reportsTripsQueryKey,
+  defaultMonthlyReportRange,
 } from '@/lib';
 import type { AuthUser, Trip, Expense, Advance, Settlement, OwnerDashboardSummary } from '@/lib';
 import { cn } from '@/lib/cn';
@@ -32,10 +35,7 @@ import { mobileTableScrollClass } from '@/lib/dashboard-mobile';
 import { Card, CardHeader, CardContent, Skeleton } from '@/components/ui';
 import { DashboardBootSkeleton, RecentTripsTableSkeleton } from '@/components/dashboard/DashboardLoadingSkeleton';
 import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
-import {
-  dashboardLinkGhostBlueClass,
-  dashboardLinkMutedNavClass,
-} from '@/lib/dashboard-action-buttons';
+import { dashboardLinkMutedNavClass } from '@/lib/dashboard-action-buttons';
 import type { ChartPeriod, DashboardChartsProps } from './DashboardCharts';
 
 const DashboardCharts = dynamic<DashboardChartsProps>(
@@ -250,6 +250,18 @@ export default function DashboardPage() {
     staleTime: 5 * 60_000,
     retry: false,
   });
+
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (!session || !shouldLoadOwnerCharts || !appUser) return;
+    const { fromYmd, toYmd } = defaultMonthlyReportRange();
+    void queryClient.prefetchQuery({
+      queryKey: reportsTripsQueryKey(fromYmd, toYmd),
+      queryFn: () => getTripsReport(fromYmd, toYmd),
+      staleTime: 60_000,
+    });
+  }, [session, shouldLoadOwnerCharts, appUser, queryClient]);
 
   useEffect(() => {
     if (loading || !appUser || pathname !== '/dashboard') return;
