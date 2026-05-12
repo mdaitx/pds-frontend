@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   LayoutDashboard,
   Route,
@@ -20,7 +21,12 @@ import {
 } from 'lucide-react';
 import { useAuth, useActivityHint } from '@/hooks';
 import { cn } from '@/lib/cn';
-import type { AuthUser } from '@/lib';
+import {
+  defaultMonthlyReportRange,
+  getTripsReport,
+  reportsTripsQueryKey,
+  type AuthUser,
+} from '@/lib';
 import { BrandLogo } from '@/components/brand-logo';
 
 const ROLE_LABEL: Record<AuthUser['role'], string> = {
@@ -74,6 +80,7 @@ type DashboardSidebarNavProps = {
   appUser: AuthUser | null;
   onNavClick: () => void;
   onLogout: () => void;
+  prefetchRelatorios: () => void;
 };
 
 function DashboardSidebarNav({
@@ -85,6 +92,7 @@ function DashboardSidebarNav({
   appUser,
   onNavClick,
   onLogout,
+  prefetchRelatorios,
 }: DashboardSidebarNavProps) {
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -147,6 +155,9 @@ function DashboardSidebarNav({
               href={item.href}
               prefetch={false}
               onClick={onNavClick}
+              onMouseEnter={() => {
+                if (item.href === '/dashboard/relatorios') prefetchRelatorios();
+              }}
               className={cn(
                 'relative flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group',
                 isActive ? 'bg-blue-50 text-blue-700' : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900',
@@ -220,10 +231,21 @@ function DashboardSidebarNav({
 export function DashboardSidebar({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { appUser, signOut } = useAuth();
   const { tripsActivityCount } = useActivityHint();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const prefetchRelatorios = useCallback(() => {
+    if (!appUser || (appUser.role !== 'OWNER' && appUser.role !== 'ADMIN')) return;
+    const { fromYmd, toYmd } = defaultMonthlyReportRange();
+    void queryClient.prefetchQuery({
+      queryKey: reportsTripsQueryKey(fromYmd, toYmd),
+      queryFn: () => getTripsReport(fromYmd, toYmd),
+      staleTime: 60_000,
+    });
+  }, [appUser, queryClient]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -281,6 +303,7 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
           appUser={appUser}
           onNavClick={closeMobileNav}
           onLogout={handleLogout}
+          prefetchRelatorios={prefetchRelatorios}
         />
         <button
           type="button"
@@ -312,6 +335,7 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
               appUser={appUser}
               onNavClick={closeMobileNav}
               onLogout={handleLogout}
+              prefetchRelatorios={prefetchRelatorios}
             />
           </aside>
         </div>

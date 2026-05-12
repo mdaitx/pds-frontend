@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import {
   ArrowLeft,
   BarChart3,
@@ -31,12 +32,12 @@ import {
 import { useAuth } from '@/hooks';
 import {
   getTripsReport,
+  reportsTripsQueryKey,
   type Vehicle,
   type Driver,
   type Trip,
   type Expense,
   type Settlement,
-  type TripsReportData,
 } from '@/lib';
 import { aggregateRows, buildReportPageLookups, buildTripReportRows } from '@/lib/reports';
 import { Card, CardContent, CardHeader } from '@/components/ui';
@@ -417,13 +418,6 @@ export default function RelatoriosPage() {
   const router = useRouter();
   const { session, appUser, loading: authLoading } = useAuth();
 
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [trips, setTrips] = useState<ReportTrip[]>([]);
-  const [tripsReportRaw, setTripsReportRaw] = useState<TripsReportData | null>(null);
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-
   const [periodType, setPeriodType] = useState<PeriodType>('monthly');
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
@@ -442,6 +436,51 @@ export default function RelatoriosPage() {
     [periodType, selectedMonth, selectedYear, selectedSemester]
   );
 
+  const reportEnabled = Boolean(
+    session && appUser && (appUser.role === 'OWNER' || appUser.role === 'ADMIN')
+  );
+
+  const reportQuery = useQuery({
+    queryKey: reportsTripsQueryKey(fromYmd, toYmd),
+    queryFn: () => getTripsReport(fromYmd, toYmd),
+    enabled: reportEnabled,
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  const tripsReportRaw = reportQuery.data ?? null;
+  const loading = reportQuery.isLoading;
+  const loadError =
+    reportQuery.error instanceof Error
+      ? reportQuery.error.message
+      : reportQuery.error
+        ? 'Erro ao carregar dados'
+        : null;
+
+  const lookups = useMemo(() => {
+    if (!tripsReportRaw) return { vehicles: [] as Vehicle[], drivers: [] as Driver[] };
+    return buildReportPageLookups(tripsReportRaw.trips);
+  }, [tripsReportRaw]);
+
+  const vehicles = lookups.vehicles;
+  const drivers = lookups.drivers;
+
+  const trips = useMemo(() => {
+    if (!tripsReportRaw) return [];
+    return buildReportTrips(
+      tripsReportRaw.trips,
+      tripsReportRaw.expensesByTripId,
+      tripsReportRaw.settlementByTripId
+    );
+  }, [tripsReportRaw]);
+
+  /** Evita filtro por veículo que deixou de existir no novo recorte de dados (sem setState em effect). */
+  const vehicleFilter = useMemo(() => {
+    if (selectedVehicle === 'all') return 'all';
+    if (!vehicles.some((v) => v.id === selectedVehicle)) return 'all';
+    return selectedVehicle;
+  }, [selectedVehicle, vehicles]);
+
   useEffect(() => {
     if (!authLoading && !session) router.replace('/login');
   }, [authLoading, session, router]);
@@ -450,39 +489,8 @@ export default function RelatoriosPage() {
     if (!session || !appUser) return;
     if (appUser.role !== 'OWNER' && appUser.role !== 'ADMIN') {
       router.replace('/dashboard');
-      return;
     }
-
-    let cancelled = false;
-    setLoading(true);
-    setLoadError(null);
-
-    (async () => {
-      try {
-        const report = await getTripsReport(fromYmd, toYmd);
-        if (cancelled) return;
-        const { vehicles: vList, drivers: dList } = buildReportPageLookups(report.trips);
-        setTrips(buildReportTrips(report.trips, report.expensesByTripId, report.settlementByTripId));
-        setTripsReportRaw(report);
-        setVehicles(vList);
-        setDrivers(dList);
-        setSelectedVehicle((prev) =>
-          prev === 'all' || vList.some((v) => v.id === prev) ? prev : 'all'
-        );
-      } catch (e) {
-        if (!cancelled) {
-          setLoadError(e instanceof Error ? e.message : 'Erro ao carregar dados');
-          setTripsReportRaw(null);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [session, appUser, router, fromYmd, toYmd]);
+  }, [session, appUser, router]);
 
   const formatCurrency = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -511,12 +519,12 @@ export default function RelatoriosPage() {
       });
     }
 
-    if (selectedVehicle !== 'all') {
-      filtered = filtered.filter((t) => t.vehicleId === selectedVehicle);
+    if (vehicleFilter !== 'all') {
+      filtered = filtered.filter((t) => t.vehicleId === vehicleFilter);
     }
 
     return filtered;
-  }, [trips, periodType, selectedMonth, selectedYear, selectedSemester, selectedVehicle]);
+  }, [trips, periodType, selectedMonth, selectedYear, selectedSemester, vehicleFilter]);
 
   const tripRowsForPrint = useMemo((): PrintTripRow[] => {
     return [...filteredTrips]
@@ -639,8 +647,8 @@ export default function RelatoriosPage() {
   };
 
   const getVehicleLabel = () => {
-    if (selectedVehicle === 'all') return 'Todas as placas';
-    const vehicle = vehicles.find((v) => v.id === selectedVehicle);
+    if (vehicleFilter === 'all') return 'Todas as placas';
+    const vehicle = vehicles.find((v) => v.id === vehicleFilter);
     return vehicle?.plate || 'Veículo';
   };
 
@@ -690,7 +698,11 @@ export default function RelatoriosPage() {
             vehicleStats={vehicleStats}
             driverStats={driverStats}
             drivers={drivers}
-            generatedAtLabel={new Date().toLocaleString('pt-BR')}
+            generatedAtLabel={
+              tripsReportRaw?.generatedAt
+                ? new Date(tripsReportRaw.generatedAt).toLocaleString('pt-BR')
+                : new Date().toLocaleString('pt-BR')
+            }
             tripRows={tripRowsForPrint}
           />
 
@@ -835,7 +847,7 @@ export default function RelatoriosPage() {
                     Veículo
                   </label>
                   <select
-                    value={selectedVehicle}
+                    value={vehicleFilter}
                     onChange={(e) => setSelectedVehicle(e.target.value)}
                     className="w-full min-w-0 max-w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-zinc-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     style={{ fontSize: '0.875rem' }}
@@ -853,7 +865,7 @@ export default function RelatoriosPage() {
           </Card>
 
           {/* Active filters indicator */}
-          {selectedVehicle !== 'all' && (
+          {vehicleFilter !== 'all' && (
             <Card className="border-blue-200 bg-blue-50 print:hidden">
               <CardContent className="p-3">
                 <div className="flex items-center gap-2">
