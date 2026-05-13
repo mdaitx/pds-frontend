@@ -35,7 +35,16 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LoadingMessage } from '@/components/ui/loading';
-import { ArrowLeft, Plus, Pencil, Trash2, Save, CreditCard, ExternalLink } from 'lucide-react';
+import {
+  ArrowLeft,
+  CreditCard,
+  ExternalLink,
+  Info,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+} from 'lucide-react';
 import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
 import {
@@ -507,12 +516,13 @@ export default function ConfigPage() {
               {company.isAutonomous ? (
                 <>
                   Percentual padrão de comissão quando o cadastro do motorista não define um % próprio; método aplicado ao
-                  finalizar viagens; fuso para datas e exibição.
+                  finalizar viagens; fuso para datas e exibição. Adiantamentos (vales) nas viagens abatem do salário na folha,
+                  não da comissão no acerto.
                 </>
               ) : (
                 <>
                   Comissão padrão para motoristas sem percentual próprio; método aplicado ao finalizar viagens; fuso para
-                  datas e exibição.
+                  datas e exibição. Adiantamentos (vales) nas viagens abatem do salário na folha, não da comissão no acerto.
                 </>
               )}
             </p>
@@ -1066,6 +1076,17 @@ function CalculationPreferencesForm({
             ))}
           </div>
         </div>
+      </div>
+      <div
+        className="flex gap-2.5 rounded-lg border border-muted-foreground/20 bg-muted/50 px-3 py-2.5 text-sm text-foreground dark:bg-muted/30"
+        role="note"
+      >
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+        <p className="min-w-0 leading-snug text-muted-foreground">
+          <span className="font-medium text-foreground">Adiantamentos:</span> quem lança vale na viagem deve saber que o valor
+          abate do salário proporcional do motorista na folha; a comissão exibida no acerto da viagem não é reduzida pelos
+          vales.
+        </p>
       </div>
       <div className="space-y-1.5">
         <label htmlFor="cfg-timezone" className={labelClass}>

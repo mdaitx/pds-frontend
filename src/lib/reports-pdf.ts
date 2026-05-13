@@ -81,6 +81,7 @@ export function downloadTripsReportPdf(
         'Res.dono',
         'Km',
         'R$/km (comb.)',
+        'R$/km (desp.)',
       ],
     ],
     body: rows.map((r) => [
@@ -95,6 +96,7 @@ export function downloadTripsReportPdf(
       r.ownerResult != null ? brl(r.ownerResult) : '—',
       r.km > 0 ? String(r.km) : '—',
       r.costPerKm != null ? brl(r.costPerKm) : '—',
+      r.expensesPerKm != null ? brl(r.expensesPerKm) : '—',
     ]),
     theme: 'plain',
     headStyles: pdfTableHeadStyles,
@@ -136,7 +138,10 @@ export function downloadSummaryReportPdf(opts: {
     ['Comissão (acerto)', a.driverCommission != null ? brl(a.driverCommission) : '—'],
     ['Resultado proprietário', a.ownerResult != null ? brl(a.ownerResult) : '—'],
     ['Km rodados', a.km.toLocaleString('pt-BR')],
-    ['Custo comb. / km (R$/km rodado)', a.costPerKm != null ? brl(a.costPerKm) : '—']
+    ['Km médio por viagem (só km > 0)', a.avgKmPerTrip != null ? `${a.avgKmPerTrip.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} km` : '—'],
+    ['Média km/L (combustível)', a.kmPerLiter != null ? `${a.kmPerLiter.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} km/L` : '—'],
+    ['Combustível por km (R$/km)', a.costPerKm != null ? brl(a.costPerKm) : '—'],
+    ['Despesas totais por km (R$/km)', a.totalExpensesPerKm != null ? brl(a.totalExpensesPerKm) : '—']
   );
 
   y = appendKeyValueBlock(doc, y, margin, contentW, summaryRows) + 10;
@@ -146,7 +151,7 @@ export function downloadSummaryReportPdf(opts: {
     y += 3;
     autoTable(doc, {
       startY: y,
-      head: [['Código', 'Data', 'Status', 'Frete', 'Despesas', 'Margem', 'Res.dono', 'Km', 'R$/km (comb.)']],
+      head: [['Código', 'Data', 'Status', 'Frete', 'Despesas', 'Margem', 'Res.dono', 'Km', 'R$/km comb.', 'R$/km desp.']],
       body: opts.detailRows.map((r) => [
         r.code,
         new Date(r.startDate).toLocaleDateString('pt-BR'),
@@ -157,6 +162,7 @@ export function downloadSummaryReportPdf(opts: {
         r.ownerResult != null ? brl(r.ownerResult) : '—',
         r.km > 0 ? String(r.km) : '—',
         r.costPerKm != null ? brl(r.costPerKm) : '—',
+        r.expensesPerKm != null ? brl(r.expensesPerKm) : '—',
       ]),
       theme: 'plain',
       headStyles: pdfTableHeadStyles,
@@ -202,7 +208,10 @@ export function downloadMotoristaReportPdf(opts: {
     ['Comissão (acerto)', a.driverCommission != null ? brl(a.driverCommission) : '—'],
     ['Resultado proprietário (só acertos)', a.ownerResult != null ? brl(a.ownerResult) : '—'],
     ['Km rodados', a.km.toLocaleString('pt-BR')],
-    ['Custo comb. / km (R$/km rodado)', a.costPerKm != null ? brl(a.costPerKm) : '—']
+    ['Km médio por viagem (só km > 0)', a.avgKmPerTrip != null ? `${a.avgKmPerTrip.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} km` : '—'],
+    ['Média km/L (combustível)', a.kmPerLiter != null ? `${a.kmPerLiter.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} km/L` : '—'],
+    ['Combustível por km (R$/km)', a.costPerKm != null ? brl(a.costPerKm) : '—'],
+    ['Despesas totais por km (R$/km)', a.totalExpensesPerKm != null ? brl(a.totalExpensesPerKm) : '—']
   );
   y = appendKeyValueBlock(doc, y, margin, contentW, opRows) + 10;
 
@@ -211,10 +220,12 @@ export function downloadMotoristaReportPdf(opts: {
   const salaryRows: string[][] = [
     ['Salário mensal (cadastro)', brl(s.monthlySalaryCadastro)],
     ['Salário no período (proporcional)', brl(s.proratedSalary)],
+    ['Adiantamentos no período (abatidos no salário)', brl(s.totalAdvancesPeriod)],
+    ['Salário líquido no período (após adiantamentos)', brl(s.salaryAfterAdvances)],
     ['Total comissões (mês/período)', s.totalCommissions != null ? brl(s.totalCommissions) : '—'],
-    ['Comissões + salário no período', brl(s.encargosMotorista)],
-    ['A pagar (viagens / acertos)', s.totalAmountToPayTrips != null ? brl(s.totalAmountToPayTrips) : '—'],
-    ['Total a pagar ao motorista (acertos + salário período)', brl(s.totalToPayDriver)],
+    ['Comissões + salário bruto no período', brl(s.encargosMotorista)],
+    ['A pagar (comissões das viagens)', s.totalAmountToPayTrips != null ? brl(s.totalAmountToPayTrips) : '—'],
+    ['Total a pagar ao motorista (comissões + salário após adiantamentos)', brl(s.totalToPayDriver)],
   ];
   y = appendKeyValueBlock(doc, y, margin, contentW, salaryRows) + 10;
 
@@ -246,7 +257,8 @@ export function downloadMotoristaReportPdf(opts: {
           'A pagar mot.',
           'Res.dono',
           'Km',
-          'R$/km (comb.)',
+          'R$/km comb.',
+          'R$/km desp.',
         ],
       ],
       body: opts.detailRows.map((r) => [
@@ -260,6 +272,7 @@ export function downloadMotoristaReportPdf(opts: {
         r.ownerResult != null ? brl(r.ownerResult) : '—',
         r.km > 0 ? String(r.km) : '—',
         r.costPerKm != null ? brl(r.costPerKm) : '—',
+        r.expensesPerKm != null ? brl(r.expensesPerKm) : '—',
       ]),
       theme: 'plain',
       headStyles: pdfTableHeadStyles,

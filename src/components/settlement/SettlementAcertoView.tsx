@@ -140,10 +140,15 @@ export function SettlementAcertoView({
             </div>
             <div className="flex justify-between gap-4 rounded-lg bg-card/90 px-3 py-2 dark:bg-card/50">
               <dt className="text-muted-foreground">Adiantamentos</dt>
-              <dd className="font-semibold tabular-nums text-foreground">{formatBRL(s.totalAdvances)}</dd>
+              <dd className="text-right font-semibold tabular-nums text-foreground">
+                <span className="block">{formatBRL(s.totalAdvances)}</span>
+                <span className="mt-1 block text-xs font-normal text-muted-foreground">
+                  Abatem do salário na folha, não da comissão desta viagem.
+                </span>
+              </dd>
             </div>
             <div className="flex justify-between gap-4 rounded-lg bg-emerald-600/15 px-3 py-2 sm:col-span-2 dark:bg-emerald-500/20">
-              <dt className="font-medium text-emerald-950 dark:text-emerald-50">A pagar ao motorista</dt>
+              <dt className="font-medium text-emerald-950 dark:text-emerald-50">A pagar ao motorista (comissão)</dt>
               <dd className="text-lg font-bold tabular-nums text-emerald-950 dark:text-emerald-50">
                 {formatBRL(s.amountToPayDriver)}
               </dd>

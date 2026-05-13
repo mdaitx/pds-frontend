@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Info, Plus, Trash2, X } from 'lucide-react';
 import {
   getAdvancesByTrip,
   createAdvance,
@@ -23,6 +23,9 @@ import { LoadingMessage } from '@/components/ui/loading';
 import { LocalizedDateField } from '@/components/ui/localized-date-field';
 import { cn } from '@/lib/cn';
 import { dashboardNativeFieldClass } from '@/lib/dashboard-field-classes';
+
+const ADVANCE_POLICY_NOTE =
+  'Vales abatem do salário na folha (proporcional ao período); não reduzem a comissão desta viagem no acerto.';
 
 const METHOD_OPTIONS: { value: AdvanceMethod; label: string }[] = [
   { value: 'CASH', label: 'Dinheiro' },
@@ -187,6 +190,13 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
           </div>
         </CardHeader>
         <CardContent className="pb-6">
+          <div
+            className="mb-4 flex gap-2.5 rounded-lg border border-orange-500/25 bg-orange-500/10 px-3 py-2.5 text-sm text-orange-950 dark:border-orange-400/30 dark:bg-orange-950/35 dark:text-orange-50"
+            role="note"
+          >
+            <Info className="mt-0.5 h-4 w-4 shrink-0 opacity-80" aria-hidden />
+            <p className="min-w-0 leading-snug">{ADVANCE_POLICY_NOTE}</p>
+          </div>
           {list.length === 0 ? (
             <p className="py-6 text-center text-muted-foreground/80" style={{ fontSize: '0.9rem' }}>
               Nenhum adiantamento registrado.
@@ -268,6 +278,10 @@ export function TripAdvancesPanel({ tripId, tripStatus, embed = false }: Props) 
                 <X className="h-5 w-5" />
               </button>
             </div>
+
+            <p className="mb-3 rounded-md border border-orange-500/20 bg-orange-500/8 px-3 py-2 text-xs leading-relaxed text-orange-950 dark:border-orange-400/25 dark:bg-orange-950/40 dark:text-orange-100">
+              {ADVANCE_POLICY_NOTE}
+            </p>
 
             <div className="space-y-3">
               {formError && (

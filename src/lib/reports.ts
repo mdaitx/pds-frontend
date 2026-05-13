@@ -90,13 +90,17 @@ export function buildDriverExpenseLines(
 export type DriverReportSummary = {
   proratedSalary: number;
   monthlySalaryCadastro: number;
+  /** Soma dos adiantamentos nas viagens do recorte (abatidos do salário proporcional). */
+  totalAdvancesPeriod: number;
+  /** Salário proporcional menos adiantamentos do período. */
+  salaryAfterAdvances: number;
   totalCommissions: number | null;
   encargosMotorista: number;
   ownerResultAcertos: number | null;
   ownerAfterSalary: number | null;
-  /** Soma do “a pagar ao motorista” nos acertos das viagens do período. */
+  /** Soma do “a pagar ao motorista” nos acertos das viagens do período (comissão integral por viagem). */
   totalAmountToPayTrips: number | null;
-  /** Valor total a pagar ao motorista: acertos das viagens + salário proporcional ao período. */
+  /** Comissões das viagens + salário proporcional após abater adiantamentos. */
   totalToPayDriver: number;
 };
 
@@ -108,6 +112,8 @@ export function computeDriverReportSummary(
   toYmd: string
 ): DriverReportSummary {
   const proratedSalary = proratedMonthlySalary(monthlySalary, fromYmd, toYmd);
+  const totalAdvancesPeriod = operationalRows.reduce((s, r) => s + safeNum(r.advances, 0), 0);
+  const salaryAfterAdvances = proratedSalary - totalAdvancesPeriod;
   const settled = operationalRows.filter((r) => r.hasSettlement && r.ownerResult != null);
   const ownerResultAcertos =
     settled.length === 0 ? null : settled.reduce((s, r) => s + (r.ownerResult as number), 0);
@@ -122,11 +128,13 @@ export function computeDriverReportSummary(
     withApd.length === 0
       ? null
       : withApd.reduce((s, r) => s + (r.amountToPayDriver as number), 0);
-  const totalToPayDriver = (totalAmountToPayTrips ?? 0) + proratedSalary;
+  const totalToPayDriver = (totalAmountToPayTrips ?? 0) + salaryAfterAdvances;
 
   return {
     proratedSalary,
     monthlySalaryCadastro: monthlySalary,
+    totalAdvancesPeriod,
+    salaryAfterAdvances,
     totalCommissions,
     encargosMotorista,
     ownerResultAcertos,
@@ -153,9 +161,11 @@ export const TRIP_STATUS_LABEL: Record<TripStatus, string> = {
 /**
  * Regras de métricas (espelhando o acerto no backend / `AcertosService.finalize`):
  * - Despesas: valor gravado no acerto (`totalExpenses`) quando existe settlement; senão soma das despesas lançadas.
- * - Adiantamentos: `totalAdvances` do acerto ou soma dos vales na viagem.
+ * - Adiantamentos: somados por viagem para relatório; no acerto não reduzem a comissão — abatem do salário proporcional na folha (`computeDriverReportSummary`).
  * - Km rodados: (km final − km inicial), com km final preferindo o do acerto depois o da viagem.
- * - Custo R$/km: despesas da categoria combustível / km rodado (não inclui outras despesas).
+ * - Custo R$/km (combustível): despesas da categoria combustível / km rodado (não inclui outras despesas).
+ * - Despesas totais / km: soma de todas as despesas das viagens ÷ km rodado (operacional).
+ * - Km médio por viagem: média só entre viagens com km rodado > 0 (sem hodômetro ficam de fora).
  * - Média km/L: km rodado / litros de combustível informados nos lançamentos (por viagem e no agregado).
  * - Margem bruta (`grossProfit`): do acerto ou (frete − despesas) em viagens sem acerto.
  * - Comissão e resultado do proprietário: apenas quando há acerto (snapshot do banco).
@@ -187,6 +197,8 @@ export type TripReportRow = {
   costPerKm: number | null;
   /** Km ÷ L quando há km e litragem registrada. */
   kmPerLiter: number | null;
+  /** Despesas totais da viagem ÷ km rodado (todas as categorias). */
+  expensesPerKm: number | null;
 };
 
 export type TripFuelMetrics = {
@@ -273,6 +285,9 @@ export function buildTripReportRows(
       settlement
     );
 
+    const expensesPerKm =
+      km > 0 && expenses > 0 ? expenses / km : null;
+
     const vehicleLabel = trip.vehicle
       ? `${trip.vehicle.plate} · ${trip.vehicle.brand} ${trip.vehicle.model}`
       : trip.vehicleId.slice(0, 8);
@@ -299,6 +314,7 @@ export function buildTripReportRows(
       fuelLiters,
       costPerKm,
       kmPerLiter,
+      expensesPerKm,
     };
   });
 }
@@ -346,9 +362,14 @@ export type ReportAggregate = {
   fuelExpenses: number;
   /** Soma de litros informados (combustível) nas viagens operacionais. */
   fuelLiters: number;
+  /** Combustível (R$) ÷ km rodado. */
   costPerKm: number | null;
   /** Média global: km totais ÷ litros totais. */
   kmPerLiter: number | null;
+  /** Km totais ÷ viagens operacionais no recorte. */
+  avgKmPerTrip: number | null;
+  /** Soma das despesas ÷ km rodado (todas as categorias). */
+  totalExpensesPerKm: number | null;
 };
 
 /** Linhas que entram em totais de faturamento / despesas / km (exclui canceladas). */
@@ -380,6 +401,12 @@ export function aggregateRows(rows: TripReportRow[]): ReportAggregate {
       ? null
       : withCommission.reduce((s, r) => s + (r.driverCommissionAmt as number), 0);
 
+  const tripsWithKmRecorded = operational.filter((r) => safeNum(r.km, 0) > 0);
+  const kmForAvg =
+    tripsWithKmRecorded.length === 0
+      ? 0
+      : tripsWithKmRecorded.reduce((s, r) => s + safeNum(r.km, 0), 0);
+
   return {
     trips: operational.length,
     tripsCancelled: cancelled,
@@ -394,6 +421,9 @@ export function aggregateRows(rows: TripReportRow[]): ReportAggregate {
     fuelLiters,
     costPerKm: km > 0 && fuelExpenses > 0 ? fuelExpenses / km : null,
     kmPerLiter: km > 0 && fuelLiters > 0 ? km / fuelLiters : null,
+    avgKmPerTrip:
+      tripsWithKmRecorded.length > 0 ? kmForAvg / tripsWithKmRecorded.length : null,
+    totalExpensesPerKm: km > 0 && expenses > 0 ? expenses / km : null,
   };
 }
 
