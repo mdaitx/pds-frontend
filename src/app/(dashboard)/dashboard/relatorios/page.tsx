@@ -31,6 +31,7 @@ import {
 } from 'recharts';
 import { useAuth } from '@/hooks';
 import {
+  getDrivers,
   getTripsReport,
   reportsTripsQueryKey,
   type Vehicle,
@@ -39,7 +40,12 @@ import {
   type Expense,
   type Settlement,
 } from '@/lib';
-import { aggregateRows, buildReportPageLookups, buildTripReportRows } from '@/lib/reports';
+import {
+  aggregateRows,
+  buildReportPageLookups,
+  buildTripReportRows,
+  proratedMonthlySalary,
+} from '@/lib/reports';
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { LoadingMessage } from '@/components/ui/loading';
@@ -139,7 +145,17 @@ type PrintVehicleRow = {
   despesas: number;
   km: number;
 };
-type PrintDriverRow = { id: string; viagens: number; deslocamentos: number; faturamento: number; comissao: number };
+type PrintDriverRow = {
+  id: string;
+  viagens: number;
+  deslocamentos: number;
+  faturamento: number;
+  comissao: number;
+  /** Salário mensal proporcional ao período do filtro. */
+  salarioPeriodo: number;
+  /** Salário proporcional + comissões das viagens no recorte. */
+  salarioMaisComissao: number;
+};
 type PrintMonthRow = { id: string; mes: string; faturamento: number; despesas: number };
 type PrintTripRow = {
   id: string;
@@ -159,6 +175,14 @@ function formatYmdPtBr(ymd: string): string {
   return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString('pt-BR');
 }
 
+/** Métricas por km (mesmo recorte das viagens impressas). */
+type PrintKmMetrics = {
+  avgKmPerTrip: number | null;
+  kmPerLiter: number | null;
+  fuelCostPerKm: number | null;
+  totalExpensesPerKm: number | null;
+};
+
 function RelatorioImpressao(props: {
   periodType: PeriodType;
   periodLabel: string;
@@ -171,6 +195,8 @@ function RelatorioImpressao(props: {
   totalDespesas: number;
   totalLucro: number;
   totalKm: number;
+  /** Null quando não há viagens no recorte. */
+  kmMetrics: PrintKmMetrics | null;
   monthlyChartData: PrintMonthRow[];
   vehicleStats: PrintVehicleRow[];
   driverStats: PrintDriverRow[];
@@ -257,6 +283,51 @@ function RelatorioImpressao(props: {
                 {props.totalKm.toLocaleString('pt-BR')} km
               </td>
             </tr>
+            {props.kmMetrics && props.tripCount > 0 ? (
+              <>
+                <tr className="border-t border-emerald-200 bg-white">
+                  <td className="px-3 py-2.5 font-normal text-zinc-600">
+                    Km médio por viagem{' '}
+                    <span className="text-zinc-500">(só viagens com km {'>'} 0)</span>
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-bold text-zinc-900">
+                    {props.kmMetrics.avgKmPerTrip != null
+                      ? `${props.kmMetrics.avgKmPerTrip.toLocaleString('pt-BR', {
+                          maximumFractionDigits: 1,
+                          minimumFractionDigits: 0,
+                        })} km`
+                      : '—'}
+                  </td>
+                </tr>
+                <tr className="bg-white">
+                  <td className="px-3 py-2.5 font-normal text-zinc-600">Média km/L (combustível)</td>
+                  <td className="px-3 py-2.5 text-right font-bold text-zinc-900">
+                    {props.kmMetrics.kmPerLiter != null
+                      ? `${props.kmMetrics.kmPerLiter.toLocaleString('pt-BR', {
+                          maximumFractionDigits: 2,
+                          minimumFractionDigits: 0,
+                        })} km/L`
+                      : '—'}
+                  </td>
+                </tr>
+                <tr className="bg-white">
+                  <td className="px-3 py-2.5 font-normal text-zinc-600">Combustível por km rodado</td>
+                  <td className="px-3 py-2.5 text-right font-bold text-zinc-900">
+                    {props.kmMetrics.fuelCostPerKm != null
+                      ? `${props.formatCurrency(props.kmMetrics.fuelCostPerKm)} / km`
+                      : '—'}
+                  </td>
+                </tr>
+                <tr className="border-b border-emerald-200 bg-emerald-50/80">
+                  <td className="px-3 py-2.5 font-normal text-zinc-700">Despesas totais por km</td>
+                  <td className="px-3 py-2.5 text-right font-bold text-emerald-950">
+                    {props.kmMetrics.totalExpensesPerKm != null
+                      ? `${props.formatCurrency(props.kmMetrics.totalExpensesPerKm)} / km`
+                      : '—'}
+                  </td>
+                </tr>
+              </>
+            ) : null}
           </tbody>
         </table>
       </section>
@@ -372,7 +443,8 @@ function RelatorioImpressao(props: {
         <section className="mb-8 [break-before:page]">
           <h2 className="mb-2 text-base font-bold text-zinc-900">Desempenho por motorista</h2>
           <p className="mb-2 text-[9px] text-zinc-600">
-            Comissão estimada pelo percentual cadastrado (lista completa, sem busca da tela).
+            Salário proporcional ao período do relatório; comissão por viagem usa o acerto quando existir, senão margem × %
+            cadastrado.
           </p>
           <table className="w-full border-collapse border border-zinc-200 text-[9px]">
             <thead>
@@ -381,7 +453,9 @@ function RelatorioImpressao(props: {
                 <th className={`${th} text-right`}>Viagens</th>
                 <th className={`${th} text-right`}>Desloc.</th>
                 <th className={`${th} text-right`}>Faturamento</th>
+                <th className={`${th} text-right`}>Salário (per.)</th>
                 <th className={`${th} text-right`}>Comissão</th>
+                <th className={`${th} text-right`}>Sal.+ com.</th>
               </tr>
             </thead>
             <tbody>
@@ -391,7 +465,9 @@ function RelatorioImpressao(props: {
                   <td className={tdNum}>{d.viagens}</td>
                   <td className={tdNum}>{d.deslocamentos > 0 ? d.deslocamentos : '—'}</td>
                   <td className={tdNum}>{props.formatCurrency(d.faturamento)}</td>
+                  <td className={tdNum}>{props.formatCurrency(d.salarioPeriodo)}</td>
                   <td className={tdNum}>{props.formatCurrency(d.comissao)}</td>
+                  <td className={tdNum}>{props.formatCurrency(d.salarioMaisComissao)}</td>
                 </tr>
               ))}
             </tbody>
@@ -408,7 +484,7 @@ function RelatorioImpressao(props: {
 
 /** Tabelas dos cards Desempenho (largura mínima progressiva + células compactas em telas estreitas). */
 const DESEMPENHO_STATS_TABLE_CN = cn(
-  'w-full min-w-[26rem] sm:min-w-[30rem] md:min-w-[34rem] xl:min-w-[36rem]',
+  'w-full min-w-[34rem] sm:min-w-[40rem] md:min-w-[46rem] xl:min-w-[52rem]',
   'text-[0.8125rem] sm:text-[0.875rem] tabular-nums',
   '[&_th]:whitespace-nowrap [&_th]:text-left [&_th]:font-semibold [&_th]:text-muted-foreground [&_th]:text-[0.65rem] sm:[&_th]:text-[0.72rem] md:[&_th]:text-[0.78rem]',
   '[&_th]:px-2 [&_th]:py-2 sm:[&_th]:px-3 sm:[&_th]:py-2.5 md:[&_th]:px-4 md:[&_th]:py-3',
@@ -476,8 +552,33 @@ export default function RelatoriosPage() {
     return buildReportPageLookups(tripsReportRaw.trips);
   }, [tripsReportRaw]);
 
+  const fleetDriversQuery = useQuery({
+    queryKey: ['drivers-fleet-relatorios'],
+    queryFn: () => getDrivers(session?.access_token),
+    enabled: reportEnabled,
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  /** Motoristas que aparecem no período, com salário e % vindos do cadastro da frota (lookup por viagem zera salário). */
+  const drivers = useMemo(() => {
+    const base = lookups.drivers;
+    const fleet = fleetDriversQuery.data;
+    if (!fleet?.length) return base;
+    const byId = new Map(fleet.map((d) => [d.id, d]));
+    return base.map((d) => {
+      const f = byId.get(d.id);
+      if (!f) return d;
+      return {
+        ...d,
+        monthlySalary: f.monthlySalary,
+        commissionPct: f.commissionPct ?? d.commissionPct,
+        name: f.name?.trim() ? f.name : d.name,
+      };
+    });
+  }, [lookups.drivers, fleetDriversQuery.data]);
+
   const vehicles = lookups.vehicles;
-  const drivers = lookups.drivers;
 
   const trips = useMemo(() => {
     if (!tripsReportRaw) return [];
@@ -567,13 +668,12 @@ export default function RelatoriosPage() {
     );
   }, [tripRowsForPrint, searchTerm]);
 
-  const fuelPeriodMetrics = useMemo(() => {
-    if (!tripsReportRaw || filteredTrips.length === 0) {
-      return { kmPerLiter: null as number | null, costPerKm: null as number | null };
-    }
+  /** Métricas por km no mesmo recorte dos filtros (espelha `aggregateRows`). */
+  const periodKmMetrics = useMemo(() => {
+    if (!tripsReportRaw || filteredTrips.length === 0) return null;
     const idSet = new Set(filteredTrips.map((t) => t.id));
     const subset = tripsReportRaw.trips.filter((t) => idSet.has(t.id));
-    if (subset.length === 0) return { kmPerLiter: null, costPerKm: null };
+    if (subset.length === 0) return null;
     const rows = buildTripReportRows(
       subset,
       tripsReportRaw.expensesByTripId,
@@ -581,7 +681,12 @@ export default function RelatoriosPage() {
       tripsReportRaw.settlementByTripId
     );
     const agg = aggregateRows(rows);
-    return { kmPerLiter: agg.kmPerLiter, costPerKm: agg.costPerKm };
+    return {
+      avgKmPerTrip: agg.avgKmPerTrip,
+      kmPerLiter: agg.kmPerLiter,
+      fuelCostPerKm: agg.costPerKm,
+      totalExpensesPerKm: agg.totalExpensesPerKm,
+    };
   }, [tripsReportRaw, filteredTrips]);
 
   const totalFaturamento = filteredTrips.reduce((s, t) => s + t.freightValue, 0);
@@ -603,6 +708,18 @@ export default function RelatoriosPage() {
   }, [filteredTrips, periodType]);
 
   const driverStats = useMemo(() => {
+    let reportRows: ReturnType<typeof buildTripReportRows> = [];
+    if (tripsReportRaw && filteredTrips.length > 0) {
+      const idSet = new Set(filteredTrips.map((t) => t.id));
+      const subset = tripsReportRaw.trips.filter((t) => idSet.has(t.id));
+      reportRows = buildTripReportRows(
+        subset,
+        tripsReportRaw.expensesByTripId,
+        tripsReportRaw.advancesByTripId,
+        tripsReportRaw.settlementByTripId
+      );
+    }
+
     return drivers
       .map((d) => {
         const dTrips = filteredTrips.filter((t) => t.driverId === d.id);
@@ -610,11 +727,35 @@ export default function RelatoriosPage() {
         const faturamento = dTrips.reduce((s, t) => s + t.freightValue, 0);
         const despesas = dTrips.reduce((s, t) => s + t.expenses.reduce((x, e) => x + e.value, 0), 0);
         const commissionPct = d.commissionPct ?? 0;
-        const comissao = (faturamento - despesas) * (commissionPct / 100);
-        return { id: d.id, name: d.name.split(' ')[0], viagens: dTrips.length, deslocamentos, faturamento, comissao };
+
+        let comissao = (faturamento - despesas) * (commissionPct / 100);
+        if (reportRows.length > 0) {
+          comissao = reportRows
+            .filter((r) => r.driverId === d.id && r.status !== 'CANCELLED')
+            .reduce((sum, r) => {
+              if (r.driverCommissionAmt != null && Number.isFinite(r.driverCommissionAmt)) {
+                return sum + r.driverCommissionAmt;
+              }
+              return sum + r.grossProfit * (commissionPct / 100);
+            }, 0);
+        }
+
+        const salarioPeriodo = proratedMonthlySalary(d.monthlySalary, fromYmd, toYmd);
+        const salarioMaisComissao = salarioPeriodo + comissao;
+
+        return {
+          id: d.id,
+          name: d.name.split(' ')[0],
+          viagens: dTrips.length,
+          deslocamentos,
+          faturamento,
+          comissao,
+          salarioPeriodo,
+          salarioMaisComissao,
+        };
       })
-      .filter((d) => d.viagens > 0);
-  }, [filteredTrips, drivers]);
+      .filter((row) => row.viagens > 0);
+  }, [filteredTrips, drivers, tripsReportRaw, fromYmd, toYmd]);
 
   const vehicleStats = useMemo(() => {
     return vehicles
@@ -708,6 +849,7 @@ export default function RelatoriosPage() {
             totalDespesas={totalDespesas}
             totalLucro={totalLucro}
             totalKm={totalKm}
+            kmMetrics={periodKmMetrics}
             monthlyChartData={monthlyChartData}
             vehicleStats={vehicleStats}
             driverStats={driverStats}
@@ -957,39 +1099,49 @@ export default function RelatoriosPage() {
 
           <Card className="border-border shadow-sm">
             <CardContent className="p-4 sm:p-5">
-              <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/80 text-muted-foreground">
-                      <Fuel className="h-4 w-4" aria-hidden />
-                    </div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Média km/L no período
-                    </p>
-                  </div>
-                  <p className="mt-3 text-2xl font-bold tabular-nums tracking-tight text-foreground sm:text-[1.65rem]">
-                    {fuelPeriodMetrics.kmPerLiter != null
-                      ? `${fuelPeriodMetrics.kmPerLiter.toLocaleString('pt-BR', {
+              <div className="flex flex-wrap items-center gap-2 border-b border-border pb-4">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/80 text-muted-foreground">
+                  <Fuel className="h-4 w-4" aria-hidden />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Indicadores por quilometragem
+                  </p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    Somente despesas na categoria combustível e km rodado no período filtrado.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+                <div className="min-w-0 border-0 bg-transparent p-0 shadow-none">
+                  <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Média km/L no período
+                  </p>
+                  <p className="mt-1.5 flex flex-wrap items-baseline gap-2 text-lg font-bold tabular-nums text-foreground sm:text-xl">
+                    <Fuel className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                    {periodKmMetrics?.kmPerLiter != null
+                      ? `${periodKmMetrics.kmPerLiter.toLocaleString('pt-BR', {
                           maximumFractionDigits: 2,
                           minimumFractionDigits: 0,
                         })} km/L`
                       : '—'}
                   </p>
-                  <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
-                    Registre km inicial/final e litragem nas despesas de combustível para ver a média km/L.
-                  </p>
                 </div>
-                <div className="shrink-0 rounded-xl border border-border bg-muted/40 px-4 py-3 sm:min-w-[11.5rem] sm:self-center dark:bg-muted/25">
-                  <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Custo combustível / km
+                <div className="w-fit max-w-full shrink-0 rounded-xl border border-blue-600/25 bg-blue-500/10 px-3 py-2.5 shadow-sm ring-1 ring-blue-600/15 dark:border-blue-500/35 dark:bg-blue-950/45 dark:ring-blue-400/25 sm:px-4 sm:py-3">
+                  <p className="text-[0.65rem] font-semibold uppercase leading-snug tracking-wide text-blue-900/90 dark:text-blue-100/95">
+                    Custo médio de combustível por km
                   </p>
-                  <p className="mt-1.5 text-lg font-bold tabular-nums text-foreground">
-                    {fuelPeriodMetrics.costPerKm != null
-                      ? `${formatCurrency(fuelPeriodMetrics.costPerKm)} / km`
-                      : '— / km'}
+                  <p className="mt-1.5 flex flex-wrap items-baseline gap-2 text-base font-bold tabular-nums text-blue-950 dark:text-blue-50 sm:text-lg">
+                    <Fuel className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" aria-hidden />
+                    {periodKmMetrics?.fuelCostPerKm != null
+                      ? `${formatCurrency(periodKmMetrics.fuelCostPerKm)} / km`
+                      : '—'}
                   </p>
                 </div>
               </div>
+              <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+                Sem km inicial/final ou sem litragem nos lançamentos de combustível, os valores aparecem como “—”.
+              </p>
             </CardContent>
           </Card>
 
@@ -1131,7 +1283,16 @@ export default function RelatoriosPage() {
                               DESLOC.
                             </th>
                             <th className="text-left">FATURAMENTO</th>
+                            <th
+                              className="text-left"
+                              title="Salário mensal proporcional aos dias do período selecionado (cadastro do motorista)"
+                            >
+                              SALÁRIO (PERÍODO)
+                            </th>
                             <th className="text-left">COMISSÃO</th>
+                            <th className="text-left" title="Salário proporcional ao período + comissão das viagens no recorte">
+                              SALÁRIO + COMISSÃO
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1155,7 +1316,11 @@ export default function RelatoriosPage() {
                                 )}
                               </td>
                               <td className="font-semibold text-emerald-700 dark:text-emerald-300">{formatCurrency(d.faturamento)}</td>
+                              <td className="font-semibold text-violet-700 dark:text-violet-300">
+                                {formatCurrency(d.salarioPeriodo)}
+                              </td>
                               <td className="font-semibold text-blue-700 dark:text-blue-300">{formatCurrency(d.comissao)}</td>
+                              <td className="font-semibold text-foreground">{formatCurrency(d.salarioMaisComissao)}</td>
                             </tr>
                           ))}
                         </tbody>

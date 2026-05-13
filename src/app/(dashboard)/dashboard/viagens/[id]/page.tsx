@@ -416,12 +416,17 @@ export default function ViagemDetalhePage() {
                 Acerto gerado
               </h3>
               <p className="mt-1 text-sm text-emerald-900 dark:text-emerald-100/95">
-                A pagar ao motorista:{' '}
+                Comissão a pagar ao motorista:{' '}
                 <strong className="text-lg text-emerald-950 dark:text-emerald-50">
                   {formatBRL(settlement.amountToPayDriver)}
                 </strong>
+                {settlement.totalAdvances > 0 && (
+                  <span className="mt-1 block text-xs font-normal opacity-95">
+                    Adiantamentos ({formatBRL(settlement.totalAdvances)}) abatem do salário na folha.
+                  </span>
+                )}
                 {settlement.paid && (
-                  <span className="ml-2 rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-medium text-emerald-50">
+                  <span className="mt-2 inline-block rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-medium text-emerald-50">
                     Pago
                   </span>
                 )}

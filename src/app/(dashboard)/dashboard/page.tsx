@@ -40,7 +40,14 @@ import type {
 import { cn } from '@/lib/cn';
 import { mobileTableScrollClass } from '@/lib/dashboard-mobile';
 import { Card, CardHeader, CardContent, Skeleton } from '@/components/ui';
-import { DashboardBootSkeleton, RecentTripsTableSkeleton } from '@/components/dashboard/DashboardLoadingSkeleton';
+import {
+  DashboardBootSkeleton,
+  DriverMetricCardsSkeleton,
+  DriverTripLinksSkeleton,
+  OwnerMetricCardsSkeleton,
+  OwnerQuickNavSkeleton,
+  RecentTripsTableSkeleton,
+} from '@/components/dashboard/DashboardLoadingSkeleton';
 import { PwaInstallPrompt } from '@/components/pwa-install-prompt';
 import { dashboardLinkMutedNavClass } from '@/lib/dashboard-action-buttons';
 import type { ChartPeriod, DashboardChartsProps } from './DashboardCharts';
@@ -413,103 +420,119 @@ export default function DashboardPage() {
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
         )}
 
-        {/* Metrics — mobile: 1 coluna (mesmo tamanho); sm: 2 cols; 5º card largura total até lg */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 items-stretch">
-          {[
-            {
-              title: 'Viagens no mês',
-              value: (ownerSummary?.monthTripsCount ?? monthTrips.length).toString(),
-              icon: <Route className="w-5 h-5 text-primary" />,
-              bg: 'bg-primary/12 dark:bg-primary/22',
-            },
-            { title: 'Faturamento', value: formatCurrency(resolvedTotalFaturamento), icon: <DollarSign className="w-5 h-5 text-accent" />, bg: 'bg-accent/12 dark:bg-accent/22' },
-            { title: 'Despesas (mês)', value: formatCurrency(resolvedTotalDespesasMes), icon: <Receipt className="w-5 h-5 text-destructive" />, bg: 'bg-destructive/12 dark:bg-destructive/22' },
-            { title: 'Lucro líquido', value: formatCurrency(lucroLiquido), icon: <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />, bg: 'bg-emerald-500/12 dark:bg-emerald-500/22' },
-            { title: 'Viagens em andamento', value: emAndamento.toString(), icon: <Activity className="w-5 h-5 text-muted-foreground" />, bg: 'bg-muted' },
-          ].map((m, i) => (
-            <Card
-              key={i}
-              className={cn(
-                'flex min-h-[104px] flex-col border-border shadow-sm',
-                i === 4 && 'sm:col-span-2 lg:col-span-1'
-              )}
-            >
-              <CardContent className="flex flex-1 flex-col justify-center p-4">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[0.78rem] text-muted-foreground">{m.title}</p>
-                    <p className="mt-1 truncate text-[1.1rem] font-bold text-foreground">{m.value}</p>
+        {/* Metrics — evita flash de R$ 0,00 enquanto GET /dashboard/summary não retorna */}
+        {dataLoading ? (
+          <OwnerMetricCardsSkeleton />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 items-stretch">
+            {[
+              {
+                title: 'Viagens no mês',
+                value: (ownerSummary?.monthTripsCount ?? monthTrips.length).toString(),
+                icon: <Route className="w-5 h-5 text-primary" />,
+                bg: 'bg-primary/12 dark:bg-primary/22',
+              },
+              { title: 'Faturamento', value: formatCurrency(resolvedTotalFaturamento), icon: <DollarSign className="w-5 h-5 text-accent" />, bg: 'bg-accent/12 dark:bg-accent/22' },
+              { title: 'Despesas (mês)', value: formatCurrency(resolvedTotalDespesasMes), icon: <Receipt className="w-5 h-5 text-destructive" />, bg: 'bg-destructive/12 dark:bg-destructive/22' },
+              { title: 'Lucro líquido', value: formatCurrency(lucroLiquido), icon: <TrendingUp className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />, bg: 'bg-emerald-500/12 dark:bg-emerald-500/22' },
+              { title: 'Viagens em andamento', value: emAndamento.toString(), icon: <Activity className="w-5 h-5 text-muted-foreground" />, bg: 'bg-muted' },
+            ].map((m, i) => (
+              <Card
+                key={i}
+                className={cn(
+                  'flex min-h-[104px] flex-col border-border shadow-sm',
+                  i === 4 && 'sm:col-span-2 lg:col-span-1'
+                )}
+              >
+                <CardContent className="flex flex-1 flex-col justify-center p-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[0.78rem] text-muted-foreground">{m.title}</p>
+                      <p className="mt-1 truncate text-[1.1rem] font-bold text-foreground">{m.value}</p>
+                    </div>
+                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${m.bg}`}>
+                      {m.icon}
+                    </div>
                   </div>
-                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${m.bg}`}>
-                    {m.icon}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Quick Nav — Configurações da empresa só para dono (OWNER) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-stretch">
-          {[
-            {
-              label: 'Viagens',
-              href: '/dashboard/viagens',
-              icon: <Route className="w-6 h-6 text-primary" />,
-              count: totalTripsCount || trips.length,
-              bg: 'bg-primary/12 dark:bg-primary/22',
-            },
-            { label: 'Veículos', href: '/dashboard/veiculos', icon: <TruckIcon className="w-6 h-6 text-primary" />, count: vehiclesCount, bg: 'bg-primary/12 dark:bg-primary/22' },
-            {
-              label: 'Usuários',
-              href: '/dashboard/usuarios',
-              icon: <Users className="w-6 h-6 text-primary" />,
-              count: staffUsersCount,
-              bg: 'bg-primary/12 dark:bg-primary/22',
-            },
-            ...(appUser.role === 'OWNER'
-              ? [
-                  {
-                    label: 'Configurações',
-                    href: '/dashboard/config',
-                    icon: <Settings className="w-6 h-6 text-muted-foreground" />,
-                    count: null as number | null,
-                    bg: 'bg-muted',
-                  },
-                ]
-              : []),
-          ].map((item, i) => (
-            <Link
-              key={i}
-              href={item.href}
-              prefetch={false}
-              className={cn(
-                'block min-h-0',
-                appUser.role === 'ADMIN' && i === 2 && 'sm:col-span-2 lg:col-span-1'
-              )}
-            >
-              <Card className="flex h-full min-h-[152px] cursor-pointer flex-col border-border transition-all hover:border-primary/40 hover:shadow-md">
-                <CardContent className="flex flex-1 flex-col p-4">
-                  <div className={`mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${item.bg}`}>
-                    {item.icon}
-                  </div>
-                  <p className="font-semibold text-foreground">{item.label}</p>
-                  {item.count !== null ? (
-                    <p className="mt-1 flex-1 text-[0.8rem] leading-snug text-muted-foreground">
-                      {item.label === 'Usuários'
-                        ? `${item.count} ${item.count === 1 ? 'usuário com login' : 'usuários com login'}`
-                        : `${item.count} cadastrado${item.count !== 1 ? 's' : ''}`}
-                    </p>
-                  ) : (
-                    <p className="mt-1 flex-1 text-[0.8rem] text-muted-foreground">Empresa e preferências</p>
-                  )}
                 </CardContent>
               </Card>
-            </Link>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
-        {dashboardChartsQuery.isLoading ? (
+        {/* Quick Nav — Configurações da empresa só para dono (OWNER) */}
+        {dataLoading ? (
+          <OwnerQuickNavSkeleton showConfigSlot={appUser.role === 'OWNER'} />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-stretch">
+            {[
+              {
+                label: 'Viagens',
+                href: '/dashboard/viagens',
+                icon: <Route className="w-6 h-6 text-primary" />,
+                count: totalTripsCount || trips.length,
+                bg: 'bg-primary/12 dark:bg-primary/22',
+              },
+              { label: 'Veículos', href: '/dashboard/veiculos', icon: <TruckIcon className="w-6 h-6 text-primary" />, count: vehiclesCount, bg: 'bg-primary/12 dark:bg-primary/22' },
+              {
+                label: 'Usuários',
+                href: '/dashboard/usuarios',
+                icon: <Users className="w-6 h-6 text-primary" />,
+                count: staffUsersCount,
+                bg: 'bg-primary/12 dark:bg-primary/22',
+              },
+              ...(appUser.role === 'OWNER'
+                ? [
+                    {
+                      label: 'Configurações',
+                      href: '/dashboard/config',
+                      icon: <Settings className="w-6 h-6 text-muted-foreground" />,
+                      count: null as number | null,
+                      bg: 'bg-muted',
+                    },
+                  ]
+                : []),
+            ].map((item, i) => (
+              <Link
+                key={i}
+                href={item.href}
+                prefetch={false}
+                className={cn(
+                  'block min-h-0',
+                  appUser.role === 'ADMIN' && i === 2 && 'sm:col-span-2 lg:col-span-1'
+                )}
+              >
+                <Card className="flex h-full min-h-[152px] cursor-pointer flex-col border-border transition-all hover:border-primary/40 hover:shadow-md">
+                  <CardContent className="flex flex-1 flex-col p-4">
+                    <div className={`mb-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${item.bg}`}>
+                      {item.icon}
+                    </div>
+                    <p className="font-semibold text-foreground">{item.label}</p>
+                    {item.count !== null ? (
+                      <p className="mt-1 flex-1 text-[0.8rem] leading-snug text-muted-foreground">
+                        {item.label === 'Usuários'
+                          ? `${item.count} ${item.count === 1 ? 'usuário com login' : 'usuários com login'}`
+                          : `${item.count} cadastrado${item.count !== 1 ? 's' : ''}`}
+                      </p>
+                    ) : (
+                      <p className="mt-1 flex-1 text-[0.8rem] text-muted-foreground">Empresa e preferências</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {/*
+          TanStack Query v5: `isLoading` = isPending && isFetching — pode ficar false num instante antes dos dados,
+          e o fallback usa ownerExpenses = [] → gráficos “vazios”. Mostrar skeleton até existir resposta de /dashboard/charts.
+        */}
+        {!shouldLoadOwnerCharts ? null : dashboardChartsQuery.isError ? (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+            Não foi possível carregar os gráficos. Atualize a página ou tente novamente em instantes.
+          </div>
+        ) : !dashboardChartsQuery.data ? (
           <ChartsSkeleton />
         ) : (
           <DashboardCharts
@@ -665,45 +688,54 @@ export default function DashboardPage() {
 
       <PwaInstallPrompt />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
-        {[
-          { title: 'Viagens ativas', value: activeTrips.length.toString(), icon: <Route className="w-5 h-5 text-primary" />, bg: 'bg-primary/12 dark:bg-primary/22' },
-          {
-            title: 'Comissões (mês)',
-            value: dataLoading ? '…' : formatCurrency(commissionMonth),
-            icon: <DollarSign className="w-5 h-5 text-accent" />,
-            bg: 'bg-accent/12 dark:bg-accent/22',
-          },
-          {
-            title: 'Concluídas no mês',
-            value: completedThisMonth.toString(),
-            icon: <CheckCircle className="w-5 h-5 text-primary" />,
-            bg: 'bg-primary/12 dark:bg-primary/22',
-          },
-          {
-            title: 'Km rodados (mês)',
-            value: dataLoading ? '…' : `${kmMonth.toLocaleString('pt-BR')} km`,
-            icon: <Activity className="w-5 h-5 text-muted-foreground" />,
-            bg: 'bg-muted',
-          },
-        ].map((m, i) => (
-          <Card key={i} className="flex min-h-[116px] flex-col border-border shadow-sm">
-            <CardContent className="flex flex-1 flex-col justify-center p-3.5 sm:p-4">
-              <div className="flex h-full flex-col justify-between gap-3">
-                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${m.bg}`}>
-                  {m.icon}
+      {dataLoading ? (
+        <DriverMetricCardsSkeleton />
+      ) : (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+          {[
+            {
+              title: 'Viagens ativas',
+              value: activeTrips.length.toString(),
+              icon: <Route className="w-5 h-5 text-primary" />,
+              bg: 'bg-primary/12 dark:bg-primary/22',
+            },
+            {
+              title: 'Comissões (mês)',
+              value: formatCurrency(commissionMonth),
+              icon: <DollarSign className="w-5 h-5 text-accent" />,
+              bg: 'bg-accent/12 dark:bg-accent/22',
+            },
+            {
+              title: 'Concluídas no mês',
+              value: completedThisMonth.toString(),
+              icon: <CheckCircle className="w-5 h-5 text-primary" />,
+              bg: 'bg-primary/12 dark:bg-primary/22',
+            },
+            {
+              title: 'Km rodados (mês)',
+              value: `${kmMonth.toLocaleString('pt-BR')} km`,
+              icon: <Activity className="w-5 h-5 text-muted-foreground" />,
+              bg: 'bg-muted',
+            },
+          ].map((m, i) => (
+            <Card key={i} className="flex min-h-[116px] flex-col border-border shadow-sm">
+              <CardContent className="flex flex-1 flex-col justify-center p-3.5 sm:p-4">
+                <div className="flex h-full flex-col justify-between gap-3">
+                  <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${m.bg}`}>
+                    {m.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[0.72rem] leading-tight text-muted-foreground sm:text-[0.78rem]">{m.title}</p>
+                    <p className="mt-1 break-words text-[1.05rem] font-bold leading-tight text-foreground sm:text-[1.15rem]">
+                      {m.value}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[0.72rem] leading-tight text-muted-foreground sm:text-[0.78rem]">{m.title}</p>
-                  <p className="mt-1 break-words text-[1.05rem] font-bold leading-tight text-foreground sm:text-[1.15rem]">
-                    {m.value}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch lg:gap-6">
         <Card className="flex h-full flex-col border-border">
@@ -809,7 +841,9 @@ export default function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent className="space-y-3">
-            {activeThisMonthList.length === 0 ? (
+            {dataLoading ? (
+              <DriverTripLinksSkeleton rows={3} />
+            ) : activeThisMonthList.length === 0 ? (
               <p className="text-muted-foreground text-center py-6 text-sm">Nenhuma viagem ativa neste mês.</p>
             ) : (
               activeThisMonthList.map((trip) => {

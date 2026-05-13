@@ -123,8 +123,8 @@ export function downloadSettlementPdf(data: SettlementWithTrip, includeOwnerResu
     ['Total despesas', brl(data.totalExpenses)],
     ['Frete − despesas', brl(data.grossProfit)],
     [`Comissão (${data.driverCommissionPct}%)`, brl(data.driverCommissionAmt)],
-    ['Adiantamentos', brl(data.totalAdvances)],
-    ['A pagar ao motorista', brl(data.amountToPayDriver)],
+    ['Adiantamentos (abatidos do salário)', brl(data.totalAdvances)],
+    ['A pagar ao motorista (comissão)', brl(data.amountToPayDriver)],
   ];
   if (includeOwnerResult) {
     summaryBody.push(['Resultado do dono', brl(data.ownerResult)]);
