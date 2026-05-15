@@ -51,10 +51,13 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
     setLoading(true);
+    const supabase = createClient();
     try {
-      const supabase = createClient();
+      // Garante troca limpa de conta entre tentativas de login.
+      await supabase.auth.signOut();
+      const normalizedEmail = email.trim().toLowerCase();
       const { data, error: err } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
+        email: normalizedEmail,
         password,
       });
       if (err) throw new Error(err.message);
@@ -66,6 +69,7 @@ export function LoginForm() {
       router.push('/dashboard');
       router.refresh();
     } catch (e) {
+      await supabase.auth.signOut();
       const msg = e instanceof Error ? e.message : 'Erro ao entrar';
       if (msg.toLowerCase().includes('invalid login credentials') || msg.toLowerCase().includes('invalid_credentials')) {
         setError('E-mail ou senha incorretos. Verifique os dados ou cadastre-se primeiro.');
