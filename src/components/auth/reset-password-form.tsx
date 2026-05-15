@@ -146,6 +146,9 @@ export function ResetPasswordForm() {
           disabled={loading}
           className="mt-1"
         />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Requisitos: mínimo de 6 caracteres.
+        </p>
       </div>
       <div>
         <Label htmlFor="confirm" className="block">
