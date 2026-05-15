@@ -235,10 +235,12 @@ export default function UsuariosPage() {
           }
         }}
       >
-        <Card className="h-full border-border p-4 transition-all hover:border-primary/35 hover:shadow-md">
-        <UserCardInner user={user} />
+        <Card className="flex h-full flex-col border-border p-4 transition-all hover:border-primary/35 hover:shadow-md">
+        <div className="flex-1">
+          <UserCardInner user={user} />
+        </div>
         {showExcluir && (
-          <div className="mt-3 flex justify-end">
+          <div className="mt-auto flex justify-end pt-3">
             <Button
               variant="outline"
               onClick={(e) => {
