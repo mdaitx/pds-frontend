@@ -24,7 +24,7 @@ export async function getCompanyStaff(accessToken?: string): Promise<CompanyStaf
 
 export type CreateCompanyStaffPayload = {
   email: string;
-  /** Se omitido ou vazio, envia convite por e-mail (definição de senha no link). Obrigatório para DRIVER. */
+  /** Campo legado: o backend usa convite por e-mail (link de primeiro acesso) para todos os perfis. */
   password?: string;
   role: 'ADMIN' | 'OWNER' | 'DRIVER';
   name?: string;
