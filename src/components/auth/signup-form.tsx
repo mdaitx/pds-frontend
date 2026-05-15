@@ -59,7 +59,7 @@ export function SignupForm() {
     setLoading(true);
     try {
       const supabase = createClient();
-      const normalizedEmail = email.trim();
+      const normalizedEmail = email.trim().toLowerCase();
       const { data, error: err } = await supabase.auth.signUp({
         email: normalizedEmail,
         password,
