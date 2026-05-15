@@ -5,6 +5,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ArrowLeft, Save, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
@@ -32,6 +33,7 @@ const selectClass = cn(dashboardNativeFieldClass, 'flex h-auto min-h-10 py-2');
 
 export default function NovoUsuarioPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const driverIdFromUrl = searchParams.get('driverId');
   const { session, appUser, loading: authLoading } = useAuth();
@@ -52,7 +54,7 @@ export default function NovoUsuarioPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [inviteByEmail, setInviteByEmail] = useState(false);
+  const [inviteByEmail, setInviteByEmail] = useState(true);
 
   const isAdminUser = appUser?.role === 'ADMIN';
 
@@ -130,13 +132,10 @@ export default function NovoUsuarioPage() {
     const emailNorm = form.email.trim().toLowerCase();
     if (staffEmails.has(emailNorm)) errs.email = 'Já existe uma conta com este e-mail.';
 
-    const needsPassword = form.role === 'DRIVER' || !inviteByEmail;
+    const needsPassword = !inviteByEmail;
     if (needsPassword) {
       if (!form.password.trim()) {
-        errs.password =
-          form.role === 'DRIVER'
-            ? 'Senha é obrigatória para motorista.'
-            : 'Senha é obrigatória (ou marque convite por e-mail).';
+        errs.password = 'Senha é obrigatória (ou marque convite por e-mail).';
       } else if (form.password.length < 6) {
         errs.password = 'A senha deve ter no mínimo 6 caracteres.';
       }
@@ -154,7 +153,7 @@ export default function NovoUsuarioPage() {
       const role = linkedDriverId ? 'DRIVER' : form.role;
       const res = await createCompanyStaffUser({
         email: form.email.trim(),
-        password: role === 'DRIVER' ? form.password : inviteByEmail ? undefined : form.password,
+        password: inviteByEmail ? undefined : form.password.trim() || undefined,
         role,
         name: form.name.trim(),
         phone: digitsOnly(form.phone) || undefined,
@@ -175,7 +174,9 @@ export default function NovoUsuarioPage() {
               : 'Administrador criado.'
         );
       }
+      await queryClient.invalidateQueries({ queryKey: ['company-staff'] });
       router.push('/dashboard/usuarios');
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Erro ao salvar');
     } finally {
@@ -302,7 +303,7 @@ export default function NovoUsuarioPage() {
             <div className="space-y-1.5">
               <Label htmlFor="password">
                 Senha *
-                {form.role !== 'DRIVER' && canInviteStaff && (
+                {canInviteStaff && (
                   <span className="text-muted-foreground ml-1 text-xs">(ou convite por e-mail)</span>
                 )}
               </Label>
@@ -313,11 +314,11 @@ export default function NovoUsuarioPage() {
                 value={form.password}
                 onChange={(e) => setField('password', e.target.value)}
                 autoComplete="new-password"
-                disabled={form.role !== 'DRIVER' && inviteByEmail}
+                disabled={inviteByEmail}
               />
               {errors.password && <p className="text-destructive text-sm">{errors.password}</p>}
             </div>
-            {form.role !== 'DRIVER' && canInviteStaff && (
+            {canInviteStaff && (
               <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-card p-3">
                 <input
                   type="checkbox"

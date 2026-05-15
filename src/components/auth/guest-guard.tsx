@@ -18,6 +18,8 @@ type GuestGuardProps = {
 export function GuestGuard({ children, redirectTo = '/dashboard' }: GuestGuardProps) {
   const router = useRouter();
   const pathname = usePathname() ?? '';
+  const isResetPasswordPath =
+    pathname === '/reset-password' || pathname.startsWith('/reset-password/');
   const { session, appUser, loading, configError } = useAuth();
   const redirectTarget =
     pathname === '/signup' || pathname.startsWith('/signup/')
@@ -26,10 +28,11 @@ export function GuestGuard({ children, redirectTo = '/dashboard' }: GuestGuardPr
 
   useEffect(() => {
     if (configError || loading) return;
+    if (isResetPasswordPath) return;
     if (session && appUser) {
       router.replace(redirectTarget);
     }
-  }, [configError, loading, session, appUser, router, redirectTarget]);
+  }, [configError, loading, session, appUser, router, redirectTarget, isResetPasswordPath]);
 
   if (configError) {
     return <>{children}</>;
@@ -41,6 +44,10 @@ export function GuestGuard({ children, redirectTo = '/dashboard' }: GuestGuardPr
         <LoadingMessage />
       </div>
     );
+  }
+
+  if (isResetPasswordPath) {
+    return <>{children}</>;
   }
 
   if (session && appUser) {
