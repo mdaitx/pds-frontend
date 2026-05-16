@@ -36,6 +36,8 @@ export {
   getSubscriptionStatus,
   postSubscriptionCheckout,
   postSubscriptionPortal,
+  type SubscriptionPlan,
+  type SubscriptionPlanKey,
   type SubscriptionStatusResponse,
   type SubscriptionStatusValue,
   type PaginationOptions,
