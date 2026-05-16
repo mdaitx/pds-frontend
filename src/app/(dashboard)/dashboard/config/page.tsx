@@ -191,6 +191,7 @@ export default function ConfigPage() {
 
   useEffect(() => {
     if (typeof window === 'undefined' || !session) return;
+    const accessToken = session.access_token;
     const s = new URLSearchParams(window.location.search).get('sub');
     const expectedPlan = new URLSearchParams(window.location.search).get('plan') as
       | SubscriptionPlanKey
@@ -200,7 +201,7 @@ export default function ConfigPage() {
     async function refreshSubscriptionAfterCheckout() {
       let latest: SubscriptionStatusResponse | null = null;
       for (let attempt = 0; attempt < 6; attempt += 1) {
-        const data = await getSubscriptionStatus(session.access_token);
+        const data = await getSubscriptionStatus(accessToken);
         latest = data;
         if (!expectedPlan || data.currentPlanKey === expectedPlan) break;
         await new Promise((resolve) => setTimeout(resolve, 1500));
