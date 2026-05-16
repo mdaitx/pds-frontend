@@ -29,6 +29,7 @@ import {
   type CommissionCalculationMethod,
   type ExpenseCategoryItem,
   type ExpenseCategoriesResponse,
+  type SubscriptionPlanKey,
   type SubscriptionStatusResponse,
 } from '@/lib';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -146,6 +147,7 @@ export default function ConfigPage() {
   const [categorySaving, setCategorySaving] = useState(false);
   const [sub, setSub] = useState<SubscriptionStatusResponse | null>(null);
   const [subBusy, setSubBusy] = useState(false);
+  const [selectedPlanKey, setSelectedPlanKey] = useState<SubscriptionPlanKey | null>(null);
 
   const ownerConfigQuery = useQuery({
     queryKey: ['owner-config-bundle', appUser?.id],
@@ -176,6 +178,7 @@ export default function ConfigPage() {
     setCompany(bundle.company);
     setCategories(bundle.categories);
     setSub(bundle.sub);
+    setSelectedPlanKey(bundle.sub?.currentPlanKey ?? null);
     setCompanySaveError(null);
   }, [ownerConfigQuery.data]);
 
@@ -189,10 +192,28 @@ export default function ConfigPage() {
   useEffect(() => {
     if (typeof window === 'undefined' || !session) return;
     const s = new URLSearchParams(window.location.search).get('sub');
+    const expectedPlan = new URLSearchParams(window.location.search).get('plan') as
+      | SubscriptionPlanKey
+      | null;
+    let cancelled = false;
+
+    async function refreshSubscriptionAfterCheckout() {
+      let latest: SubscriptionStatusResponse | null = null;
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        const data = await getSubscriptionStatus(session.access_token);
+        latest = data;
+        if (!expectedPlan || data.currentPlanKey === expectedPlan) break;
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+      if (!cancelled && latest) {
+        setSub(latest);
+        setSelectedPlanKey(latest.currentPlanKey);
+      }
+    }
+
     if (s === 'success') {
-      getSubscriptionStatus()
-        .then((data) => {
-          setSub(data);
+      refreshSubscriptionAfterCheckout()
+        .then(() => {
           toast.success('Pagamento concluído — assinatura atualizada.');
         })
         .catch(() => {});
@@ -201,6 +222,9 @@ export default function ConfigPage() {
       toast.info('Assinatura não concluída. Você pode tentar de novo quando quiser.');
       router.replace('/dashboard/config', { scroll: false });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [session, router]);
 
   useEffect(() => {
@@ -421,8 +445,7 @@ export default function ConfigPage() {
                     Plano e assinatura
                   </h3>
                   <p className="mt-0.5 text-muted-foreground" style={{ fontSize: '0.8rem' }}>
-                    Teste 30 dias (até {sub.maxVehiclesTrial} veículos). Plano: R${' '}
-                    {sub.pricePerVehicleBrl.toFixed(2).replace('.', ',')}/veículo/mês via Stripe.
+                    Escolha entre 3 planos fixos no Stripe e acompanhe os limites da sua conta.
                   </p>
                 </div>
               </div>
@@ -439,16 +462,55 @@ export default function ConfigPage() {
                   {sub.isOperational ? 'Acesso operacional' : 'Acesso bloqueado'}
                 </span>
                 <span className="text-xs text-muted-foreground">Situação: {sub.status}</span>
+                <span className="text-xs text-muted-foreground">Plano atual: {sub.currentPlanKey}</span>
                 {sub.vehicleCount != null && (
                   <span className="text-xs text-muted-foreground">Veículos: {sub.vehicleCount}</span>
                 )}
+                {sub.driverCount != null && (
+                  <span className="text-xs text-muted-foreground">Motoristas: {sub.driverCount}</span>
+                )}
               </div>
+              <p className="text-xs text-muted-foreground">
+                Limites do plano atual:{' '}
+                {sub.limits.maxVehicles == null ? 'veículos ilimitados' : `até ${sub.limits.maxVehicles} veículos`},{' '}
+                {sub.limits.maxDrivers == null ? 'motoristas ilimitados' : `até ${sub.limits.maxDrivers} motoristas`}.
+              </p>
               {sub.message && <p className="text-muted-foreground leading-relaxed">{sub.message}</p>}
+              <div className="grid gap-2 sm:grid-cols-3">
+                {sub.plans.map((plan) => (
+                  <button
+                    key={plan.key}
+                    type="button"
+                    onClick={() => setSelectedPlanKey(plan.key)}
+                    className={
+                      selectedPlanKey === plan.key
+                        ? 'rounded-lg border border-primary bg-primary/5 p-3 text-left'
+                        : 'rounded-lg border border-border bg-card p-3 text-left hover:border-primary/45'
+                    }
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-foreground">{plan.name}</span>
+                      {plan.isCurrent && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                          Atual
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      R$ {plan.priceBrl.toFixed(2).replace('.', ',')}/mês
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">{plan.description}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      {plan.maxVehicles == null ? 'Veículos ilimitados' : `Até ${plan.maxVehicles} veículos`} ·{' '}
+                      {plan.maxDrivers == null ? 'Motoristas ilimitados' : `Até ${plan.maxDrivers} motoristas`}
+                    </p>
+                  </button>
+                ))}
+              </div>
               {!sub.stripeConfigured && (
                 <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
-                  O servidor ainda não definiu <code className="text-foreground">STRIPE_SECRET_KEY</code> e{' '}
-                  <code className="text-foreground">STRIPE_PRICE_ID</code>. Pagamento online fica desativado em dev; o
-                  acesso de contas legadas continua ativo.
+                  O servidor ainda não definiu <code className="text-foreground">STRIPE_SECRET_KEY</code> e os IDs de preço
+                  por plano (<code className="text-foreground">STRIPE_PRICE_ID_BASIC/PRO/PREMIUM</code>).
                 </p>
               )}
               <div className="flex flex-wrap gap-2">
@@ -456,13 +518,18 @@ export default function ConfigPage() {
                   <Button
                     type="button"
                     className="gap-1.5"
-                    disabled={subBusy}
+                    disabled={subBusy || !selectedPlanKey}
                     loading={subBusy}
                     onClick={async () => {
+                      if (!selectedPlanKey) {
+                        toast.error('Selecione um plano antes de continuar.');
+                        return;
+                      }
                       setSubBusy(true);
                       try {
                         const { url } = await postSubscriptionCheckout({
-                          successPath: '/dashboard/config?sub=success',
+                          planKey: selectedPlanKey,
+                          successPath: `/dashboard/config?sub=success&plan=${selectedPlanKey}`,
                           cancelPath: '/dashboard/config?sub=cancel',
                         });
                         if (url) window.location.assign(url);
@@ -475,7 +542,7 @@ export default function ConfigPage() {
                     }}
                   >
                     {!subBusy && <CreditCard className="h-4 w-4" />}
-                    {sub.status === 'TRIAL' || !sub.isOperational ? 'Assinar com cartão' : 'Alterar quantidade / plano'}
+                    {sub.status === 'TRIAL' || !sub.isOperational ? 'Assinar com cartão' : 'Alterar plano'}
                   </Button>
                 )}
                 {sub.checkoutAvailable && (sub.status === 'ACTIVE' || sub.status === 'PAST_DUE') && (

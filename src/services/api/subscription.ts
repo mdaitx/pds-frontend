@@ -7,12 +7,31 @@ export type SubscriptionStatusValue =
   | 'CANCELED'
   | 'EXPIRED';
 
+export type SubscriptionPlanKey = 'BASIC' | 'PRO' | 'PREMIUM';
+
+export type SubscriptionPlan = {
+  key: SubscriptionPlanKey;
+  name: string;
+  description: string;
+  priceBrl: number;
+  maxVehicles: number | null;
+  maxDrivers: number | null;
+  checkoutReady: boolean;
+  isCurrent: boolean;
+};
+
 export type SubscriptionStatusResponse = {
   status: SubscriptionStatusValue;
+  currentPlanKey: SubscriptionPlanKey;
+  plans: SubscriptionPlan[];
+  limits: {
+    maxVehicles: number | null;
+    maxDrivers: number | null;
+  };
   isOperational: boolean;
   vehicleCount: number;
+  driverCount: number;
   maxVehiclesTrial: number;
-  pricePerVehicleBrl: number;
   trialEndsAt: string | null;
   currentPeriodEnd: string | null;
   stripeConfigured: boolean;
@@ -32,6 +51,7 @@ export type SubscriptionCheckoutResponse = { url: string | null };
 
 /** POST /subscription/checkout */
 export async function postSubscriptionCheckout(payload: {
+  planKey: SubscriptionPlanKey;
   successPath?: string;
   cancelPath?: string;
 }): Promise<SubscriptionCheckoutResponse> {
