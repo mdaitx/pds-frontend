@@ -205,6 +205,11 @@ select:-webkit-autofill {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
 }
 
+/* Quando há barra de navegação fixa no mobile, reserva área extra no fim da rolagem. */
+.safe-main-with-bottom-nav {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
+
 .safe-top {
   padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
 }

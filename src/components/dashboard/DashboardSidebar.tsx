@@ -372,7 +372,7 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
         <main
           className={cn(
             'safe-main print:overflow-visible flex-1 overflow-y-auto print:bg-card',
-            appUser && 'pb-24 md:pb-0'
+            appUser && 'safe-main-with-bottom-nav md:pb-0'
           )}
         >
           {children}
