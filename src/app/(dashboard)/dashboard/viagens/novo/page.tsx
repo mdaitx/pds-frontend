@@ -42,6 +42,14 @@ function dateOnlyToIso(dateStr: string): string {
   return new Date(y, m - 1, d, 0, 0, 0, 0).toISOString();
 }
 
+function todayYmdLocal(): string {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export default function NovaViagemPage() {
   const router = useRouter();
   const { session, appUser, loading: authLoading } = useAuth();
@@ -86,29 +94,42 @@ export default function NovaViagemPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!vehicleId || !driverId || !startDate.trim()) {
-      setError('Preencha veículo, motorista e data de início.');
+    if (!vehicleId || !driverId) {
+      setError('Preencha veículo e motorista.');
+      return;
+    }
+    if (!displacementToLoad && !startDate.trim()) {
+      setError('Preencha a data de início.');
+      return;
+    }
+    if (displacementToLoad && parseKmInputString(initialKm) == null) {
+      setError('Preencha o Km inicial para viagem de deslocamento.');
       return;
     }
     setError(null);
     setSaving(true);
     try {
+      const resolvedStartDate = displacementToLoad
+        ? dateOnlyToIso(startDate.trim() || todayYmdLocal())
+        : dateOnlyToIso(startDate.trim());
       const payload: CreateTripPayload = {
         vehicleId,
         driverId,
-        startDate: dateOnlyToIso(startDate.trim()),
+        startDate: resolvedStartDate,
         status,
       };
-      if (clientName.trim()) payload.clientName = clientName.trim();
       if (origin.trim()) payload.origin = origin.trim();
       if (destination.trim()) payload.destination = destination.trim();
-      if (endDate.trim()) payload.endDate = dateOnlyToIso(endDate.trim());
-      const fv = parseBrlInputString(freightValue);
-      if (fv !== null && !Number.isNaN(fv)) payload.freightValue = fv;
       const ik = parseKmInputString(initialKm);
       if (ik !== null && !Number.isNaN(ik) && ik >= 0) payload.initialKm = ik;
-      if (loadType.trim()) payload.loadType = loadType.trim();
       if (notes.trim()) payload.notes = notes.trim();
+      if (!displacementToLoad) {
+        if (clientName.trim()) payload.clientName = clientName.trim();
+        if (endDate.trim()) payload.endDate = dateOnlyToIso(endDate.trim());
+        const fv = parseBrlInputString(freightValue);
+        if (fv !== null && !Number.isNaN(fv)) payload.freightValue = fv;
+        if (loadType.trim()) payload.loadType = loadType.trim();
+      }
       if (displacementToLoad) payload.displacementToLoad = true;
       await createTrip(payload);
       toast.success('Viagem criada com sucesso.');
@@ -205,19 +226,21 @@ export default function NovaViagemPage() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label htmlFor="clientName" className={labelClass}>
-                Cliente
-              </label>
-              <input
-                id="clientName"
-                type="text"
-                placeholder="Nome do cliente ou empresa"
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                className={nativeFieldClass}
-              />
-            </div>
+            {!displacementToLoad && (
+              <div className="space-y-1.5">
+                <label htmlFor="clientName" className={labelClass}>
+                  Cliente
+                </label>
+                <input
+                  id="clientName"
+                  type="text"
+                  placeholder="Nome do cliente ou empresa"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  className={nativeFieldClass}
+                />
+              </div>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -248,43 +271,47 @@ export default function NovaViagemPage() {
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <LocalizedDateField
-                label="Data início *"
-                value={startDate}
-                onChange={setStartDate}
-                className="w-full min-w-0"
-                labelClassName={labelClass}
-                buttonClassName={cn(nativeFieldClass, 'w-full min-w-0 text-left font-normal')}
-              />
-              <LocalizedDateField
-                label="Data fim"
-                value={endDate}
-                onChange={setEndDate}
-                className="w-full min-w-0"
-                labelClassName={labelClass}
-                buttonClassName={cn(nativeFieldClass, 'w-full min-w-0 text-left font-normal')}
-              />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label htmlFor="freightValue" className={labelClass}>
-                  Valor do frete (R$)
-                </label>
-                <input
-                  id="freightValue"
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="0,00"
-                  value={freightValue}
-                  onChange={(e) => setFreightValue(formatBrlCurrencyInput(e.target.value))}
-                  className={nativeFieldClass}
+            {!displacementToLoad && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <LocalizedDateField
+                  label="Data início *"
+                  value={startDate}
+                  onChange={setStartDate}
+                  className="w-full min-w-0"
+                  labelClassName={labelClass}
+                  buttonClassName={cn(nativeFieldClass, 'w-full min-w-0 text-left font-normal')}
+                />
+                <LocalizedDateField
+                  label="Data fim"
+                  value={endDate}
+                  onChange={setEndDate}
+                  className="w-full min-w-0"
+                  labelClassName={labelClass}
+                  buttonClassName={cn(nativeFieldClass, 'w-full min-w-0 text-left font-normal')}
                 />
               </div>
+            )}
+
+            <div className={cn('grid gap-4', displacementToLoad ? 'sm:grid-cols-1' : 'sm:grid-cols-2')}>
+              {!displacementToLoad && (
+                <div className="space-y-1.5">
+                  <label htmlFor="freightValue" className={labelClass}>
+                    Valor do frete (R$)
+                  </label>
+                  <input
+                    id="freightValue"
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0,00"
+                    value={freightValue}
+                    onChange={(e) => setFreightValue(formatBrlCurrencyInput(e.target.value))}
+                    className={nativeFieldClass}
+                  />
+                </div>
+              )}
               <div className="space-y-1.5">
                 <label htmlFor="initialKm" className={labelClass}>
-                  Km inicial
+                  Km inicial{displacementToLoad ? ' *' : ''}
                 </label>
                 <input
                   id="initialKm"
@@ -299,38 +326,40 @@ export default function NovaViagemPage() {
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label htmlFor="loadType" className={labelClass}>
-                  Tipo de carga
-                </label>
-                <input
-                  id="loadType"
-                  type="text"
-                  placeholder="ex: Carga geral"
-                  value={loadType}
-                  onChange={(e) => setLoadType(e.target.value)}
-                  className={nativeFieldClass}
-                />
+            {!displacementToLoad && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label htmlFor="loadType" className={labelClass}>
+                    Tipo de carga
+                  </label>
+                  <input
+                    id="loadType"
+                    type="text"
+                    placeholder="ex: Carga geral"
+                    value={loadType}
+                    onChange={(e) => setLoadType(e.target.value)}
+                    className={nativeFieldClass}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="status" className={labelClass}>
+                    Status
+                  </label>
+                  <select
+                    id="status"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value as TripStatus)}
+                    className={nativeFieldClass}
+                  >
+                    {STATUS_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-              <div className="space-y-1.5">
-                <label htmlFor="status" className={labelClass}>
-                  Status
-                </label>
-                <select
-                  id="status"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as TripStatus)}
-                  className={nativeFieldClass}
-                >
-                  {STATUS_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            )}
 
             <div className="space-y-1.5">
               <label htmlFor="notes" className={labelClass}>
