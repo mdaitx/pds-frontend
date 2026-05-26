@@ -56,13 +56,13 @@ function ReceiptCard({
   const image = receiptUrl ? isImageReceipt(receiptUrl) : false;
 
   return (
-    <article className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm transition-shadow hover:shadow-md">
-      <div className="relative aspect-[4/3] bg-zinc-100">
+    <article className="overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
+      <div className="relative aspect-[4/3] bg-muted/40">
         {receiptUrl && image ? (
           <button
             type="button"
             onClick={() => onPreview(expense)}
-            className="group relative h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            className="group relative h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
             aria-label={`Ampliar comprovante de ${receiptLabel(expense)}`}
           >
             <Image
@@ -78,13 +78,13 @@ function ReceiptCard({
             </span>
           </button>
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-zinc-500">
+          <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center text-muted-foreground">
             <FileText className="h-10 w-10" aria-hidden />
             <span className="text-sm font-medium">Comprovante em arquivo</span>
           </div>
         )}
         {required && (
-          <span className="absolute left-3 top-3 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 shadow-sm">
+          <span className="absolute left-3 top-3 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-900 shadow-sm dark:bg-amber-500/18 dark:text-amber-100">
             Obrigatório
           </span>
         )}
@@ -93,12 +93,12 @@ function ReceiptCard({
       <div className="space-y-3 p-4">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-sm font-semibold text-zinc-900">{expense.category.name}</h2>
-            <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-700">
+            <h2 className="text-sm font-semibold text-foreground">{expense.category.name}</h2>
+            <span className="rounded-full bg-destructive/12 px-2 py-0.5 text-xs font-semibold text-destructive">
               {formatBrl(expense.amount)}
             </span>
           </div>
-          <p className="mt-1 text-xs text-zinc-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             {formatDate(expense.date)}
             {expense.description ? ` · ${expense.description}` : ''}
             {expense.location ? ` · ${expense.location}` : ''}
@@ -110,7 +110,7 @@ function ReceiptCard({
             href={receiptUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-zinc-200 px-3 py-1.5 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
           >
             Abrir arquivo original
             <ExternalLink className="h-3.5 w-3.5" aria-hidden />
@@ -167,8 +167,8 @@ export default function ComprovantesViagemPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="settings-font-inter flex min-h-screen items-center justify-center bg-zinc-50 tracking-tight">
-        <LoadingMessage message="Carregando comprovantes…" />
+      <div className="settings-font-inter flex min-h-screen items-center justify-center bg-background tracking-tight">
+        <LoadingMessage message="Carregando comprovantes…" className="text-muted-foreground" />
       </div>
     );
   }
@@ -178,12 +178,12 @@ export default function ComprovantesViagemPage() {
       <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="lg">
         <Link
           href={tripId ? `/dashboard/viagens/${tripId}` : '/dashboard/viagens'}
-          className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
+          className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden />
           Voltar à viagem
         </Link>
-        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error || 'Viagem não encontrada.'}
         </div>
       </DashboardPageShell>
@@ -196,63 +196,63 @@ export default function ComprovantesViagemPage() {
         <div className="min-w-0">
           <Link
             href={`/dashboard/viagens/${trip.id}`}
-            className="mb-1 inline-flex items-center gap-1 text-sm text-zinc-500 transition-colors hover:text-zinc-700"
+            className="mb-1 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Voltar à viagem
           </Link>
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold text-zinc-950">Comprovantes da viagem {trip.code}</h1>
-            <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+            <h1 className="text-2xl font-semibold text-foreground">Comprovantes da viagem {trip.code}</h1>
+            <span className="rounded-full bg-primary/12 px-3 py-1 text-xs font-semibold text-primary dark:bg-primary/22">
               Acima de {formatBrl(RECEIPT_THRESHOLD)}
             </span>
           </div>
-          <p className="mt-2 max-w-2xl text-sm text-zinc-600">
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             Visualize as fotos e arquivos enviados para despesas que precisam de conferência.
           </p>
         </div>
       </header>
 
       <section className="grid gap-3 sm:grid-cols-3" aria-label="Resumo dos comprovantes">
-        <Card className="border-zinc-200 shadow-sm">
+        <Card className="border-border shadow-sm">
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-xl bg-blue-50 p-2 text-blue-700">
+            <div className="rounded-xl bg-primary/12 p-2 text-primary dark:bg-primary/22">
               <Receipt className="h-5 w-5" aria-hidden />
             </div>
             <div>
-              <p className="text-xs font-medium text-zinc-500">Despesas acima de R$ 100</p>
-              <p className="text-lg font-semibold text-zinc-950">{requiredExpenses.length}</p>
+              <p className="text-xs font-medium text-muted-foreground">Despesas acima de R$ 100</p>
+              <p className="text-lg font-semibold text-foreground">{requiredExpenses.length}</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-zinc-200 shadow-sm">
+        <Card className="border-border shadow-sm">
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-xl bg-emerald-50 p-2 text-emerald-700">
+            <div className="rounded-xl bg-emerald-100 p-2 text-emerald-900 dark:bg-emerald-500/22 dark:text-emerald-50">
               <ImageIcon className="h-5 w-5" aria-hidden />
             </div>
             <div>
-              <p className="text-xs font-medium text-zinc-500">Com comprovante</p>
-              <p className="text-lg font-semibold text-zinc-950">{requiredWithReceipts.length}</p>
+              <p className="text-xs font-medium text-muted-foreground">Com comprovante</p>
+              <p className="text-lg font-semibold text-foreground">{requiredWithReceipts.length}</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-zinc-200 shadow-sm">
+        <Card className="border-border shadow-sm">
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-xl bg-amber-50 p-2 text-amber-700">
+            <div className="rounded-xl bg-amber-100 p-2 text-amber-900 dark:bg-amber-500/18 dark:text-amber-100">
               <AlertTriangle className="h-5 w-5" aria-hidden />
             </div>
             <div>
-              <p className="text-xs font-medium text-zinc-500">Valor em conferência</p>
-              <p className="text-lg font-semibold text-zinc-950">{formatBrl(totalRequiredValue)}</p>
+              <p className="text-xs font-medium text-muted-foreground">Valor em conferência</p>
+              <p className="text-lg font-semibold text-foreground">{formatBrl(totalRequiredValue)}</p>
             </div>
           </CardContent>
         </Card>
       </section>
 
       {requiredMissing.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50 shadow-sm">
+        <Card className="border-amber-200 bg-amber-50 shadow-sm dark:border-amber-500/35 dark:bg-amber-950/35">
           <CardHeader className="pb-2">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-950">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-950 dark:text-amber-50">
               <AlertTriangle className="h-4 w-4" aria-hidden />
               Despesas acima de {formatBrl(RECEIPT_THRESHOLD)} sem comprovante
             </h2>
@@ -260,11 +260,11 @@ export default function ComprovantesViagemPage() {
           <CardContent>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {requiredMissing.map((expense) => (
-                <div key={expense.id} className="rounded-lg border border-amber-200 bg-white/80 p-3">
-                  <p className="text-sm font-semibold text-amber-950">
+                <div key={expense.id} className="rounded-lg border border-amber-200 bg-card/80 p-3 dark:border-amber-500/35 dark:bg-amber-950/35">
+                  <p className="text-sm font-semibold text-amber-950 dark:text-amber-50">
                     {expense.category.name} · {formatBrl(expense.amount)}
                   </p>
-                  <p className="mt-1 text-xs text-amber-800">
+                  <p className="mt-1 text-xs text-amber-800 dark:text-amber-100">
                     {formatDate(expense.date)}
                     {expense.description ? ` · ${expense.description}` : ''}
                     {expense.location ? ` · ${expense.location}` : ''}
@@ -278,16 +278,16 @@ export default function ComprovantesViagemPage() {
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold text-zinc-950">Comprovantes obrigatórios</h2>
-          <p className="text-sm text-zinc-500">Fotos e arquivos das despesas lançadas acima de R$ 100.</p>
+          <h2 className="text-lg font-semibold text-foreground">Comprovantes obrigatórios</h2>
+          <p className="text-sm text-muted-foreground">Fotos e arquivos das despesas lançadas acima de R$ 100.</p>
         </div>
 
         {requiredWithReceipts.length === 0 ? (
-          <Card className="border-dashed border-zinc-300 bg-white shadow-sm">
+          <Card className="border-dashed border-border bg-card shadow-sm">
             <CardContent className="flex min-h-44 flex-col items-center justify-center p-8 text-center">
-              <ImageIcon className="h-10 w-10 text-zinc-300" aria-hidden />
-              <p className="mt-3 text-sm font-medium text-zinc-700">Nenhum comprovante obrigatório enviado.</p>
-              <p className="mt-1 max-w-md text-sm text-zinc-500">
+              <ImageIcon className="h-10 w-10 text-muted-foreground/50" aria-hidden />
+              <p className="mt-3 text-sm font-medium text-foreground">Nenhum comprovante obrigatório enviado.</p>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
                 Quando uma despesa acima de {formatBrl(RECEIPT_THRESHOLD)} tiver foto anexada, ela aparecerá aqui.
               </p>
             </CardContent>
@@ -304,8 +304,8 @@ export default function ComprovantesViagemPage() {
       {optionalWithReceipts.length > 0 && (
         <section className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold text-zinc-950">Outros comprovantes</h2>
-            <p className="text-sm text-zinc-500">Anexos enviados em despesas de até R$ 100.</p>
+            <h2 className="text-lg font-semibold text-foreground">Outros comprovantes</h2>
+            <p className="text-sm text-muted-foreground">Anexos enviados em despesas de até R$ 100.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {optionalWithReceipts.map((expense) => (
@@ -322,24 +322,24 @@ export default function ComprovantesViagemPage() {
           aria-modal="true"
           aria-label="Visualização do comprovante"
         >
-          <div className="relative max-h-full w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-start justify-between gap-3 border-b border-zinc-200 px-4 py-3">
+          <div className="relative max-h-full w-full max-w-5xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-zinc-950">{selectedExpense.category.name}</p>
-                <p className="text-xs text-zinc-500">
+                <p className="text-sm font-semibold text-foreground">{selectedExpense.category.name}</p>
+                <p className="text-xs text-muted-foreground">
                   {formatBrl(selectedExpense.amount)} · {formatDate(selectedExpense.date)}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedExpense(null)}
-                className="rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
                 aria-label="Fechar comprovante"
               >
                 <X className="h-5 w-5" aria-hidden />
               </button>
             </div>
-            <div className="relative h-[74vh] max-h-[78vh] bg-zinc-950 p-2">
+            <div className="relative h-[74vh] max-h-[78vh] bg-black/90 p-2">
               <Image
                 src={selectedExpense.receiptUrl}
                 alt={`Comprovante ampliado de ${selectedExpense.category.name}`}
