@@ -24,7 +24,6 @@ export function SignupForm() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   function formatAuthError(message: string): string {
     if (message.includes('rate limit') || message.includes('429')) {
@@ -94,28 +93,12 @@ export function SignupForm() {
     );
   }
 
-  if (success) {
-    return (
-      <Card className="border-border shadow-xl">
-        <CardContent className="pt-6">
-          <div className="rounded-lg border border-accent/30 bg-accent/10 px-3 py-2 text-sm text-foreground">
-            Conta criada. Verifique seu e-mail para confirmar (se a confirmação estiver ativada) e depois faça login.
-          </div>
-          <Link
-            href="/login"
-            className="mt-4 block w-full rounded-lg bg-primary px-4 py-2 text-center font-medium text-primary-foreground hover:bg-primary-hover"
-          >
-            Ir para login
-          </Link>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card className="border-border shadow-xl">
       <CardHeader className="pb-2">
+        <p className="pds-section-kicker text-center">Criar acesso</p>
         <h2 className="text-center text-xl font-semibold text-foreground">Criar conta</h2>
+        <p className="pds-caption mt-1 text-center">Use e-mail válido e senha forte para começar com segurança.</p>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -152,8 +135,8 @@ export function SignupForm() {
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                tabIndex={-1}
+                disabled={loading}
+                className="pds-interactive pds-focus-ring pds-disabled absolute top-1/2 right-3 -translate-y-1/2 rounded-sm text-muted-foreground hover:text-foreground"
                 aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -178,8 +161,8 @@ export function SignupForm() {
               <button
                 type="button"
                 onClick={() => setShowConfirm((v) => !v)}
-                className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                tabIndex={-1}
+                disabled={loading}
+                className="pds-interactive pds-focus-ring pds-disabled absolute top-1/2 right-3 -translate-y-1/2 rounded-sm text-muted-foreground hover:text-foreground"
                 aria-label={showConfirm ? 'Ocultar confirmação' : 'Mostrar confirmação'}
               >
                 {showConfirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -188,7 +171,13 @@ export function SignupForm() {
           </div>
 
           {error && (
-            <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>
+            <p
+              className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              role="alert"
+              aria-live="polite"
+            >
+              {error}
+            </p>
           )}
 
           <Button type="submit" variant="primary" className="w-full" disabled={loading} loading={loading}>

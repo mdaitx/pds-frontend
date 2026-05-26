@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Save } from 'lucide-react';
@@ -69,6 +69,7 @@ export default function NovaViagemPage() {
   const [status, setStatus] = useState<TripStatus>('PENDING');
   const [displacementToLoad, setDisplacementToLoad] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loadingOptions, setLoadingOptions] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -79,6 +80,7 @@ export default function NovaViagemPage() {
     if (!appUser) return;
     const fleetStaff = appUser.role === 'OWNER' || appUser.role === 'ADMIN';
     if (fleetStaff) {
+      setLoadingOptions(true);
       Promise.all([getVehicles(), getDrivers()])
         .then(([v, d]) => {
           setVehicles(v);
@@ -86,11 +88,24 @@ export default function NovaViagemPage() {
           setVehicleId((prev) => (prev ? prev : v[0]?.id ?? ''));
           setDriverId((prev) => (prev ? prev : d[0]?.id ?? ''));
         })
-        .catch(() => {});
+        .catch(() => {
+          setError('Não foi possível carregar veículos e motoristas.');
+        })
+        .finally(() => setLoadingOptions(false));
     } else {
       router.replace('/dashboard');
     }
   }, [appUser, router]);
+
+  const progressLabel = useMemo(() => {
+    const checks = [
+      Boolean(vehicleId),
+      Boolean(driverId),
+      displacementToLoad ? parseKmInputString(initialKm) != null : Boolean(startDate.trim()),
+    ];
+    const done = checks.filter(Boolean).length;
+    return `${done}/${checks.length} campos essenciais`;
+  }, [vehicleId, driverId, displacementToLoad, initialKm, startDate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,244 +170,273 @@ export default function NovaViagemPage() {
     <DashboardPageShell maxWidth="3xl">
       <form
         onSubmit={handleSubmit}
-        className="settings-font-inter flex flex-col gap-4 tracking-tight pb-6"
-        style={{ fontSize: '0.9rem' }}
+        className="settings-font-inter flex flex-col gap-4 pb-6 tracking-tight"
       >
         {error && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <div
+            className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            role="alert"
+            aria-live="polite"
+          >
             {error}
           </div>
         )}
 
-        <div>
+        <div className="rounded-2xl border border-border bg-card px-4 py-4 shadow-sm sm:px-5">
           <Link
             href="/dashboard/viagens"
-            className="mb-1 flex items-center gap-1 text-muted-foreground transition-colors hover:text-foreground"
-            style={{ fontSize: '0.85rem' }}
+            className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Voltar à lista
           </Link>
-          <h1 className="text-foreground" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
-            Nova Viagem
-          </h1>
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="pds-page-title text-[1.5rem] sm:text-[1.7rem]">Nova viagem</h1>
+            <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+              {progressLabel}
+            </span>
+          </div>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Registre os dados essenciais primeiro; os campos complementares ajudam na conferência e nos relatórios.
+          </p>
         </div>
 
         <Card className="border-border shadow-sm">
           <CardHeader className="pb-2 pt-6">
-            <h3 className="text-foreground" style={{ fontWeight: 600, fontSize: '1.05rem' }}>
-              Dados da Viagem
-            </h3>
+            <h3 className="pds-card-title">Dados da viagem</h3>
+            <p className="pds-caption mt-1">
+              Campos com * são essenciais para criar e acompanhar a rota com consistência operacional.
+            </p>
           </CardHeader>
           <CardContent className="space-y-4 pb-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label htmlFor="vehicleId" className={labelClass}>
-                  Veículo *
-                </label>
-                <select
-                  id="vehicleId"
-                  required
-                  value={vehicleId}
-                  onChange={(e) => setVehicleId(e.target.value)}
-                  className={nativeFieldClass}
-                >
-                  <option value="">Selecione um veículo</option>
-                  {vehicles.map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.plate} — {v.brand} {v.model}
-                    </option>
-                  ))}
-                </select>
+            <section className="space-y-4">
+              <div className="space-y-1">
+                <p className="pds-section-kicker">Essencial</p>
+                <h4 className="pds-section-title">Alocação e rota base</h4>
               </div>
-              <div className="space-y-1.5">
-                <label htmlFor="driverId" className={labelClass}>
-                  Motorista *
-                </label>
-                <select
-                  id="driverId"
-                  required
-                  value={driverId}
-                  onChange={(e) => setDriverId(e.target.value)}
-                  className={nativeFieldClass}
-                >
-                  <option value="">Selecione um motorista</option>
-                  {drivers.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {!displacementToLoad && (
-              <div className="space-y-1.5">
-                <label htmlFor="clientName" className={labelClass}>
-                  Cliente
-                </label>
-                <input
-                  id="clientName"
-                  type="text"
-                  placeholder="Nome do cliente ou empresa"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  className={nativeFieldClass}
-                />
-              </div>
-            )}
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label htmlFor="origin" className={labelClass}>
-                  Origem
-                </label>
-                <input
-                  id="origin"
-                  type="text"
-                  placeholder="ex: São Paulo, SP"
-                  value={origin}
-                  onChange={(e) => setOrigin(e.target.value)}
-                  className={nativeFieldClass}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label htmlFor="destination" className={labelClass}>
-                  Destino
-                </label>
-                <input
-                  id="destination"
-                  type="text"
-                  placeholder="ex: Rio de Janeiro, RJ"
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  className={nativeFieldClass}
-                />
-              </div>
-            </div>
-
-            {!displacementToLoad && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <LocalizedDateField
-                  label="Data início *"
-                  value={startDate}
-                  onChange={setStartDate}
-                  className="w-full min-w-0"
-                  labelClassName={labelClass}
-                  buttonClassName={cn(nativeFieldClass, 'w-full min-w-0 text-left font-normal')}
-                />
-                <LocalizedDateField
-                  label="Data fim"
-                  value={endDate}
-                  onChange={setEndDate}
-                  className="w-full min-w-0"
-                  labelClassName={labelClass}
-                  buttonClassName={cn(nativeFieldClass, 'w-full min-w-0 text-left font-normal')}
-                />
-              </div>
-            )}
-
-            <div className={cn('grid gap-4', displacementToLoad ? 'sm:grid-cols-1' : 'sm:grid-cols-2')}>
-              {!displacementToLoad && (
-                <div className="space-y-1.5">
-                  <label htmlFor="freightValue" className={labelClass}>
-                    Valor do frete (R$)
-                  </label>
-                  <input
-                    id="freightValue"
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0,00"
-                    value={freightValue}
-                    onChange={(e) => setFreightValue(formatBrlCurrencyInput(e.target.value))}
-                    className={nativeFieldClass}
-                  />
-                </div>
-              )}
-              <div className="space-y-1.5">
-                <label htmlFor="initialKm" className={labelClass}>
-                  Km inicial{displacementToLoad ? ' *' : ''}
-                </label>
-                <input
-                  id="initialKm"
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="0"
-                  autoComplete="off"
-                  value={initialKm}
-                  onChange={(e) => setInitialKm(formatKmInput(e.target.value))}
-                  className={nativeFieldClass}
-                />
-              </div>
-            </div>
-
-            {!displacementToLoad && (
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <label htmlFor="loadType" className={labelClass}>
-                    Tipo de carga
-                  </label>
-                  <input
-                    id="loadType"
-                    type="text"
-                    placeholder="ex: Carga geral"
-                    value={loadType}
-                    onChange={(e) => setLoadType(e.target.value)}
-                    className={nativeFieldClass}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="status" className={labelClass}>
-                    Status
+                  <label htmlFor="vehicleId" className={labelClass}>
+                    Veículo *
                   </label>
                   <select
-                    id="status"
-                    value={status}
-                    onChange={(e) => setStatus(e.target.value as TripStatus)}
+                    id="vehicleId"
+                    required
+                    disabled={loadingOptions}
+                    value={vehicleId}
+                    onChange={(e) => setVehicleId(e.target.value)}
                     className={nativeFieldClass}
                   >
-                    {STATUS_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
+                    <option value="">{loadingOptions ? 'Carregando veículos...' : 'Selecione um veículo'}</option>
+                    {vehicles.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.plate} — {v.brand} {v.model}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="driverId" className={labelClass}>
+                    Motorista *
+                  </label>
+                  <select
+                    id="driverId"
+                    required
+                    disabled={loadingOptions}
+                    value={driverId}
+                    onChange={(e) => setDriverId(e.target.value)}
+                    className={nativeFieldClass}
+                  >
+                    <option value="">{loadingOptions ? 'Carregando motoristas...' : 'Selecione um motorista'}</option>
+                    {drivers.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
                       </option>
                     ))}
                   </select>
                 </div>
               </div>
-            )}
+              {!displacementToLoad && (
+                <div className="space-y-1.5">
+                  <label htmlFor="clientName" className={labelClass}>
+                    Cliente
+                  </label>
+                  <input
+                    id="clientName"
+                    type="text"
+                    placeholder="Nome do cliente ou empresa"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    className={nativeFieldClass}
+                  />
+                </div>
+              )}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label htmlFor="origin" className={labelClass}>
+                    Origem
+                  </label>
+                  <input
+                    id="origin"
+                    type="text"
+                    placeholder="ex: São Paulo, SP"
+                    value={origin}
+                    onChange={(e) => setOrigin(e.target.value)}
+                    className={nativeFieldClass}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="destination" className={labelClass}>
+                    Destino
+                  </label>
+                  <input
+                    id="destination"
+                    type="text"
+                    placeholder="ex: Rio de Janeiro, RJ"
+                    value={destination}
+                    onChange={(e) => setDestination(e.target.value)}
+                    className={nativeFieldClass}
+                  />
+                </div>
+              </div>
+            </section>
 
-            <div className="space-y-1.5">
-              <label htmlFor="notes" className={labelClass}>
-                Observações
-              </label>
-              <textarea
-                id="notes"
-                rows={3}
-                placeholder="Observações adicionais sobre a viagem…"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className={cn(nativeFieldClass, 'resize-none')}
-              />
-            </div>
+            <div className="pds-hairline" />
 
-            <div className="rounded-xl border border-violet-500/35 bg-violet-500/10 px-4 py-3 dark:bg-violet-950/35">
-              <label className="flex cursor-pointer items-start gap-3">
-                <input
-                  id="displacementToLoad"
-                  type="checkbox"
-                  checked={displacementToLoad}
-                  onChange={(e) => setDisplacementToLoad(e.target.checked)}
-                  className="border-border mt-1 h-4 w-4 rounded text-primary focus:ring-focus-ring"
+            <section className="space-y-4">
+              <div className="space-y-1">
+                <p className="pds-section-kicker">Operação</p>
+                <h4 className="pds-section-title">Cronograma e valores</h4>
+              </div>
+              {!displacementToLoad && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <LocalizedDateField
+                    label="Data início *"
+                    value={startDate}
+                    onChange={setStartDate}
+                    className="w-full min-w-0"
+                    labelClassName={labelClass}
+                    buttonClassName={cn(nativeFieldClass, 'w-full min-w-0 text-left font-normal')}
+                  />
+                  <LocalizedDateField
+                    label="Data fim"
+                    value={endDate}
+                    onChange={setEndDate}
+                    className="w-full min-w-0"
+                    labelClassName={labelClass}
+                    buttonClassName={cn(nativeFieldClass, 'w-full min-w-0 text-left font-normal')}
+                  />
+                </div>
+              )}
+              <div className={cn('grid gap-4', displacementToLoad ? 'sm:grid-cols-1' : 'sm:grid-cols-2')}>
+                {!displacementToLoad && (
+                  <div className="space-y-1.5">
+                    <label htmlFor="freightValue" className={labelClass}>
+                      Valor do frete (R$)
+                    </label>
+                    <input
+                      id="freightValue"
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="0,00"
+                      value={freightValue}
+                      onChange={(e) => setFreightValue(formatBrlCurrencyInput(e.target.value))}
+                      className={nativeFieldClass}
+                    />
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <label htmlFor="initialKm" className={labelClass}>
+                    Km inicial{displacementToLoad ? ' *' : ''}
+                  </label>
+                  <input
+                    id="initialKm"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="0"
+                    autoComplete="off"
+                    value={initialKm}
+                    onChange={(e) => setInitialKm(formatKmInput(e.target.value))}
+                    className={nativeFieldClass}
+                  />
+                </div>
+              </div>
+              {!displacementToLoad && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label htmlFor="loadType" className={labelClass}>
+                      Tipo de carga
+                    </label>
+                    <input
+                      id="loadType"
+                      type="text"
+                      placeholder="ex: Carga geral"
+                      value={loadType}
+                      onChange={(e) => setLoadType(e.target.value)}
+                      className={nativeFieldClass}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="status" className={labelClass}>
+                      Status
+                    </label>
+                    <select
+                      id="status"
+                      value={status}
+                      onChange={(e) => setStatus(e.target.value as TripStatus)}
+                      className={nativeFieldClass}
+                    >
+                      {STATUS_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <div className="pds-hairline" />
+
+            <section className="space-y-4">
+              <div className="space-y-1">
+                <p className="pds-section-kicker">Complementos</p>
+                <h4 className="pds-section-title">Observações e contexto</h4>
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="notes" className={labelClass}>
+                  Observações
+                </label>
+                <textarea
+                  id="notes"
+                  rows={3}
+                  placeholder="Observações adicionais sobre a viagem…"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className={cn(nativeFieldClass, 'resize-none')}
                 />
-                <span>
-                  <span className={labelClass}>Viagem de deslocamento até o carregamento</span>
-                  <p className="mt-0.5 text-[0.8rem] font-normal text-muted-foreground">
-                    Marque quando a viagem for só o trecho até buscar a carga (sem frete de ida carregado). Aparece
-                    identificada na lista para o motorista e a frota.
-                  </p>
-                </span>
-              </label>
-            </div>
+              </div>
+
+              <div className="rounded-xl border border-violet-500/35 bg-violet-500/10 px-4 py-3 dark:bg-violet-950/35">
+                <label className="flex cursor-pointer items-start gap-3">
+                  <input
+                    id="displacementToLoad"
+                    type="checkbox"
+                    checked={displacementToLoad}
+                    onChange={(e) => setDisplacementToLoad(e.target.checked)}
+                    className="border-border mt-1 h-4 w-4 rounded text-primary focus:ring-focus-ring"
+                  />
+                  <span>
+                    <span className={labelClass}>Viagem de deslocamento até o carregamento</span>
+                    <p className="mt-0.5 text-[0.8rem] font-normal text-muted-foreground">
+                      Marque quando a viagem for só o trecho até buscar a carga (sem frete de ida carregado). Aparece
+                      identificada na lista para o motorista e a frota.
+                    </p>
+                  </span>
+                </label>
+              </div>
+            </section>
           </CardContent>
         </Card>
 

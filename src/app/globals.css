@@ -64,6 +64,11 @@
 
   --focus-ring: 221 83% 53%;
 
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.42, 0, 0.58, 1);
+  --dur-fast: 160ms;
+  --dur-medium: 240ms;
+
   --shadow-card: 0 1px 3px hsl(224 71% 4% / 0.06);
   --shadow-popover: 0 12px 40px hsl(224 71% 4% / 0.12);
 }
@@ -125,6 +130,32 @@
   .pds-caption {
     @apply text-xs font-normal text-muted-foreground;
   }
+
+  .pds-section-kicker {
+    @apply text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground;
+  }
+
+  .pds-section-title {
+    @apply text-base font-semibold text-foreground sm:text-lg;
+  }
+
+  .pds-hairline {
+    @apply h-px w-full bg-border;
+  }
+
+  .pds-interactive {
+    transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+    transition-duration: var(--dur-fast);
+    transition-timing-function: var(--ease-out);
+  }
+
+  .pds-focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2;
+  }
+
+  .pds-disabled {
+    @apply disabled:cursor-not-allowed disabled:opacity-60;
+  }
 }
 
 /* Telas espelhadas ao protótipo Figma também podem forçar Inter via classe herdada em layout */
@@ -177,6 +208,22 @@ body {
   color: hsl(var(--foreground));
   font-family: var(--font-inter), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   min-height: 100dvh;
+}
+
+html,
+body {
+  overflow-x: clip;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Chrome autofill não “lavar” o campo no tema escuro (usa cores semânticas). */
