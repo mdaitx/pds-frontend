@@ -114,7 +114,7 @@ function DashboardSidebarNav({
           <button
             type="button"
             onClick={onNavClick}
-            className="ml-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/50 text-foreground transition-all duration-200 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
+            className="pds-interactive pds-focus-ring ml-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/50 text-foreground hover:bg-muted"
             aria-label="Fechar menu"
           >
             <X className="h-5 w-5" aria-hidden />
@@ -154,6 +154,7 @@ function DashboardSidebarNav({
               key={item.href}
               href={item.href}
               prefetch={false}
+              aria-current={isActive ? 'page' : undefined}
               onClick={onNavClick}
               onMouseEnter={() => {
                 if (item.href === '/dashboard/relatorios') prefetchRelatorios();
@@ -260,6 +261,24 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
     localStorage.setItem('sidebarCollapsed', String(sidebarCollapsed));
   }, [sidebarCollapsed]);
 
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSidebarOpen(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [sidebarOpen]);
+
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [sidebarOpen]);
+
   const getNavItems = (): NavItem[] => {
     if (!appUser) return ownerNav;
     if (appUser.role === 'DRIVER') return driverNav;
@@ -310,8 +329,9 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
         <button
           type="button"
           onClick={toggleSidebar}
-          className="absolute top-6 -right-3 z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors duration-200 print:hidden hover:bg-muted/50 hover:text-foreground md:flex"
+          className="pds-interactive pds-focus-ring absolute top-6 -right-3 z-10 hidden h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm print:hidden hover:bg-muted/50 hover:text-foreground md:flex"
           title={sidebarCollapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
+          aria-label={sidebarCollapsed ? 'Expandir sidebar' : 'Recolher sidebar'}
         >
           {sidebarCollapsed ? (
             <ChevronRight className="w-3.5 h-3.5" />
@@ -324,10 +344,15 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Menu de navegação">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setSidebarOpen(false)} aria-hidden />
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Fechar menu de navegação"
+          />
           <aside
             id="dashboard-mobile-sidebar"
-            className="absolute top-0 right-0 bottom-0 left-0 flex max-w-[85vw] w-72 flex-col bg-card shadow-xl"
+            className="absolute top-0 right-0 bottom-0 left-auto flex w-72 max-w-[85vw] flex-col bg-card shadow-xl"
           >
             <DashboardSidebarNav
               mobile
@@ -349,7 +374,7 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-foreground shadow-sm transition-colors duration-200 hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
+            className="pds-interactive pds-focus-ring flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40 text-foreground shadow-sm hover:bg-muted"
             aria-label="Abrir menu de navegação"
             aria-expanded={sidebarOpen}
           >
@@ -402,6 +427,7 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
                     key={item.href}
                     href={item.href}
                     prefetch={false}
+                    aria-current={isActive ? 'page' : undefined}
                     className={cn(
                       'relative flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[0.72rem] font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
                       appUser.role !== 'DRIVER' && 'min-w-[76px]',

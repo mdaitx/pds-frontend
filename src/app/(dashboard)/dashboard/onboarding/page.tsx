@@ -39,8 +39,9 @@ function resolveInitialStep(s: OnboardingStatus): 1 | 2 | 3 {
 export default function OnboardingPage() {
   const router = useRouter();
   const { session, appUser, loading: authLoading } = useAuth();
-  const [status, setStatus] = useState<OnboardingStatus | null>(() => readPrefetchedOnboardingStatus());
-  const [loading, setLoading] = useState(() => readPrefetchedOnboardingStatus() === null);
+  const [prefetchedStatus] = useState<OnboardingStatus | null>(() => readPrefetchedOnboardingStatus());
+  const [status, setStatus] = useState<OnboardingStatus | null>(prefetchedStatus);
+  const [loading, setLoading] = useState(() => prefetchedStatus === null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -51,9 +52,7 @@ export default function OnboardingPage() {
     }
 
     // Com prefetch válido, renderiza imediatamente o wizard e faz refresh em background.
-    if (status && !status.completed) {
-      setLoading(false);
-      setError(null);
+    if (prefetchedStatus && !prefetchedStatus.completed) {
       void getOnboardingStatus(session.access_token)
         .then((fresh) => {
           setStatus(fresh);
@@ -91,7 +90,7 @@ export default function OnboardingPage() {
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Erro ao carregar'))
       .finally(() => setLoading(false));
-  }, [session, appUser, router]);
+  }, [session, appUser, router, prefetchedStatus]);
 
   useEffect(() => {
     if (!authLoading && !session) router.replace('/login');
@@ -99,20 +98,30 @@ export default function OnboardingPage() {
 
   if (authLoading || loading || !appUser) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50 p-6">
-        <LoadingMessage message="Carregando onboarding…" />
+      <div className="settings-font-inter flex min-h-screen items-center justify-center bg-background p-6">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
+          <p className="pds-section-kicker">Preparando ambiente</p>
+          <LoadingMessage message="Carregando onboarding…" className="mt-2 text-muted-foreground" />
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-zinc-50 p-6">
-        <p className="text-center text-red-700">{error}</p>
+      <div className="settings-font-inter flex min-h-screen flex-col items-center justify-center gap-4 bg-background p-6">
+        <div
+          className="w-full max-w-lg rounded-2xl border border-destructive/30 bg-destructive/10 px-5 py-4 text-sm text-destructive"
+          role="alert"
+          aria-live="polite"
+        >
+          <p className="font-semibold">Não foi possível abrir o onboarding</p>
+          <p className="mt-1">{error}</p>
+        </div>
         <button
           type="button"
           onClick={() => window.location.reload()}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          className="pds-interactive pds-focus-ring inline-flex min-h-10 items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary-hover"
         >
           Tentar novamente
         </button>

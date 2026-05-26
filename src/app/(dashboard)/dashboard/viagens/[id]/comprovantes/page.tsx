@@ -110,7 +110,7 @@ function ReceiptCard({
             href={receiptUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
+            className="pds-interactive pds-focus-ring inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
           >
             Abrir arquivo original
             <ExternalLink className="h-3.5 w-3.5" aria-hidden />
@@ -153,17 +153,43 @@ export default function ComprovantesViagemPage() {
     if (!authLoading && !session) router.replace('/login');
   }, [authLoading, session, router]);
 
-  const { requiredExpenses, requiredWithReceipts, optionalWithReceipts, requiredMissing, totalRequiredValue } =
+  const {
+    requiredExpenses,
+    requiredWithReceipts,
+    optionalWithReceipts,
+    requiredMissing,
+    totalRequiredValue,
+    requiredCoveragePercent,
+  } =
     useMemo(() => {
       const required = expenses.filter((expense) => expense.amount > RECEIPT_THRESHOLD);
+      const requiredWithProof = required.filter((expense) => expense.receiptUrl);
+      const requiredTotal = required.length;
       return {
         requiredExpenses: required,
-        requiredWithReceipts: required.filter((expense) => expense.receiptUrl),
+        requiredWithReceipts: requiredWithProof,
         optionalWithReceipts: expenses.filter((expense) => expense.amount <= RECEIPT_THRESHOLD && expense.receiptUrl),
         requiredMissing: required.filter((expense) => !expense.receiptUrl),
         totalRequiredValue: required.reduce((sum, expense) => sum + expense.amount, 0),
+        requiredCoveragePercent:
+          requiredTotal === 0 ? 100 : Math.round((requiredWithProof.length / requiredTotal) * 100),
       };
     }, [expenses]);
+  const hasPendingCompliance = requiredMissing.length > 0;
+
+  useEffect(() => {
+    if (!selectedExpense) return;
+    const previousOverflow = document.body.style.overflow;
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedExpense(null);
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleEsc);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', handleEsc);
+    };
+  }, [selectedExpense]);
 
   if (authLoading || loading) {
     return (
@@ -201,10 +227,20 @@ export default function ComprovantesViagemPage() {
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Voltar à viagem
           </Link>
-          <div className="flex flex-wrap items-center gap-3">
+          <p className="pds-section-kicker">Conferência de despesas</p>
+          <div className="mt-1 flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-semibold text-foreground">Comprovantes da viagem {trip.code}</h1>
             <span className="rounded-full bg-primary/12 px-3 py-1 text-xs font-semibold text-primary dark:bg-primary/22">
               Acima de {formatBrl(RECEIPT_THRESHOLD)}
+            </span>
+            <span
+              className={
+                hasPendingCompliance
+                  ? 'rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900 dark:bg-amber-500/20 dark:text-amber-100'
+                  : 'rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-900 dark:bg-emerald-500/20 dark:text-emerald-100'
+              }
+            >
+              {hasPendingCompliance ? 'Pendências de conferência' : 'Conferência em dia'}
             </span>
           </div>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
@@ -213,7 +249,12 @@ export default function ComprovantesViagemPage() {
         </div>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-3" aria-label="Resumo dos comprovantes">
+      <section className="space-y-3" aria-label="Resumo dos comprovantes">
+        <div className="space-y-1">
+          <p className="pds-section-kicker">Painel rápido</p>
+          <h2 className="pds-section-title">Indicadores da documentação</h2>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
         <Card className="border-border shadow-sm">
           <CardContent className="flex items-center gap-3 p-4">
             <div className="rounded-xl bg-primary/12 p-2 text-primary dark:bg-primary/22">
@@ -247,7 +288,27 @@ export default function ComprovantesViagemPage() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </section>
+
+      <Card className="border-border shadow-sm">
+        <CardContent className="space-y-3 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-medium text-muted-foreground">Cobertura de comprovantes obrigatórios</p>
+            <p className="text-sm font-semibold text-foreground">{requiredCoveragePercent}%</p>
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-[width] duration-300"
+              style={{ width: `${requiredCoveragePercent}%` }}
+              aria-hidden
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {requiredWithReceipts.length} de {requiredExpenses.length} despesas acima de {formatBrl(RECEIPT_THRESHOLD)} possuem comprovante.
+          </p>
+        </CardContent>
+      </Card>
 
       {requiredMissing.length > 0 && (
         <Card className="border-amber-200 bg-amber-50 shadow-sm dark:border-amber-500/35 dark:bg-amber-950/35">
@@ -278,7 +339,8 @@ export default function ComprovantesViagemPage() {
 
       <section className="space-y-4">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Comprovantes obrigatórios</h2>
+          <p className="pds-section-kicker">Obrigatórios</p>
+          <h2 className="pds-section-title">Comprovantes obrigatórios</h2>
           <p className="text-sm text-muted-foreground">Fotos e arquivos das despesas lançadas acima de R$ 100.</p>
         </div>
 
@@ -304,7 +366,8 @@ export default function ComprovantesViagemPage() {
       {optionalWithReceipts.length > 0 && (
         <section className="space-y-4">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Outros comprovantes</h2>
+            <p className="pds-section-kicker">Complementares</p>
+            <h2 className="pds-section-title">Outros comprovantes</h2>
             <p className="text-sm text-muted-foreground">Anexos enviados em despesas de até R$ 100.</p>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -321,8 +384,12 @@ export default function ComprovantesViagemPage() {
           role="dialog"
           aria-modal="true"
           aria-label="Visualização do comprovante"
+          onClick={() => setSelectedExpense(null)}
         >
-          <div className="relative max-h-full w-full max-w-5xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+          <div
+            className="relative max-h-full w-full max-w-5xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-foreground">{selectedExpense.category.name}</p>
@@ -333,7 +400,7 @@ export default function ComprovantesViagemPage() {
               <button
                 type="button"
                 onClick={() => setSelectedExpense(null)}
-                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                className="pds-interactive pds-focus-ring rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
                 aria-label="Fechar comprovante"
               >
                 <X className="h-5 w-5" aria-hidden />
