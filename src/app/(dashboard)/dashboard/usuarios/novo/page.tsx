@@ -330,7 +330,7 @@ export default function NovoUsuarioPage() {
                   }}
                 />
                 <span className="text-foreground text-sm">
-                  Convidar por e-mail — sem definir senha agora. O Supabase envia um link.
+                  Convidar por e-mail — sem definir senha agora. Enviar link via email.
                 </span>
               </label>
             )}
