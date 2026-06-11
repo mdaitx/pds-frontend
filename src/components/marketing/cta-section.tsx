@@ -1,3 +1,4 @@
+import { TRIAL_DAYS } from '@/lib/marketing/constants';
 import { MarketingContainer } from '@/components/marketing/container';
 import { MarketingLinkButton } from '@/components/marketing/link-button';
 
@@ -13,8 +14,8 @@ export function MarketingCtaSection() {
             Menos planilha. Mais clareza no fechamento.
           </h2>
           <p className="mx-auto mt-3 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
-            Crie sua conta em minutos. Use no navegador ou instale no celular — o trial começa no
-            primeiro cadastro.
+            Crie sua conta em minutos. Use no navegador ou instale no celular — os {TRIAL_DAYS} dias de
+            teste começam ao cadastrar sua empresa no onboarding.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center">
             <MarketingLinkButton href="/signup" variant="primary" size="lg" fullWidth>

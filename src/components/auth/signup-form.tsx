@@ -67,9 +67,14 @@ export function SignupForm() {
         },
       });
       if (err) throw new Error(err.message);
+
       if (data.session) {
-        await supabase.auth.signOut();
+        // Confirmação de e-mail desligada: entra direto (mesmo fluxo do login).
+        await new Promise((r) => setTimeout(r, 150));
+        window.location.href = '/session-redirect';
+        return;
       }
+
       router.replace(`/login?signup=1&email=${encodeURIComponent(normalizedEmail)}`);
       router.refresh();
     } catch (e) {
@@ -96,7 +101,6 @@ export function SignupForm() {
   return (
     <Card className="border-border shadow-xl">
       <CardHeader className="pb-2">
-        <p className="pds-section-kicker text-center">Criar acesso</p>
         <h2 className="text-center text-xl font-semibold text-foreground">Criar conta</h2>
         <p className="pds-caption mt-1 text-center">Use e-mail válido e senha forte para começar com segurança.</p>
       </CardHeader>

@@ -161,7 +161,7 @@ export const PLANS = [
 export const FAQ_ITEMS = [
   {
     question: 'Como funciona o teste grátis?',
-    answer: `Sua empresa começa com ${TRIAL_DAYS} dias de teste e até ${TRIAL_MAX_VEHICLES} veículos cadastrados. Não pedimos cartão no cadastro — você só passa pelo checkout Stripe quando quiser um plano pago.`,
+    answer: `Após criar a conta, o onboarding guia o cadastro da empresa — nesse momento começam ${TRIAL_DAYS} dias de teste com até ${TRIAL_MAX_VEHICLES} veículos. Não pedimos cartão no cadastro; o checkout Stripe só entra quando você escolher um plano pago.`,
   },
   {
     question: 'Motorista e dono usam o mesmo app?',
