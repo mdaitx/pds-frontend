@@ -29,7 +29,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { BrandLogo } from '@/components/brand-logo';
+import { AuthThemeCorner } from '@/components/auth/auth-theme-corner';
 import { useAuth } from '@/hooks';
+import { cn } from '@/lib/cn';
 
 const PLATE_REGEX = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$|^[A-Z]{3}[0-9]{4}$/;
 
@@ -218,16 +220,17 @@ export function OnboardingWizard({ initialStep }: Props) {
   ];
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-zinc-100 p-4">
-      <div className="w-full max-w-xl">
+    <div className="relative flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-card to-primary/12 p-4 transition-colors duration-300">
+      <AuthThemeCorner />
+      <div className="relative z-10 w-full max-w-xl">
         <div className="mb-8 flex flex-col items-center">
           <div className="mb-4 flex h-36 w-36 items-center justify-center">
             <BrandLogo size={144} priority />
           </div>
-          <h1 className="text-center text-[1.75rem] font-bold text-zinc-900">Truck Finanças</h1>
-          <p className="mt-1 text-center text-zinc-500">Gestão de fretes e comissões</p>
-          <h2 className="mt-6 text-2xl font-bold text-zinc-900">Configuração inicial</h2>
-          <p className="mt-1 text-center text-[0.9rem] text-zinc-500">
+          <h1 className="text-center text-[1.75rem] font-bold text-foreground">Truck Finanças</h1>
+          <p className="mt-1 text-center text-muted-foreground">Gestão de fretes e comissões</p>
+          <h2 className="mt-6 text-2xl font-bold text-foreground">Configuração inicial</h2>
+          <p className="mt-1 text-center text-[0.9rem] text-muted-foreground">
             Vamos configurar sua conta em 3 passos simples.
           </p>
         </div>
@@ -236,41 +239,54 @@ export function OnboardingWizard({ initialStep }: Props) {
           {steps.map((s, i) => (
             <div key={s.num} className="flex items-center gap-2">
               <div
-                className={`flex h-8 w-8 items-center justify-center rounded-full border-2 text-[0.85rem] font-bold transition-all ${
+                className={cn(
+                  'flex h-8 w-8 items-center justify-center rounded-full border-2 text-[0.85rem] font-bold transition-all',
                   step > s.num
-                    ? 'border-green-600 bg-green-600 text-white'
+                    ? 'border-emerald-600 bg-emerald-600 text-white dark:border-emerald-500 dark:bg-emerald-600'
                     : step === s.num
-                      ? 'border-blue-600 bg-blue-600 text-white'
-                      : 'border-zinc-300 bg-white text-zinc-400'
-                }`}
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-card text-muted-foreground',
+                )}
               >
                 {step > s.num ? <Check className="h-4 w-4" /> : s.num}
               </div>
               <span
-                className={`hidden text-sm sm:block ${
-                  step === s.num ? 'font-semibold text-blue-700' : step > s.num ? 'text-green-700' : 'text-zinc-400'
-                }`}
+                className={cn(
+                  'hidden text-sm sm:block',
+                  step === s.num
+                    ? 'font-semibold text-primary'
+                    : step > s.num
+                      ? 'text-emerald-600 dark:text-emerald-400'
+                      : 'text-muted-foreground',
+                )}
               >
                 {s.label}
               </span>
               {i < steps.length - 1 && (
-                <div className={`mx-1 h-0.5 w-8 ${step > s.num ? 'bg-green-400' : 'bg-zinc-300'}`} />
+                <div
+                  className={cn('mx-1 h-0.5 w-8', step > s.num ? 'bg-emerald-500/70' : 'bg-border')}
+                />
               )}
             </div>
           ))}
         </div>
 
-        <Card className="border-zinc-200 shadow-xl">
+        <Card className="border-border shadow-xl dark:shadow-black/30">
           <CardContent className="space-y-4 p-6">
             {formError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{formError}</div>
+              <div
+                className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                role="alert"
+              >
+                {formError}
+              </div>
             )}
 
             {step === 1 && (
               <>
-                <h2 className="text-[1.1rem] text-zinc-800">Dados da empresa</h2>
+                <h2 className="text-[1.1rem] font-semibold text-foreground">Dados da empresa</h2>
 
-                <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
+                <div className="flex items-start gap-3 rounded-lg border border-primary/25 bg-primary/10 p-3 dark:border-primary/30 dark:bg-primary/15">
                   <input
                     type="checkbox"
                     id="isAutonomous"
@@ -281,13 +297,15 @@ export function OnboardingWizard({ initialStep }: Props) {
                         setCompany((f) => ({ ...f, cnpj: '', address: '', phone: '', email: '' }));
                       }
                     }}
-                    className="mt-0.5 h-4 w-4 cursor-pointer rounded border-zinc-300 bg-white focus:ring-2 focus:ring-zinc-400"
+                    className="mt-0.5 h-4 w-4 cursor-pointer rounded border-border bg-card accent-primary focus:ring-2 focus:ring-focus-ring"
                   />
                   <div className="flex-1">
-                    <label htmlFor="isAutonomous" className="cursor-pointer text-[0.9rem] font-semibold text-blue-900">
+                    <label htmlFor="isAutonomous" className="cursor-pointer text-[0.9rem] font-semibold text-foreground">
                       Sou autônomo
                     </label>
-                    <p className="mt-0.5 text-[0.78rem] text-blue-700">Marque esta opção se você não possui empresa registrada</p>
+                    <p className="mt-0.5 text-[0.78rem] text-muted-foreground">
+                      Marque esta opção se você não possui empresa registrada
+                    </p>
                   </div>
                 </div>
 
@@ -299,7 +317,7 @@ export function OnboardingWizard({ initialStep }: Props) {
                     value={company.name}
                     onChange={(e) => setCompany((f) => ({ ...f, name: e.target.value }))}
                   />
-                  {companyErrors.name && <p className="text-sm text-red-600">{companyErrors.name}</p>}
+                  {companyErrors.name && <p className="text-sm text-destructive">{companyErrors.name}</p>}
                 </div>
 
                 {!isAutonomous && (
@@ -318,7 +336,7 @@ export function OnboardingWizard({ initialStep }: Props) {
                             setCompany((f) => ({ ...f, cnpj: formatCnpjMask(e.target.value) }))
                           }
                         />
-                        {companyErrors.cnpj && <p className="text-sm text-red-600">{companyErrors.cnpj}</p>}
+                        {companyErrors.cnpj && <p className="text-sm text-destructive">{companyErrors.cnpj}</p>}
                       </div>
                       <div className="space-y-1.5">
                         <Label>Telefone</Label>
@@ -383,7 +401,7 @@ export function OnboardingWizard({ initialStep }: Props) {
 
             {step === 2 && (
               <>
-                <h2 className="text-[1.1rem] text-zinc-800">Primeiro veículo</h2>
+                <h2 className="text-[1.1rem] font-semibold text-foreground">Primeiro veículo</h2>
                 <div className="space-y-1.5">
                   <Label>Placa *</Label>
                   <Input
@@ -392,7 +410,7 @@ export function OnboardingWizard({ initialStep }: Props) {
                     value={vehicle.plate}
                     onChange={(e) => setVehicle((f) => ({ ...f, plate: e.target.value.toUpperCase() }))}
                   />
-                  {vehicleErrors.plate && <p className="text-sm text-red-600">{vehicleErrors.plate}</p>}
+                  {vehicleErrors.plate && <p className="text-sm text-destructive">{vehicleErrors.plate}</p>}
                 </div>
                 <div className="space-y-1.5">
                   <Label>Tipo de veículo *</Label>
@@ -401,7 +419,7 @@ export function OnboardingWizard({ initialStep }: Props) {
                     onChange={(e) =>
                       setVehicle((f) => ({ ...f, vehicleType: e.target.value as VehicleType }))
                     }
-                    className="flex h-9 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    className="flex h-10 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-focus-ring dark:bg-muted/55 dark:shadow-none"
                   >
                     {(Object.keys(VEHICLE_TYPE_LABELS) as VehicleType[]).map((key) => (
                       <option key={key} value={key}>
@@ -418,7 +436,7 @@ export function OnboardingWizard({ initialStep }: Props) {
                       value={vehicle.brand}
                       onChange={(e) => setVehicle((f) => ({ ...f, brand: e.target.value }))}
                     />
-                    {vehicleErrors.brand && <p className="text-sm text-red-600">{vehicleErrors.brand}</p>}
+                    {vehicleErrors.brand && <p className="text-sm text-destructive">{vehicleErrors.brand}</p>}
                   </div>
                   <div className="space-y-1.5">
                     <Label>Modelo *</Label>
@@ -427,7 +445,7 @@ export function OnboardingWizard({ initialStep }: Props) {
                       value={vehicle.model}
                       onChange={(e) => setVehicle((f) => ({ ...f, model: e.target.value }))}
                     />
-                    {vehicleErrors.model && <p className="text-sm text-red-600">{vehicleErrors.model}</p>}
+                    {vehicleErrors.model && <p className="text-sm text-destructive">{vehicleErrors.model}</p>}
                   </div>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -441,7 +459,7 @@ export function OnboardingWizard({ initialStep }: Props) {
                       value={vehicle.year}
                       onChange={(e) => setVehicle((f) => ({ ...f, year: e.target.value }))}
                     />
-                    {vehicleErrors.year && <p className="text-sm text-red-600">{vehicleErrors.year}</p>}
+                    {vehicleErrors.year && <p className="text-sm text-destructive">{vehicleErrors.year}</p>}
                   </div>
                   <div className="space-y-1.5">
                     <Label>Apelido</Label>
@@ -457,7 +475,7 @@ export function OnboardingWizard({ initialStep }: Props) {
 
             {step === 3 && (
               <>
-                <h2 className="text-[1.1rem] text-zinc-800">Primeiro motorista</h2>
+                <h2 className="text-[1.1rem] font-semibold text-foreground">Primeiro motorista</h2>
                 <div className="space-y-1.5">
                   <Label>Nome completo *</Label>
                   <Input
@@ -465,7 +483,7 @@ export function OnboardingWizard({ initialStep }: Props) {
                     value={driver.name}
                     onChange={(e) => setDriver((f) => ({ ...f, name: e.target.value }))}
                   />
-                  {driverErrors.name && <p className="text-sm text-red-600">{driverErrors.name}</p>}
+                  {driverErrors.name && <p className="text-sm text-destructive">{driverErrors.name}</p>}
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
@@ -477,7 +495,7 @@ export function OnboardingWizard({ initialStep }: Props) {
                       value={driver.cpf}
                       onChange={(e) => setDriver((f) => ({ ...f, cpf: formatCpf(e.target.value) }))}
                     />
-                    {driverErrors.cpf && <p className="text-sm text-red-600">{driverErrors.cpf}</p>}
+                    {driverErrors.cpf && <p className="text-sm text-destructive">{driverErrors.cpf}</p>}
                   </div>
                   <div className="space-y-1.5">
                     <Label>Telefone</Label>
@@ -527,9 +545,9 @@ export function OnboardingWizard({ initialStep }: Props) {
                     }
                   />
                   {driverErrors.monthlySalary && (
-                    <p className="text-sm text-red-600">{driverErrors.monthlySalary}</p>
+                    <p className="text-sm text-destructive">{driverErrors.monthlySalary}</p>
                   )}
-                  <p className="text-xs text-zinc-500">
+                  <p className="text-xs text-muted-foreground">
                     Valor fixo mensal; no relatório por motorista será proporcional ao período escolhido.
                   </p>
                 </div>
@@ -541,7 +559,7 @@ export function OnboardingWizard({ initialStep }: Props) {
                 type="button"
                 variant="outline"
                 size="lg"
-                className="w-full rounded-xl border-zinc-200 bg-white px-5 font-semibold text-zinc-800 shadow-sm ring-1 ring-zinc-900/[0.04] transition-[box-shadow,transform,border-color] hover:border-zinc-300 hover:bg-zinc-50 hover:shadow-sm active:translate-y-px"
+                className="w-full"
                 onClick={handleBack}
                 disabled={loading}
                 icon={<ChevronLeft className="h-[1.125rem] w-[1.125rem]" aria-hidden />}
@@ -552,7 +570,7 @@ export function OnboardingWizard({ initialStep }: Props) {
                 type="button"
                 variant="primary"
                 size="lg"
-                className="w-full rounded-xl px-5 font-semibold shadow-md shadow-blue-900/[0.12] ring-1 ring-blue-700/10 transition-[box-shadow,transform] hover:-translate-y-px hover:shadow-lg hover:shadow-blue-900/[0.18] active:translate-y-0"
+                className="w-full"
                 onClick={handleNext}
                 disabled={loading}
                 icon={

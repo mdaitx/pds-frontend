@@ -28,6 +28,7 @@ import {
   type AuthUser,
 } from '@/lib';
 import { BrandLogo } from '@/components/brand-logo';
+import { SubscriptionNotice } from '@/components/dashboard/SubscriptionNotice';
 
 const ROLE_LABEL: Record<AuthUser['role'], string> = {
   OWNER: 'Dono da frota',
@@ -400,6 +401,7 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
             appUser && 'safe-main-with-bottom-nav md:pb-0'
           )}
         >
+          <SubscriptionNotice />
           {children}
         </main>
         {appUser && (

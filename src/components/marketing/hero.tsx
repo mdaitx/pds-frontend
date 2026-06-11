@@ -34,8 +34,8 @@ export function MarketingHero() {
               Teste grátis por {TRIAL_DAYS} dias
               <ArrowRightIcon />
             </MarketingLinkButton>
-            <MarketingLinkButton href="/#app" variant="outline" size="lg" fullWidth>
-              Ver o app
+            <MarketingLinkButton href="/login" variant="outline" size="lg" fullWidth>
+              Entrar
             </MarketingLinkButton>
           </div>
           <dl className="grid grid-cols-1 gap-4 border-t border-border pt-6 sm:grid-cols-3 sm:gap-6 lg:max-w-lg">
