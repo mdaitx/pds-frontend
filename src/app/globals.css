@@ -276,6 +276,181 @@ nextjs-portal {
   top: unset;
 }
 
+/* ——— Landing / marketing ——— */
+:root {
+  --marketing-header-height: 4.5rem;
+  --marketing-section-alt: 214 32% 96%;
+  --marketing-footer: 220 20% 98%;
+  --marketing-hero-glow: 221 83% 53%;
+}
+
+:root[data-theme='dark'] {
+  --marketing-section-alt: 222 38% 11%;
+  --marketing-footer: 222 47% 6%;
+  --marketing-hero-glow: 217 91% 62%;
+}
+
+@utility bg-marketing-section-alt {
+  background-color: hsl(var(--marketing-section-alt));
+}
+
+@utility bg-marketing-footer {
+  background-color: hsl(var(--marketing-footer));
+}
+
+.marketing-page {
+  scroll-behavior: smooth;
+  background-image: radial-gradient(
+    1200px 480px at 100% -10%,
+    hsl(var(--marketing-hero-glow) / 0.06),
+    transparent 55%
+  );
+}
+
+/* Cards e superfícies com lift suave */
+.marketing-lift-card {
+  @apply rounded-2xl border border-border/70 bg-card shadow-sm transition-[transform,box-shadow,border-color] duration-300 ease-out dark:border-border dark:shadow-black/30;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .marketing-lift-card:hover {
+    @apply -translate-y-1 border-primary/30 shadow-[0_18px_44px_hsl(var(--primary)/0.12)] dark:shadow-[0_18px_44px_hsl(0_0%_0%/0.4)];
+  }
+}
+
+.marketing-pill {
+  @apply rounded-full border border-border bg-muted/60 px-3 py-1 text-xs font-medium text-muted-foreground transition-all duration-200 sm:px-3.5 sm:py-1.5 sm:text-sm;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .marketing-pill:hover {
+    @apply border-primary/35 bg-primary/8 text-foreground;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-page {
+    scroll-behavior: auto;
+  }
+}
+
+@keyframes marketing-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+html,
+body {
+  overflow-x: clip;
+}
+
+/* Mockups da landing — frames editoriais, tema via tokens CSS */
+.marketing-mockup {
+  @apply relative min-w-0 w-full;
+}
+
+.marketing-mockup__frame {
+  @apply relative overflow-hidden rounded-2xl border border-border/70 bg-background shadow-sm dark:border-border dark:shadow-black/35;
+}
+
+.marketing-mockup--interactive {
+  @apply h-full transition-[transform] duration-300 ease-out motion-reduce:transition-none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .marketing-mockup--interactive:hover {
+    @apply -translate-y-1.5;
+  }
+
+  .marketing-mockup--interactive:hover .marketing-mockup__frame {
+    @apply border-primary/35 shadow-[0_22px_48px_hsl(var(--primary)/0.14)] dark:shadow-[0_22px_48px_hsl(0_0%_0%/0.45)];
+  }
+
+  .marketing-mockup--interactive:hover .marketing-mockup__caption {
+    @apply text-foreground;
+  }
+}
+
+.marketing-mockup__caption {
+  @apply border-t border-border px-4 py-3 text-sm text-muted-foreground transition-colors duration-300;
+}
+
+.marketing-mockup--hero {
+  @apply max-w-lg;
+}
+
+.marketing-mockup--panel {
+  @apply max-w-none;
+}
+
+.marketing-mockup--phone .marketing-mockup__frame {
+  @apply w-full;
+}
+
+/* Seção #app — cards quadrados, mesma base visual dos lift-cards */
+.marketing-app-examples {
+  @apply mx-auto max-w-4xl;
+}
+
+.marketing-app-example-card {
+  @apply flex aspect-square min-h-0 flex-col;
+}
+
+.marketing-mockup__grid-bg {
+  @apply contents;
+}
+
+.marketing-mockup__phone-notch {
+  @apply hidden;
+}
+
+/* Legado — screenshots (script marketing:screenshots); landing usa mockups CSS */
+.marketing-screenshot {
+  @apply relative min-w-0 w-full;
+}
+
+.marketing-screenshot__frame {
+  @apply relative h-full w-full overflow-hidden rounded-2xl border border-border bg-card shadow-[0_16px_40px_hsl(var(--foreground)/0.06)];
+}
+
+:root[data-theme='dark'] .marketing-screenshot__frame {
+  @apply shadow-[0_16px_40px_hsl(0_0%_0%/0.35)];
+}
+
+.marketing-screenshot__image {
+  @apply object-contain object-top;
+}
+
+.marketing-screenshot__caption {
+  @apply border-t border-border px-4 py-3 text-sm text-muted-foreground;
+}
+
+.marketing-screenshot--hero {
+  @apply max-w-lg;
+}
+
+.marketing-screenshot--desktop {
+  @apply max-w-none;
+}
+
+.marketing-screenshot--mobile {
+  @apply max-w-[17.5rem] mx-auto lg:max-w-full lg:mx-0;
+}
+
+.marketing-screenshot--hero .marketing-screenshot__frame,
+.marketing-screenshot--desktop .marketing-screenshot__frame {
+  @apply rounded-2xl;
+}
+
+.marketing-screenshot--mobile .marketing-screenshot__frame {
+  @apply rounded-[1.35rem];
+}
+
 /* Impressão / PDF — relatórios e telas que usam window.print() */
 @media print {
   @page {
