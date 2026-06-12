@@ -18,7 +18,7 @@ export function MarketingHowItWorks() {
           {STEPS.map((step, index) => (
             <li key={step.title} className="group marketing-lift-card min-w-0 p-5 sm:p-6">
               <div className="mb-4 flex items-baseline gap-3 border-b border-border pb-4">
-                <span className="font-mono text-3xl font-light tabular-nums text-primary/80 transition-colors duration-300 group-hover:text-primary">
+                <span className="text-3xl font-bold tabular-nums tracking-tight text-primary/80 transition-colors duration-300 group-hover:text-primary">
                   {String(index + 1).padStart(2, '0')}
                 </span>
                 <h3 className="text-lg font-bold leading-snug text-foreground">{step.title}</h3>

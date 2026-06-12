@@ -27,7 +27,7 @@ export const FEATURES = [
     title: 'Viagens com histórico',
     description:
       'Origem, destino, frete, km e status em um só lugar. Consulte por viagem, veículo ou motorista quando precisar conferir.',
-    icon: 'truck',
+    icon: 'route',
   },
   {
     title: 'Comprovante quando importa',
@@ -78,7 +78,7 @@ export const APP_EXAMPLES = [
   {
     tag: 'Dono da frota',
     title: 'Dashboard',
-    icon: 'truck' as const,
+    icon: 'dashboard' as const,
     description:
       'Visão do mês com viagens, faturamento e indicadores — tudo num painel só, no desktop ou no celular.',
   },
