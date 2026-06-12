@@ -48,6 +48,10 @@ function formatCurrency(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+function chartHasValues(points: LineChartPoint[]): boolean {
+  return points.some((p) => p.faturamento > 0 || p.despesas > 0);
+}
+
 /** Grid compatível claro/escuro (CSS variables dos tokens). */
 const CHART_GRID_STROKE = 'hsl(var(--border))';
 
@@ -57,6 +61,9 @@ export function DashboardCharts({
   chartData,
   barDataDespesasCategoria,
 }: DashboardChartsProps) {
+  const lineChartHeight = chartPeriod === '1y' ? 248 : 220;
+  const lineEmpty = !chartHasValues(chartData);
+
   return (
     <div className="space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -95,51 +102,59 @@ export function DashboardCharts({
             </p>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={chartPeriod === '1y' ? 248 : 220}>
-              <LineChart
-                data={chartData}
-                margin={{
-                  top: 5,
-                  right: 12,
-                  left: 4,
-                  bottom: chartPeriod === '1y' ? 28 : 5,
-                }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
-                <XAxis
-                  dataKey="mes"
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: chartPeriod === '1y' ? 10 : 12 }}
-                  angle={chartPeriod === '1y' ? -22 : 0}
-                  textAnchor={chartPeriod === '1y' ? 'end' : 'middle'}
-                  height={chartPeriod === '1y' ? 48 : 24}
-                  stroke={CHART_GRID_STROKE}
-                />
-                <YAxis
-                  width={108}
-                  tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
-                  tickFormatter={(v) => formatCurrency(Number(v))}
-                  stroke={CHART_GRID_STROKE}
-                />
-                <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
-                <Legend />
-                <Line
-                  type="monotone"
-                  dataKey="faturamento"
-                  name="Faturamento"
-                  stroke="#2563eb"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="despesas"
-                  name="Despesas"
-                  stroke="#ef4444"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {lineEmpty ? (
+              <p className="py-12 text-center text-sm text-muted-foreground">
+                Nenhum faturamento ou despesa no período selecionado.
+              </p>
+            ) : (
+              <div className="w-full min-w-0" style={{ height: lineChartHeight }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={chartData}
+                    margin={{
+                      top: 5,
+                      right: 12,
+                      left: 4,
+                      bottom: chartPeriod === '1y' ? 28 : 5,
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
+                    <XAxis
+                      dataKey="mes"
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: chartPeriod === '1y' ? 10 : 12 }}
+                      angle={chartPeriod === '1y' ? -22 : 0}
+                      textAnchor={chartPeriod === '1y' ? 'end' : 'middle'}
+                      height={chartPeriod === '1y' ? 48 : 24}
+                      stroke={CHART_GRID_STROKE}
+                    />
+                    <YAxis
+                      width={108}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
+                      tickFormatter={(v) => formatCurrency(Number(v))}
+                      stroke={CHART_GRID_STROKE}
+                    />
+                    <Tooltip formatter={(v) => formatCurrency(Number(v ?? 0))} />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="faturamento"
+                      name="Faturamento"
+                      stroke="#2563eb"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="despesas"
+                      name="Despesas"
+                      stroke="#ef4444"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -158,8 +173,9 @@ export function DashboardCharts({
                 Nenhuma despesa no período selecionado.
               </p>
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={barDataDespesasCategoria} margin={{ top: 5, right: 12, left: 4, bottom: 5 }}>
+              <div className="h-[220px] w-full min-w-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={barDataDespesasCategoria} margin={{ top: 5, right: 12, left: 4, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID_STROKE} />
                   <XAxis
                     dataKey="categoria"
@@ -179,7 +195,8 @@ export function DashboardCharts({
                     ))}
                   </Bar>
                 </BarChart>
-              </ResponsiveContainer>
+                </ResponsiveContainer>
+              </div>
             )}
           </CardContent>
         </Card>

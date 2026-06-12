@@ -465,6 +465,25 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {!dataLoading && ownerSummary && ownerSummary.totalTripsCount > 0 && ownerSummary.monthTripsCount === 0 && (
+          <div className="rounded-xl border border-amber-300/70 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-600/50 dark:bg-amber-950/40 dark:text-amber-100">
+            Os cards &quot;do mês&quot; usam o calendário atual ({new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}).
+            Suas viagens migradas estão em meses anteriores — veja os gráficos em <strong>6 meses</strong> ou a lista &quot;Últimas viagens&quot; abaixo.
+          </div>
+        )}
+
+        {!dataLoading &&
+          ownerSummary &&
+          ownerSummary.totalTripsCount > 0 &&
+          chartPeriod !== '1m' &&
+          dashboardChartsQuery.data &&
+          chartData.every((p) => p.faturamento === 0 && p.despesas === 0) && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              Há viagens cadastradas, mas os gráficos vieram vazios da API. Confira se o frontend aponta para o backend correto
+              ({`NEXT_PUBLIC_API_URL`} na Vercel) e se o Render tem CORS para a URL do site.
+            </div>
+          )}
+
         {/* Metrics — evita flash de R$ 0,00 enquanto GET /dashboard/summary não retorna */}
         {dataLoading ? (
           <OwnerMetricCardsSkeleton />
