@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { LoadingMessage } from '@/components/ui/loading';
 import { useAuth } from '@/hooks';
 import { fetchMe, getOnboardingStatus } from '@/lib';
-
-const ONBOARDING_PREFETCH_STORAGE_KEY = 'onboarding-status-prefetch-v1';
+import { writePrefetchedOnboardingStatus } from '@/lib/onboarding-prefetch';
 
 type AppRouter = { replace: (href: string) => void };
 
@@ -19,15 +18,7 @@ async function runPostLoginRedirect(accessToken: string, router: AppRouter) {
 
   try {
     const onboarding = await getOnboardingStatus(accessToken);
-    if (typeof window !== 'undefined') {
-      window.sessionStorage.setItem(
-        ONBOARDING_PREFETCH_STORAGE_KEY,
-        JSON.stringify({
-          status: onboarding,
-          ts: Date.now(),
-        })
-      );
-    }
+    writePrefetchedOnboardingStatus(onboarding);
     router.replace(onboarding.completed ? '/dashboard' : '/dashboard/onboarding');
   } catch {
     router.replace('/dashboard');

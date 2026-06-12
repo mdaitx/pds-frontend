@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
@@ -34,15 +35,22 @@ function formatDatePt(iso: string): string {
 export function SubscriptionNotice() {
   const pathname = usePathname() ?? '';
   const { session, appUser } = useAuth();
+  const accessToken = session?.access_token ?? null;
+  const [deferFetch, setDeferFetch] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDeferFetch(true), 400);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const hiddenRoute =
     pathname.startsWith('/dashboard/onboarding') || pathname.startsWith('/dashboard/config');
   const isOwner = appUser?.role === 'OWNER';
 
   const { data: sub } = useQuery({
-    queryKey: ['subscription-notice', appUser?.id],
-    queryFn: () => getSubscriptionStatus(session?.access_token),
-    enabled: Boolean(session && isOwner && !hiddenRoute),
+    queryKey: ['subscription-notice', appUser?.id, accessToken],
+    queryFn: () => getSubscriptionStatus(accessToken!),
+    enabled: Boolean(deferFetch && accessToken && isOwner && !hiddenRoute),
     staleTime: 5 * 60_000,
     retry: false,
   });

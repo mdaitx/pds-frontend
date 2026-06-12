@@ -7,27 +7,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks';
 import { getOnboardingStatus, type OnboardingStatus } from '@/lib';
+import {
+  readPrefetchedOnboardingStatus,
+  writePrefetchedOnboardingStatus,
+} from '@/lib/onboarding-prefetch';
 import { OnboardingWizard } from '@/components/onboarding/OnboardingWizard';
 import { LoadingMessage } from '@/components/ui/loading';
-
-const ONBOARDING_PREFETCH_STORAGE_KEY = 'onboarding-status-prefetch-v1';
-const ONBOARDING_PREFETCH_TTL_MS = 30_000;
-
-function readPrefetchedOnboardingStatus(): OnboardingStatus | null {
-  if (typeof window === 'undefined') return null;
-  const raw = window.sessionStorage.getItem(ONBOARDING_PREFETCH_STORAGE_KEY);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw) as { status?: OnboardingStatus; ts?: number };
-    const status = parsed.status;
-    const ts = parsed.ts;
-    if (!status || typeof ts !== 'number') return null;
-    if (Date.now() - ts > ONBOARDING_PREFETCH_TTL_MS) return null;
-    return status;
-  } catch {
-    return null;
-  }
-}
 
 function resolveInitialStep(s: OnboardingStatus): 1 | 2 | 3 {
   if (!s.hasCompany) return 1;
@@ -61,10 +46,7 @@ export default function OnboardingPage() {
             return;
           }
           if (typeof window !== 'undefined') {
-            window.sessionStorage.setItem(
-              ONBOARDING_PREFETCH_STORAGE_KEY,
-              JSON.stringify({ status: fresh, ts: Date.now() })
-            );
+            writePrefetchedOnboardingStatus(fresh);
           }
         })
         .catch(() => {
@@ -81,10 +63,7 @@ export default function OnboardingPage() {
           return;
         }
         if (typeof window !== 'undefined') {
-          window.sessionStorage.setItem(
-            ONBOARDING_PREFETCH_STORAGE_KEY,
-            JSON.stringify({ status: s, ts: Date.now() })
-          );
+          writePrefetchedOnboardingStatus(s);
         }
         setError(null);
       })

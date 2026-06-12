@@ -29,6 +29,8 @@ import {
   reportsTripsQueryKey,
   defaultMonthlyReportRange,
 } from '@/lib';
+import { ApiError } from '@/lib/api-client';
+import { readPrefetchedOnboardingStatus } from '@/lib/onboarding-prefetch';
 import type {
   AuthUser,
   Trip,
@@ -245,32 +247,47 @@ export default function DashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { session, appUser, loading, error, signOut, refreshAppUser } = useAuth();
-  const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const accessToken = session?.access_token ?? null;
+  const authReady = Boolean(accessToken && appUser);
+  const [onboardingChecked, setOnboardingChecked] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return readPrefetchedOnboardingStatus()?.completed === true;
+  });
   const [chartPeriod, setChartPeriod] = useState<ChartPeriod>('6m');
   const shouldLoadOwnerCharts = Boolean(
-    session && appUser && (appUser.role === 'OWNER' || appUser.role === 'ADMIN')
+    authReady && appUser && (appUser.role === 'OWNER' || appUser.role === 'ADMIN')
   );
   const dashboardSummaryQuery = useQuery({
-    queryKey: ['dashboard-summary', appUser?.id, appUser?.role],
-    queryFn: () => getDashboardSummary(session?.access_token),
-    enabled: Boolean(session && appUser),
+    queryKey: ['dashboard-summary', appUser?.id, appUser?.role, accessToken],
+    queryFn: () => getDashboardSummary(accessToken!),
+    enabled: authReady,
     staleTime: 60_000,
-    retry: false,
+    retry: (failureCount, err) => {
+      if (err instanceof ApiError && err.status === 401) return failureCount < 1;
+      return failureCount < 1;
+    },
   });
   const dashboardChartsQuery = useQuery({
-    queryKey: ['dashboard-charts', appUser?.id],
-    queryFn: () => getDashboardCharts(session?.access_token),
+    queryKey: ['dashboard-charts', appUser?.id, accessToken],
+    queryFn: () => getDashboardCharts(accessToken!),
     /** Independe do summary no backend; paralelizar evita esperar duas rodadas de RTT na API (ex.: cold start no Render). */
     enabled: shouldLoadOwnerCharts,
     staleTime: 5 * 60_000,
-    retry: false,
+    retry: (failureCount, err) => {
+      if (err instanceof ApiError && err.status === 401) return failureCount < 1;
+      return failureCount < 1;
+    },
   });
 
   const queryClient = useQueryClient();
 
   /** Mesmo modelo de /dashboard/relatorios: evita cópia assíncrona em estado via useEffect (menos flashes e menos rerenders). */
   const dashboardSummary = dashboardSummaryQuery.data;
-  const dataLoading = dashboardSummaryQuery.isPending;
+  const dataLoading =
+    authReady &&
+    !dashboardSummary &&
+    (dashboardSummaryQuery.isLoading || dashboardSummaryQuery.isFetching);
+  const summaryFailed = authReady && dashboardSummaryQuery.isError && !dashboardSummary;
 
   const ownerSummary: OwnerDashboardSummary | null =
     dashboardSummary && dashboardSummary.role !== 'DRIVER' ? dashboardSummary : null;
@@ -294,10 +311,10 @@ export default function DashboardPage() {
     const { fromYmd, toYmd } = defaultMonthlyReportRange();
     void queryClient.prefetchQuery({
       queryKey: reportsTripsQueryKey(fromYmd, toYmd),
-      queryFn: () => getTripsReport(fromYmd, toYmd, session?.access_token),
+      queryFn: () => getTripsReport(fromYmd, toYmd, accessToken ?? undefined),
       staleTime: 60_000,
     });
-  }, [session, shouldLoadOwnerCharts, appUser, queryClient]);
+  }, [accessToken, shouldLoadOwnerCharts, appUser, queryClient]);
 
   useEffect(() => {
     if (loading || !appUser || pathname !== '/dashboard') return;
@@ -305,7 +322,18 @@ export default function DashboardPage() {
       queueMicrotask(() => setOnboardingChecked(true));
       return;
     }
-    getOnboardingStatus()
+
+    const prefetched = readPrefetchedOnboardingStatus();
+    if (prefetched) {
+      if (prefetched.completed) {
+        setOnboardingChecked(true);
+        return;
+      }
+      router.replace('/dashboard/onboarding');
+      return;
+    }
+
+    getOnboardingStatus(accessToken ?? undefined)
       .then((status) => {
         if (!status.completed) {
           router.replace('/dashboard/onboarding');
@@ -314,7 +342,7 @@ export default function DashboardPage() {
         setOnboardingChecked(true);
       })
       .catch(() => setOnboardingChecked(true));
-  }, [loading, appUser, router, pathname]);
+  }, [loading, appUser, router, pathname, accessToken]);
 
   useEffect(() => {
     if (!loading && !session) router.replace('/login');
@@ -418,6 +446,23 @@ export default function DashboardPage() {
 
         {error && (
           <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+        )}
+
+        {summaryFailed && (
+          <div className="flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-destructive">
+              {dashboardSummaryQuery.error instanceof Error
+                ? dashboardSummaryQuery.error.message
+                : 'Não foi possível carregar os indicadores do painel.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => void dashboardSummaryQuery.refetch()}
+              className="shrink-0 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary-hover"
+            >
+              Tentar novamente
+            </button>
+          </div>
         )}
 
         {/* Metrics — evita flash de R$ 0,00 enquanto GET /dashboard/summary não retorna */}
