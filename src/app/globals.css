@@ -344,6 +344,15 @@ nextjs-portal {
   }
 }
 
+@keyframes dashboard-sidebar-in {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
 html,
 body {
   overflow-x: clip;

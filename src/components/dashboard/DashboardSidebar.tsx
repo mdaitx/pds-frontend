@@ -353,7 +353,7 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
           />
           <aside
             id="dashboard-mobile-sidebar"
-            className="absolute top-0 right-0 bottom-0 left-auto flex w-72 max-w-[85vw] flex-col bg-card shadow-xl"
+            className="absolute top-0 bottom-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-border bg-card shadow-xl motion-safe:animate-[dashboard-sidebar-in_0.25s_var(--ease-out)] motion-reduce:animate-none"
           >
             <DashboardSidebarNav
               mobile
