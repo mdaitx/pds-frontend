@@ -21,7 +21,7 @@ export function MarketingFooter() {
             </span>
           </Link>
 
-          <p className="text-xs font-medium leading-snug text-foreground whitespace-nowrap min-[400px]:text-sm sm:text-base md:text-lg">
+          <p className="max-w-md text-xs font-medium leading-snug text-foreground min-[400px]:text-sm sm:text-base md:max-w-none md:text-lg">
             Viagem, despesa e acerto no mesmo lugar — feito para quem vive de frete.
           </p>
 
