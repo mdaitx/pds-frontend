@@ -42,7 +42,7 @@ export function MarketingPricing() {
               )}
               <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
               <p className="mt-2 text-sm text-muted-foreground">{plan.description}</p>
-              <p className="mt-6 font-mono text-3xl font-semibold tracking-tight text-foreground">
+              <p className="mt-6 text-3xl font-bold tabular-nums tracking-tight text-foreground">
                 {formatBrl(plan.priceBrl)}
                 <span className="text-base font-normal text-muted-foreground">/mês</span>
               </p>

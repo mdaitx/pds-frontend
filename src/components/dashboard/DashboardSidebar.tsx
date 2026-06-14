@@ -72,6 +72,33 @@ const driverNav: NavItem[] = [
   },
 ];
 
+/** Atalhos fixos na barra inferior mobile (dono/admin). O restante fica no menu lateral. */
+const MOBILE_BOTTOM_PRIMARY_HREFS = new Set([
+  '/dashboard',
+  '/dashboard/viagens',
+  '/dashboard/veiculos',
+  '/dashboard/motoristas',
+]);
+
+const MOBILE_BOTTOM_SHORT_LABELS: Record<string, string> = {
+  '/dashboard': 'Início',
+  '/dashboard/viagens': 'Viagens',
+  '/dashboard/veiculos': 'Veículos',
+  '/dashboard/motoristas': 'Motoristas',
+};
+
+function isNavItemActive(item: NavItem, pathname: string): boolean {
+  const extraActive = item.activePathPrefixes?.some((p) => pathname.startsWith(p)) ?? false;
+  return (
+    pathname === item.href ||
+    extraActive ||
+    (item.href !== '/dashboard' && pathname.startsWith(item.href))
+  );
+}
+
+const mobileBottomNavItemClass =
+  'relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[0.68rem] font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 sm:text-[0.72rem]';
+
 type DashboardSidebarNavProps = {
   collapsed?: boolean;
   mobile?: boolean;
@@ -144,12 +171,7 @@ function DashboardSidebarNav({
 
       <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-4 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border">
         {navItems.map((item) => {
-          const extraActive =
-            item.activePathPrefixes?.some((p) => pathname.startsWith(p)) ?? false;
-          const isActive =
-            pathname === item.href ||
-            extraActive ||
-            (item.href !== '/dashboard' && pathname.startsWith(item.href));
+          const isActive = isNavItemActive(item, pathname);
           return (
             <Link
               key={item.href}
@@ -280,6 +302,10 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
     };
   }, [sidebarOpen]);
 
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
   const getNavItems = (): NavItem[] => {
     if (!appUser) return ownerNav;
     if (appUser.role === 'DRIVER') return driverNav;
@@ -303,6 +329,18 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
   const toggleSidebar = () => setSidebarCollapsed((v) => !v);
 
   const closeMobileNav = () => setSidebarOpen(false);
+
+  const mobileBottomNavItems =
+    appUser?.role === 'DRIVER'
+      ? navItems
+      : navItems.filter((item) => MOBILE_BOTTOM_PRIMARY_HREFS.has(item.href));
+
+  const mobileMenuActive =
+    appUser != null &&
+    appUser.role !== 'DRIVER' &&
+    navItems.some(
+      (item) => !MOBILE_BOTTOM_PRIMARY_HREFS.has(item.href) && isNavItemActive(item, pathname),
+    );
 
   if (suppressSidebarChrome) {
     return <div className="min-h-screen w-full bg-background">{children}</div>;
@@ -411,19 +449,19 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
           >
             <div
               className={cn(
-                'mx-auto gap-1',
-                appUser.role === 'DRIVER'
-                  ? 'grid max-w-md grid-cols-3'
-                  : 'flex max-w-full touch-pan-x overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch]'
+                'mx-auto w-full max-w-lg gap-1',
+                appUser.role === 'DRIVER' ? 'grid grid-cols-3' : 'grid grid-cols-5',
               )}
             >
-              {navItems.map((item) => {
-                const extraActive =
-                  item.activePathPrefixes?.some((p) => pathname.startsWith(p)) ?? false;
-                const isActive =
-                  pathname === item.href ||
-                  extraActive ||
-                  (item.href !== '/dashboard' && pathname.startsWith(item.href));
+              {mobileBottomNavItems.map((item) => {
+                const isActive = isNavItemActive(item, pathname);
+                const shortLabel =
+                  appUser.role === 'DRIVER'
+                    ? item.href === '/dashboard/viagens'
+                      ? 'Viagens'
+                      : item.label
+                    : (MOBILE_BOTTOM_SHORT_LABELS[item.href] ?? item.label);
+
                 return (
                   <Link
                     key={item.href}
@@ -431,23 +469,39 @@ export function DashboardSidebar({ children }: { children: React.ReactNode }) {
                     prefetch={false}
                     aria-current={isActive ? 'page' : undefined}
                     className={cn(
-                      'relative flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl px-2 text-[0.72rem] font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2',
-                      appUser.role !== 'DRIVER' && 'min-w-[76px]',
+                      mobileBottomNavItemClass,
                       isActive
                         ? 'bg-primary/10 text-primary'
-                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
                     )}
                   >
-                    <span className="flex h-5 w-5 items-center justify-center" aria-hidden>
+                    <span className="relative flex h-5 w-5 items-center justify-center" aria-hidden>
                       {item.icon}
+                      {item.href === '/dashboard/viagens' && tripsActivityCount > 0 && (
+                        <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary ring-2 ring-card" />
+                      )}
                     </span>
-                    <span className="max-w-full truncate">{item.label}</span>
-                    {item.href === '/dashboard/viagens' && tripsActivityCount > 0 && (
-                      <span className="absolute mt-[-2.1rem] ml-8 h-2 w-2 rounded-full bg-primary ring-2 ring-card" />
-                    )}
+                    <span className="max-w-full truncate">{shortLabel}</span>
                   </Link>
                 );
               })}
+              {appUser.role !== 'DRIVER' && (
+                <button
+                  type="button"
+                  onClick={() => setSidebarOpen(true)}
+                  aria-label="Abrir menu completo"
+                  aria-expanded={sidebarOpen}
+                  className={cn(
+                    mobileBottomNavItemClass,
+                    mobileMenuActive
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                  )}
+                >
+                  <Menu className="h-5 w-5" aria-hidden />
+                  <span>Menu</span>
+                </button>
+              )}
             </div>
           </nav>
         )}
