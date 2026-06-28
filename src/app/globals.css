@@ -479,5 +479,28 @@ body {
     font-family: Helvetica, 'Helvetica Neue', ui-sans-serif, system-ui, Arial, sans-serif;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+    width: 100%;
+    max-width: none;
+  }
+
+  .print-relatorio-pds table {
+    width: 100%;
+    table-layout: fixed;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .print-relatorio-pds thead {
+    display: table-header-group;
+  }
+
+  .print-relatorio-pds tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-relatorio-pds section {
+    break-inside: auto;
+    page-break-inside: auto;
   }
 }

@@ -1,5 +1,6 @@
-import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import type { jsPDF } from 'jspdf';
+import { createPdfDocument } from './pdf-font';
 import type {
   DriverExpenseLine,
   DriverReportSummary,
@@ -9,6 +10,8 @@ import type {
 import { TRIP_STATUS_LABEL } from '@/lib/reports';
 import {
   PDF_Z,
+  PDF_FONT_FAMILY,
+  pdfAutoTableMargins,
   pdfDrawFooterGenerated,
   pdfDrawReportHeader,
   pdfDrawSectionTitle,
@@ -36,7 +39,7 @@ function tableFinalY(doc: jsPDF): number {
 const kvStyles = {
   theme: 'plain' as const,
   styles: {
-    font: 'helvetica' as const,
+    font: PDF_FONT_FAMILY,
     fontSize: 10,
     cellPadding: { top: 2, bottom: 2, left: 0, right: 4 },
     lineColor: PDF_Z[200],
@@ -61,7 +64,7 @@ export function downloadTripsReportPdf(
   rows: TripReportRow[],
   meta: { title: string; period: string; notes?: string }
 ): void {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const doc = createPdfDocument();
   const { margin, contentW } = pdfPageContentWidth(doc);
   let y = pdfDrawReportHeader(doc, 16, contentW, margin, meta.title, `Período: ${meta.period}`, meta.notes);
   y += 4;
@@ -99,9 +102,10 @@ export function downloadTripsReportPdf(
       r.expensesPerKm != null ? brl(r.expensesPerKm) : '—',
     ]),
     theme: 'plain',
-    headStyles: pdfTableHeadStyles,
-    styles: { ...pdfTableBodyStyles, fontSize: 7 },
-    margin: { left: margin, right: margin },
+    headStyles: { ...pdfTableHeadStyles, fontSize: 7 },
+    styles: { ...pdfTableBodyStyles, fontSize: 7, overflow: 'linebreak' },
+    margin: pdfAutoTableMargins(margin),
+    showHead: 'everyPage',
   });
 
   y = tableFinalY(doc) + 8;
@@ -115,7 +119,7 @@ export function downloadSummaryReportPdf(opts: {
   aggregate: ReportAggregate;
   detailRows: TripReportRow[];
 }): void {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const doc = createPdfDocument();
   const { margin, contentW } = pdfPageContentWidth(doc);
   let y = pdfDrawReportHeader(doc, 16, contentW, margin, opts.title, opts.subtitle);
   y += 4;
@@ -165,9 +169,10 @@ export function downloadSummaryReportPdf(opts: {
         r.expensesPerKm != null ? brl(r.expensesPerKm) : '—',
       ]),
       theme: 'plain',
-      headStyles: pdfTableHeadStyles,
-      styles: { ...pdfTableBodyStyles, fontSize: 8 },
-      margin: { left: margin, right: margin },
+      headStyles: { ...pdfTableHeadStyles, fontSize: 8 },
+      styles: { ...pdfTableBodyStyles, fontSize: 8, overflow: 'linebreak' },
+      margin: pdfAutoTableMargins(margin),
+      showHead: 'everyPage',
     });
     y = tableFinalY(doc) + 8;
   }
@@ -184,7 +189,7 @@ export function downloadMotoristaReportPdf(opts: {
   summary: DriverReportSummary;
   expenseLines: DriverExpenseLine[];
 }): void {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const doc = createPdfDocument();
   const { margin, contentW } = pdfPageContentWidth(doc);
   let y = pdfDrawReportHeader(doc, 16, contentW, margin, opts.title, opts.subtitle);
   y += 4;
@@ -238,10 +243,6 @@ export function downloadMotoristaReportPdf(opts: {
   y = appendKeyValueBlock(doc, y, margin, contentW, ownerRows) + 10;
 
   if (opts.detailRows.length > 0) {
-    if (y > 240) {
-      doc.addPage();
-      y = 16;
-    }
     y = pdfDrawSectionTitle(doc, y, margin, 'Viagens no período');
     y += 3;
     autoTable(doc, {
@@ -275,18 +276,15 @@ export function downloadMotoristaReportPdf(opts: {
         r.expensesPerKm != null ? brl(r.expensesPerKm) : '—',
       ]),
       theme: 'plain',
-      headStyles: pdfTableHeadStyles,
-      styles: { ...pdfTableBodyStyles, fontSize: 7 },
-      margin: { left: margin, right: margin },
+      headStyles: { ...pdfTableHeadStyles, fontSize: 7 },
+      styles: { ...pdfTableBodyStyles, fontSize: 7, overflow: 'linebreak' },
+      margin: pdfAutoTableMargins(margin),
+      showHead: 'everyPage',
     });
     y = tableFinalY(doc) + 10;
   }
 
   if (opts.expenseLines.length > 0) {
-    if (y > 230) {
-      doc.addPage();
-      y = 16;
-    }
     y = pdfDrawSectionTitle(doc, y, margin, 'Despesas (cada lançamento)');
     y += 3;
     autoTable(doc, {
@@ -304,7 +302,7 @@ export function downloadMotoristaReportPdf(opts: {
       ]),
       theme: 'plain',
       headStyles: pdfTableHeadStyles,
-      styles: { ...pdfTableBodyStyles, fontSize: 8 },
+      styles: { ...pdfTableBodyStyles, fontSize: 8, overflow: 'linebreak' },
       columnStyles: {
         0: { cellWidth: 24 },
         1: { cellWidth: 22 },
@@ -313,7 +311,8 @@ export function downloadMotoristaReportPdf(opts: {
         4: { textColor: PDF_Z[600], cellWidth: 'auto' },
         5: { halign: 'right' as const, fontStyle: 'bold' as const, textColor: PDF_Z[900], cellWidth: 28 },
       },
-      margin: { left: margin, right: margin },
+      margin: pdfAutoTableMargins(margin),
+      showHead: 'everyPage',
     });
     y = tableFinalY(doc) + 8;
   }

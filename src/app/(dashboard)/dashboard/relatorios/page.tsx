@@ -46,6 +46,7 @@ import {
   buildTripReportRows,
   proratedMonthlySalary,
 } from '@/lib/reports';
+import { downloadFleetReportPdf } from '@/lib/fleet-report-pdf';
 import { Card, CardContent, CardHeader } from '@/components/ui';
 import { Button } from '@/components/ui/button';
 import { LoadingMessage } from '@/components/ui/loading';
@@ -333,7 +334,7 @@ function RelatorioImpressao(props: {
       </section>
 
       {props.tripRows.length > 0 ? (
-        <section className="mb-8 [break-inside:avoid]">
+        <section className="mb-8">
           <h2 className="mb-1 text-base font-bold text-zinc-900">Viagens no período</h2>
           <p className="mb-2 text-[9px] text-zinc-600">
             Linhas com fundo destacado: deslocamento até o carregamento (sem carga).
@@ -378,7 +379,7 @@ function RelatorioImpressao(props: {
       ) : null}
 
       {props.periodType === 'annual' && props.monthlyChartData.length > 0 ? (
-        <section className="mb-8 [break-inside:avoid]">
+        <section className="mb-8">
           <h2 className="mb-2 text-base font-bold text-zinc-900">Movimento mensal ({props.periodLabel})</h2>
           <table className="w-full border-collapse border border-zinc-200 text-[9px]">
             <thead>
@@ -407,7 +408,7 @@ function RelatorioImpressao(props: {
       ) : null}
 
       {props.vehicleStats.length > 0 ? (
-        <section className="mb-8 [break-before:page]">
+        <section className="mb-8 [break-before:auto]">
           <h2 className="mb-2 text-base font-bold text-zinc-900">Desempenho por veículo</h2>
           <p className="mb-2 text-[9px] text-zinc-600">
             Lista completa no período (sem filtro de busca da tela).
@@ -440,7 +441,7 @@ function RelatorioImpressao(props: {
       ) : null}
 
       {props.driverStats.length > 0 ? (
-        <section className="mb-8 [break-before:page]">
+        <section className="mb-8 [break-before:auto]">
           <h2 className="mb-2 text-base font-bold text-zinc-900">Desempenho por motorista</h2>
           <p className="mb-2 text-[9px] text-zinc-600">
             Salário proporcional ao período do relatório; comissão por viagem usa o acerto quando existir, senão margem × %
@@ -786,7 +787,41 @@ export default function RelatoriosPage() {
   }, [driverStats, searchTerm, drivers]);
 
   const handleExportPDF = () => {
-    window.print();
+    downloadFleetReportPdf({
+      periodType,
+      periodLabel: getPeriodLabel(),
+      fromYmd,
+      toYmd,
+      vehicleLabel: getVehicleLabel(),
+      tripCount: filteredTrips.length,
+      totalFaturamento,
+      totalDespesas,
+      totalLucro,
+      totalKm,
+      kmMetrics: periodKmMetrics,
+      monthlyChartData,
+      vehicleStats: vehicleStats.map(({ placa, viagens, deslocamentos, faturamento, despesas, km }) => ({
+        placa,
+        viagens,
+        deslocamentos,
+        faturamento,
+        despesas,
+        km,
+      })),
+      driverStats: driverStats.map((d) => ({
+        name: drivers.find((dr) => dr.id === d.id)?.name?.trim() || d.name,
+        viagens: d.viagens,
+        deslocamentos: d.deslocamentos,
+        faturamento: d.faturamento,
+        salarioPeriodo: d.salarioPeriodo,
+        comissao: d.comissao,
+        salarioMaisComissao: d.salarioMaisComissao,
+      })),
+      tripRows: tripRowsForPrint,
+      generatedAtLabel: tripsReportRaw?.generatedAt
+        ? new Date(tripsReportRaw.generatedAt).toLocaleString('pt-BR')
+        : new Date().toLocaleString('pt-BR'),
+    });
   };
 
   const getPeriodLabel = () => {

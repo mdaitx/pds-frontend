@@ -1,8 +1,11 @@
 /**
  * Tema único para PDFs (relatórios e acerto): cores próximas ao Tailwind zinc,
- * Helvetica no jsPDF, margens e estilos de tabela alinhados à UI.
+ * Roboto (UTF-8) via pdf-font.ts, margens e estilos alinhados à UI.
  */
 import type { jsPDF } from 'jspdf';
+import { PDF_FONT_FAMILY } from './pdf-font';
+
+export { PDF_FONT_FAMILY };
 
 export const PDF_MARGIN = 14;
 
@@ -45,12 +48,12 @@ export function pdfDrawReportHeader(
   subtitle?: string,
   notes?: string
 ): number {
-  doc.setFont('helvetica', 'bold');
+  doc.setFont(PDF_FONT_FAMILY, 'bold');
   doc.setFontSize(18);
   doc.setTextColor(...PDF_Z[900]);
   doc.text(title, margin, y);
   let next = y + 8;
-  doc.setFont('helvetica', 'normal');
+  doc.setFont(PDF_FONT_FAMILY, 'normal');
   doc.setFontSize(10);
   doc.setTextColor(...PDF_Z[600]);
   if (subtitle) {
@@ -71,7 +74,7 @@ export function pdfDrawReportHeader(
 
 /** Rótulo de seção em caixa alta (como “DADOS DA VIAGEM”). */
 export function pdfDrawSectionKicker(doc: jsPDF, y: number, margin: number, text: string): number {
-  doc.setFont('helvetica', 'bold');
+  doc.setFont(PDF_FONT_FAMILY, 'bold');
   doc.setFontSize(9);
   doc.setTextColor(...PDF_Z[500]);
   doc.text(text.toUpperCase(), margin, y);
@@ -81,7 +84,7 @@ export function pdfDrawSectionKicker(doc: jsPDF, y: number, margin: number, text
 
 /** Título de seção (ex.: “Resumo”, “Despesas”). */
 export function pdfDrawSectionTitle(doc: jsPDF, y: number, margin: number, text: string): number {
-  doc.setFont('helvetica', 'bold');
+  doc.setFont(PDF_FONT_FAMILY, 'bold');
   doc.setFontSize(12);
   doc.setTextColor(...PDF_Z[900]);
   doc.text(text, margin, y);
@@ -89,7 +92,7 @@ export function pdfDrawSectionTitle(doc: jsPDF, y: number, margin: number, text:
 }
 
 export function pdfDrawFooterGenerated(doc: jsPDF, margin: number, y: number): void {
-  doc.setFont('helvetica', 'normal');
+  doc.setFont(PDF_FONT_FAMILY, 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...PDF_Z[500]);
   doc.text(`Documento gerado em ${new Date().toLocaleString('pt-BR')}`, margin, y);
@@ -107,7 +110,7 @@ export const pdfTableHeadStyles = {
 
 /** Corpo padrão de tabelas de relatório. */
 export const pdfTableBodyStyles = {
-  font: 'helvetica',
+  font: PDF_FONT_FAMILY,
   fontSize: 9,
   textColor: PDF_Z[800],
   cellPadding: 2,
@@ -122,3 +125,42 @@ export function pdfKeyValueColumnStyles(contentW: number, labelWidthMm = 62) {
     1: { textColor: PDF_Z[900], fontStyle: 'bold' as const, cellWidth: contentW - labelWidthMm },
   };
 }
+
+/** Margens para autoTable com quebra automática entre páginas A4. */
+export function pdfAutoTableMargins(margin = PDF_MARGIN) {
+  return { left: margin, right: margin, top: 16, bottom: 18 };
+}
+
+/** Faixa esverdeada de título de seção (como “Resumo do acerto”). Retorna Y após o bloco. */
+export function pdfDrawEmeraldSectionBanner(
+  doc: jsPDF,
+  y: number,
+  margin: number,
+  contentW: number,
+  title: string
+): number {
+  doc.setFillColor(...PDF_E[50]);
+  doc.roundedRect(margin, y - 4, contentW, 8, 1.5, 1.5, 'F');
+  doc.setFont(PDF_FONT_FAMILY, 'bold');
+  doc.setFontSize(12);
+  doc.setTextColor(...PDF_E[900]);
+  doc.text(title, margin + 2, y + 1);
+  doc.setTextColor(...PDF_Z[900]);
+  return y + 10;
+}
+
+/** Estilos compartilhados de tabela resumo financeiro (faixa emerald, como acerto). */
+export const pdfEmeraldSummaryTableStyles = {
+  theme: 'plain' as const,
+  styles: {
+    font: PDF_FONT_FAMILY,
+    fontSize: 10,
+    cellPadding: { top: 3, bottom: 3, left: 3, right: 3 },
+    lineColor: PDF_E[200],
+    lineWidth: 0.15,
+  },
+  columnStyles: {
+    0: { textColor: PDF_Z[600], fontStyle: 'normal' as const },
+    1: { textColor: PDF_Z[900], fontStyle: 'bold' as const, halign: 'right' as const },
+  },
+};
