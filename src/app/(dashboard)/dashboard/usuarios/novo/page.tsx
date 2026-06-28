@@ -54,7 +54,7 @@ export default function NovoUsuarioPage() {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [inviteByEmail, setInviteByEmail] = useState(true);
+  const [inviteByEmail, setInviteByEmail] = useState(false);
 
   const isAdminUser = appUser?.role === 'ADMIN';
 
