@@ -1,9 +1,10 @@
-import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { SettlementWithTrip } from '@/lib';
 import { computeTripFuelMetrics } from '@/lib/reports';
+import { createPdfDocument } from './pdf-font';
 import {
   PDF_E as E,
+  PDF_FONT_FAMILY,
   PDF_MARGIN,
   PDF_Z as Z,
   pdfDrawFooterGenerated,
@@ -33,12 +34,15 @@ function dateOnly(s: string): string {
 
 /**
  * PDF alinhado ao layout de {@link SettlementAcertoView}: mesmas seções, rótulos e ordem.
- * Fonte: Helvetica (padrão jsPDF, equivalente sans-serif; Geist exigiria embed de .ttf).
+ * Fonte: Roboto (UTF-8) — acentos e símbolos pt-BR renderizam corretamente.
  */
-export function downloadSettlementPdf(data: SettlementWithTrip, includeOwnerResult = true): void {
+export function downloadSettlementPdf(
+  data: SettlementWithTrip,
+  includeOwnerResult = true
+): void {
   const trip = data.trip;
   const finalKmShown = data.finalKm ?? trip.finalKm;
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const doc = createPdfDocument();
   const pageW = doc.internal.pageSize.getWidth();
   const margin = PDF_MARGIN;
   const contentW = pageW - margin * 2;
@@ -47,13 +51,13 @@ export function downloadSettlementPdf(data: SettlementWithTrip, includeOwnerResu
   const setZinc = (shade: keyof typeof Z) => doc.setTextColor(...Z[shade]);
   const resetTextColor = () => setZinc(900);
 
-  doc.setFont('helvetica', 'bold');
+  doc.setFont(PDF_FONT_FAMILY, 'bold');
   doc.setFontSize(20);
   resetTextColor();
   doc.text(`Acerto · ${trip.code}`, margin, y);
 
   y += 8;
-  doc.setFont('helvetica', 'normal');
+  doc.setFont(PDF_FONT_FAMILY, 'normal');
   doc.setFontSize(10);
   setZinc(600);
   const routeLine = `${trip.origin || '—'} → ${trip.destination || '—'}`;
@@ -61,8 +65,7 @@ export function downloadSettlementPdf(data: SettlementWithTrip, includeOwnerResu
   doc.text(splitRoute, margin, y);
   y += splitRoute.length * 5 + 4;
 
-  // --- Dados da viagem (mesmos campos e ordem da tela) ---
-  doc.setFont('helvetica', 'bold');
+  doc.setFont(PDF_FONT_FAMILY, 'bold');
   doc.setFontSize(9);
   setZinc(500);
   doc.text('DADOS DA VIAGEM', margin, y);
@@ -94,7 +97,7 @@ export function downloadSettlementPdf(data: SettlementWithTrip, includeOwnerResu
     body: tripRows,
     theme: 'plain',
     styles: {
-      font: 'helvetica',
+      font: PDF_FONT_FAMILY,
       fontSize: 10,
       cellPadding: { top: 2, bottom: 2, left: 0, right: 4 },
       lineColor: Z[200],
@@ -110,10 +113,9 @@ export function downloadSettlementPdf(data: SettlementWithTrip, includeOwnerResu
 
   y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
 
-  // --- Resumo do acerto (faixa esverdeada como na tela) ---
   doc.setFillColor(...E[50]);
   doc.roundedRect(margin, y - 5, contentW, 8, 1.5, 1.5, 'F');
-  doc.setFont('helvetica', 'bold');
+  doc.setFont(PDF_FONT_FAMILY, 'bold');
   doc.setFontSize(12);
   doc.setTextColor(...E[900]);
   doc.text('Resumo do acerto', margin + 2, y + 1);
@@ -135,7 +137,7 @@ export function downloadSettlementPdf(data: SettlementWithTrip, includeOwnerResu
     body: summaryBody,
     theme: 'plain',
     styles: {
-      font: 'helvetica',
+      font: PDF_FONT_FAMILY,
       fontSize: 10,
       cellPadding: { top: 3, bottom: 3, left: 3, right: 3 },
       lineColor: E[200],
@@ -169,7 +171,7 @@ export function downloadSettlementPdf(data: SettlementWithTrip, includeOwnerResu
 
   y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6;
 
-  doc.setFont('helvetica', 'normal');
+  doc.setFont(PDF_FONT_FAMILY, 'normal');
   doc.setFontSize(9);
   if (data.paid) {
     doc.setTextColor(...E[800]);
@@ -180,13 +182,12 @@ export function downloadSettlementPdf(data: SettlementWithTrip, includeOwnerResu
     doc.text(
       doc.splitTextToSize('Pagamento ao motorista ainda não marcado como efetuado.', contentW),
       margin,
-      y,
+      y
     );
   }
   y += data.paid ? 10 : 12;
 
-  // --- Despesas (tabela como na tela) ---
-  doc.setFont('helvetica', 'bold');
+  doc.setFont(PDF_FONT_FAMILY, 'bold');
   doc.setFontSize(12);
   resetTextColor();
   doc.text('Despesas', margin, y);
@@ -215,12 +216,12 @@ export function downloadSettlementPdf(data: SettlementWithTrip, includeOwnerResu
       3: { halign: 'right', fontStyle: 'bold', textColor: Z[900], cellWidth: 32 },
     },
     margin: { left: margin, right: margin },
+    showHead: 'everyPage',
   });
 
   y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
 
-  // --- Adiantamentos ---
-  doc.setFont('helvetica', 'bold');
+  doc.setFont(PDF_FONT_FAMILY, 'bold');
   doc.setFontSize(12);
   resetTextColor();
   doc.text('Adiantamentos', margin, y);
@@ -249,6 +250,7 @@ export function downloadSettlementPdf(data: SettlementWithTrip, includeOwnerResu
       3: { halign: 'right', fontStyle: 'bold', textColor: Z[900], cellWidth: 32 },
     },
     margin: { left: margin, right: margin },
+    showHead: 'everyPage',
   });
 
   y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 10;
