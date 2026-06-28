@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { ArrowLeft, Save, UserPlus } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Save, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks';
 import {
@@ -55,6 +55,7 @@ export default function NovoUsuarioPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [inviteByEmail, setInviteByEmail] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const isAdminUser = appUser?.role === 'ADMIN';
 
@@ -307,15 +308,30 @@ export default function NovoUsuarioPage() {
                   <span className="text-muted-foreground ml-1 text-xs">(ou convite por e-mail)</span>
                 )}
               </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Mínimo 6 caracteres"
-                value={form.password}
-                onChange={(e) => setField('password', e.target.value)}
-                autoComplete="new-password"
-                disabled={inviteByEmail}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Mínimo 6 caracteres"
+                  value={form.password}
+                  onChange={(e) => setField('password', e.target.value)}
+                  autoComplete="new-password"
+                  disabled={inviteByEmail}
+                  className="pr-10"
+                />
+                {!inviteByEmail && (
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    aria-pressed={showPassword}
+                    disabled={loading}
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                )}
+              </div>
               {errors.password && <p className="text-destructive text-sm">{errors.password}</p>}
             </div>
             {canInviteStaff && (
@@ -325,7 +341,9 @@ export default function NovoUsuarioPage() {
                   className="border-border mt-1 accent-primary"
                   checked={inviteByEmail}
                   onChange={(e) => {
-                    setInviteByEmail(e.target.checked);
+                    const checked = e.target.checked;
+                    setInviteByEmail(checked);
+                    if (checked) setShowPassword(false);
                     setErrors((er) => ({ ...er, password: '' }));
                   }}
                 />
