@@ -24,18 +24,18 @@ import {
 } from '@/lib';
 import { Card, CardContent, CardHeader, LoadingMessage, LocalizedDateField } from '@/components/ui';
 import { Button } from '@/components/ui/button';
-import { DashboardPageShell, DASHBOARD_FORM_PADDING } from '@/components/dashboard/DashboardPageShell';
+import { DashboardPageShell } from '@/components/dashboard/DashboardPageShell';
 import { cn } from '@/lib/cn';
 import { mobileFormActionsRowClass } from '@/lib/dashboard-mobile';
+import { dashboardNativeFieldClass } from '@/lib/dashboard-field-classes';
 import {
   dashboardFormCancelLinkClass,
   dashboardFormDeleteButtonClass,
   dashboardFormSaveButtonClass,
 } from '@/lib/dashboard-action-buttons';
 
-const inputClass =
-  'mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-800 focus:outline-none focus:ring-2 focus:ring-blue-500';
-const labelClass = 'block text-sm font-medium text-zinc-700';
+const nativeFieldClass = cn(dashboardNativeFieldClass, 'mt-1 block w-full');
+const labelClass = 'block text-sm font-medium text-foreground';
 
 const STATUS_OPTIONS_EDIT: { value: TripStatus; label: string }[] = [
   { value: 'PENDING', label: 'Aguardando' },
@@ -166,19 +166,16 @@ export default function EditarViagemPage() {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || loading) {
     return (
-      <div className="settings-font-inter flex min-h-[50vh] items-center justify-center bg-zinc-50 tracking-tight">
-        <LoadingMessage />
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="settings-font-inter flex min-h-[50vh] items-center justify-center bg-zinc-50 tracking-tight">
-        <LoadingMessage message="Carregando viagem…" />
-      </div>
+      <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="3xl">
+        <div className="flex min-h-[42vh] items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/35 dark:bg-muted/20">
+          <LoadingMessage
+            className="text-muted-foreground"
+            message={loading ? 'Carregando viagem…' : undefined}
+          />
+        </div>
+      </DashboardPageShell>
     );
   }
 
@@ -187,12 +184,12 @@ export default function EditarViagemPage() {
       <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="3xl">
         <Link
           href="/dashboard/viagens"
-          className="flex items-center gap-1 text-[0.85rem] text-zinc-500 hover:text-zinc-700"
+          className="flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Viagens
         </Link>
-        <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {error || 'Viagem não encontrada.'}
         </div>
       </DashboardPageShell>
@@ -200,39 +197,40 @@ export default function EditarViagemPage() {
   }
 
   return (
-    <div className="settings-font-inter flex min-h-screen flex-col bg-zinc-50">
+    <DashboardPageShell className="settings-font-inter tracking-tight" maxWidth="3xl">
       <form
         onSubmit={handleSubmit}
-        className={cn(DASHBOARD_FORM_PADDING, 'max-w-3xl settings-font-inter')}
+        className="settings-font-inter flex flex-col gap-4 pb-6"
         style={{ fontSize: '0.9rem' }}
       >
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</div>
+          <div
+            className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            role="alert"
+            aria-live="polite"
+          >
+            {error}
+          </div>
         )}
 
-        <div>
+        <div className="rounded-2xl border border-border bg-card px-4 py-4 shadow-sm sm:px-5">
           <Link
             href="/dashboard/viagens"
-            className="mb-1 flex items-center gap-1 text-zinc-500 transition-colors hover:text-zinc-700"
-            style={{ fontSize: '0.85rem' }}
+            className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             Voltar à lista
           </Link>
-          <h1 className="text-zinc-900" style={{ fontWeight: 600, fontSize: '1.35rem' }}>
-            Editar {trip.code}
-          </h1>
+          <h1 className="pds-page-title text-[1.35rem] sm:text-[1.5rem]">Editar {trip.code}</h1>
         </div>
 
-        <Card className="border-zinc-200 shadow-sm">
+        <Card className="border-border shadow-sm">
           <CardHeader className="pb-2 pt-6">
-            <h3 className="text-zinc-700" style={{ fontWeight: 600, fontSize: '1.05rem' }}>
-              Dados da Viagem
-            </h3>
+            <h3 className="pds-card-title">Dados da Viagem</h3>
           </CardHeader>
           <CardContent className="space-y-4 pb-6">
-            <div className="rounded-lg border border-zinc-100 bg-zinc-50 px-3 py-2 text-sm text-zinc-600">
-              Código: <strong className="text-zinc-900">{trip.code}</strong>
+            <div className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
+              Código: <strong className="text-foreground">{trip.code}</strong>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -245,7 +243,7 @@ export default function EditarViagemPage() {
                   required
                   value={vehicleId}
                   onChange={(e) => setVehicleId(e.target.value)}
-                  className={inputClass}
+                  className={nativeFieldClass}
                 >
                   {vehicles.map((v) => (
                     <option key={v.id} value={v.id}>
@@ -263,7 +261,7 @@ export default function EditarViagemPage() {
                   required
                   value={driverId}
                   onChange={(e) => setDriverId(e.target.value)}
-                  className={inputClass}
+                  className={nativeFieldClass}
                 >
                   {drivers.map((d) => (
                     <option key={d.id} value={d.id}>
@@ -284,7 +282,7 @@ export default function EditarViagemPage() {
                 placeholder="Nome do cliente ou empresa"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
-                className={inputClass}
+                className={nativeFieldClass}
               />
             </div>
 
@@ -299,7 +297,7 @@ export default function EditarViagemPage() {
                   placeholder="ex: São Paulo, SP"
                   value={origin}
                   onChange={(e) => setOrigin(e.target.value)}
-                  className={inputClass}
+                  className={nativeFieldClass}
                 />
               </div>
               <div className="space-y-1.5">
@@ -312,7 +310,7 @@ export default function EditarViagemPage() {
                   placeholder="ex: Rio de Janeiro, RJ"
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
-                  className={inputClass}
+                  className={nativeFieldClass}
                 />
               </div>
             </div>
@@ -324,7 +322,7 @@ export default function EditarViagemPage() {
                 onChange={setStartDate}
                 className="w-full min-w-0"
                 labelClassName={labelClass}
-                buttonClassName={`${inputClass} w-full min-w-0 text-left font-normal`}
+                buttonClassName={cn(nativeFieldClass, 'w-full min-w-0 text-left font-normal')}
               />
               <LocalizedDateField
                 label="Data fim"
@@ -332,7 +330,7 @@ export default function EditarViagemPage() {
                 onChange={setEndDate}
                 className="w-full min-w-0"
                 labelClassName={labelClass}
-                buttonClassName={`${inputClass} w-full min-w-0 text-left font-normal`}
+                buttonClassName={cn(nativeFieldClass, 'w-full min-w-0 text-left font-normal')}
               />
             </div>
 
@@ -348,7 +346,7 @@ export default function EditarViagemPage() {
                   placeholder="0,00"
                   value={freightValue}
                   onChange={(e) => setFreightValue(formatBrlCurrencyInput(e.target.value))}
-                  className={inputClass}
+                  className={nativeFieldClass}
                 />
               </div>
               <div className="space-y-1.5">
@@ -363,7 +361,7 @@ export default function EditarViagemPage() {
                   autoComplete="off"
                   value={initialKm}
                   onChange={(e) => setInitialKm(formatKmInput(e.target.value))}
-                  className={inputClass}
+                  className={nativeFieldClass}
                 />
               </div>
             </div>
@@ -379,7 +377,7 @@ export default function EditarViagemPage() {
                   placeholder="ex: Carga geral"
                   value={loadType}
                   onChange={(e) => setLoadType(e.target.value)}
-                  className={inputClass}
+                  className={nativeFieldClass}
                 />
               </div>
               <div className="space-y-1.5">
@@ -387,7 +385,7 @@ export default function EditarViagemPage() {
                   Status
                 </label>
                 {trip.status === 'COMPLETED' ? (
-                  <div className={`${inputClass} bg-zinc-50 text-zinc-700`}>
+                  <div className={cn(nativeFieldClass, 'bg-muted text-muted-foreground')}>
                     Concluída — altere somente após fluxo na página de detalhes.
                   </div>
                 ) : (
@@ -395,7 +393,7 @@ export default function EditarViagemPage() {
                     id="status"
                     value={status}
                     onChange={(e) => setStatus(e.target.value as TripStatus)}
-                    className={inputClass}
+                    className={nativeFieldClass}
                   >
                     {STATUS_OPTIONS_EDIT.map((o) => (
                       <option key={o.value} value={o.value}>
@@ -405,7 +403,7 @@ export default function EditarViagemPage() {
                   </select>
                 )}
                 {trip.status !== 'COMPLETED' && (
-                  <p className="mt-1 text-xs text-zinc-500">Em Detalhes você finaliza a viagem e gera o acerto.</p>
+                  <p className="pds-caption mt-1">Em Detalhes você finaliza a viagem e gera o acerto.</p>
                 )}
               </div>
             </div>
@@ -420,13 +418,13 @@ export default function EditarViagemPage() {
                 placeholder="Observações adicionais sobre a viagem…"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className={`${inputClass} resize-none`}
+                className={cn(nativeFieldClass, 'resize-none')}
               />
             </div>
           </CardContent>
         </Card>
 
-        <div className={`${mobileFormActionsRowClass} mt-auto border-t border-zinc-200 pt-6 pb-2`}>
+        <div className={cn(mobileFormActionsRowClass, 'mt-auto border-t border-border pt-6 pb-2')}>
           <Button
             type="button"
             variant="outline"
@@ -447,6 +445,6 @@ export default function EditarViagemPage() {
           </Button>
         </div>
       </form>
-    </div>
+    </DashboardPageShell>
   );
 }
